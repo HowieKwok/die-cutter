@@ -1,0 +1,36 @@
+# ---- 构建输出（上传时排除）----
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+
+# ---- Visual Studio / IDE ----
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+*.ncb
+*.aps
+*.ipch
+*.pdb.locked
+
+# ---- 临时/备份文件 ----
+*.tmp
+*.bak
+*.7z
+*.zip
+*.log
+~$*
+
+# ---- 系统文件 ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
