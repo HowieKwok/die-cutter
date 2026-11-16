@@ -1,4 +1,4 @@
-﻿using ControlBoard.Model;
+using ControlBoard.Model;
 using ControlBoard.服务类;
 using DevMgmt;
 using DevMgmt.Cameras.Models;
@@ -264,6 +264,20 @@ namespace Frame_Core
                 paramPath = paramPathSet.UserParamPathName;
                 initParamResult &= userManage.InitUserParam(paramPath);
 
+                //加载权限管理参数（纯参数加载，必须早于任何硬件/配方初始化，
+                //否则后续任一步骤抛异常都会导致 purviewParam 为 null、菜单权限校验失败）
+                foreach (ModelName name in Enum.GetValues(typeof(ModelName)))
+                {
+                    modelServiceManage.AddModel(name.ToString(), new ModelControl());
+                }
+                paramPath = paramPathSet.purviewParamPathName;
+                initParamResult &= purviewManage.InitpurviewParam(paramPath);
+                if (purviewManage.purviewParam != null)
+                {
+                    purviewManage.UpdateModelPurviewParam(modelServiceManage.m_dicModels, ref purviewManage.purviewParam.l_modelPrivilege);
+                    purviewManage.purviewParam.Save();
+                }
+
 
                 //【1】加载相机参数
                 M_CamParam = M_CamParam.ReadExtension<CamParam>(paramPathSet.SystemPath, $"AllCamParam");
@@ -324,7 +338,7 @@ namespace Frame_Core
                 driveParameter.filePath = paramPathSet.DiverParamPathName;
                 driveParameter = (DriveParameter)driveParameter.Read();
 
-                Project.Instance.paramPathSet.initProdDataPath = $"{driveParameter.driveName}\\生产数据\\";
+                Project.Instance.paramPathSet.initProdDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "生产数据") + "\\";
 
 
 
@@ -346,7 +360,7 @@ namespace Frame_Core
 
 
                 //新建膜卷路径
-                NewMujuanhao(systemInfo.RecipeName, systemInfo.currentMojuanhao, systemInfo.CraftType);
+                initParamResult &= NewMujuanhao(systemInfo.RecipeName, systemInfo.currentMojuanhao, systemInfo.CraftType);
 
                 //插件管理器初始化
                 Process流程插件管理者.SetPath(paramPathSet.ProcessPath, paramPathSet.InstanceParamPath);
@@ -359,22 +373,6 @@ namespace Frame_Core
                 baseProDevice.INIProduct();
 
                 BindCamImageSource(baseProDevice.m_DicCamOperaParam);
-
-
-
-
-
-                //加载权限管理参数
-                foreach (var ModelName in Enum.GetValues(typeof(ModelName)))
-                {
-                    modelServiceManage.AddModel(ModelName.ToString(), new ModelControl());
-                }
-                paramPath = paramPathSet.purviewParamPathName;
-                initParamResult &= purviewManage.InitpurviewParam(paramPath);
-                purviewManage.UpdateModelPurviewParam(modelServiceManage.m_dicModels, ref purviewManage.purviewParam.l_modelPrivilege);
-                purviewManage.purviewParam.Save();
-
-
 
             }
             catch (Exception ex)
@@ -455,13 +453,17 @@ namespace Frame_Core
 
             for (int i = 0; i < M_CamParam.l_CameraDevs.Count; i++)
             {
+                // 相机对象未创建（如禁用/未连接的槽位）时跳过绑定
+                var cameraDev = M_CamParam.l_CameraDevs[i];
+                if (cameraDev?.CameraParameter == null) continue;
+                if (cameraDev.Camera == null) continue;
                 //注册流程相机图像队列
                 if (baseProDevice.m_DicCamOperaParam.Count > i)
                 {
-                    baseProDevice.m_DicCamOperaParam[i].QueueGrabImage = M_CamParam.l_CameraDevs[i].Camera.QueueGrabImage;
+                    baseProDevice.m_DicCamOperaParam[i].QueueGrabImage = cameraDev.Camera.QueueGrabImage;
 
-                    M_CamParam.l_CameraDevs[i].Camera.CamCallbackEndEvent = null;
-                    M_CamParam.l_CameraDevs[i].Camera.CamCallbackEndEvent = baseProDevice.m_DicCamOperaParam[i].CallBackImgDataDeal;
+                    cameraDev.Camera.CamCallbackEndEvent = null;
+                    cameraDev.Camera.CamCallbackEndEvent = baseProDevice.m_DicCamOperaParam[i].CallBackImgDataDeal;
                 }
             }
         }
@@ -529,40 +531,39 @@ namespace Frame_Core
             return flag1;
         }
         object NewMujuanhao_lock = new object();
-        public void NewMujuanhao(string _currentProduct, string _currentMojuanhao, MaterialCrafEnum _materialCrafEnum)
+        public bool NewMujuanhao(string _currentProduct, string _currentMojuanhao, MaterialCrafEnum _materialCrafEnum)
         {
             lock (NewMujuanhao_lock)
             {
-                //初始化配方、生产路径
-                //初始化配方、生产路径        
-                paramPathSet.UpdateParamPath(_currentProduct, _currentMojuanhao, _materialCrafEnum, m_ProcessList, systemInfo.IsHostMachine);
+                try
+                {
+                    paramPathSet.UpdateParamPath(_currentProduct, _currentMojuanhao, _materialCrafEnum, m_ProcessList, systemInfo.IsHostMachine);
 
-                server_DiecuttingCutPLC.SetLogPath(paramPathSet.ProductMojuanPath);
-                cutOverlayPLCManage.SetLogPath(paramPathSet.ProductMojuanPath);
+                    server_DiecuttingCutPLC?.SetLogPath(paramPathSet.ProductMojuanPath);
+                    cutOverlayPLCManage?.SetLogPath(paramPathSet.ProductMojuanPath);
 
-                string strPath = paramPathSet.ProductMojuanPath;
-                if (!Directory.Exists(strPath))
+                    string strPath = paramPathSet.ProductMojuanPath;
                     Directory.CreateDirectory(strPath);
 
-                TJBJInfo.TJBJInfoPath = strPath + "CCD停机报警信息记录.ini";
+                    TJBJInfo.TJBJInfoPath = Path.Combine(strPath, "CCD停机报警信息记录.ini");
+                    LogWorks.SetGrayScaleAdaptationLoggPath(Path.Combine(strPath, "GrayLog"));
 
-                LogWorks.SetGrayScaleAdaptationLoggPath(strPath + "GrayLog");
+                    //重开膜卷初始化主副机软件参数和信息路径
+                    if (slaveMachineManager != null)
+                    {
+                        slaveMachineManager.ReadLogPath = Path.Combine(strPath, "主副机接收记录-接收MarkingSoftwareReceiveRecord.ini");
+                        slaveMachineManager.SendLogPath = Path.Combine(strPath, "主副机发送记录-发送MarkingSoftwareSendRecord.ini");
+                        slaveMachineManager.SendHeartPath = Path.Combine(strPath, "主副机发送记录-心跳MarkingSoftwareHeartbeatRecord.ini");
+                        slaveMachineManager.SendDBPath = Path.Combine(strPath, "主副机发送记录-打标MarkingSoftwareMarkingRecord.ini");
+                    }
 
-                //重开膜卷初始化打标软件参数和信息路径
-                //dbjCardManager.ReadLogPath = strPath + "打标软件接收记录-接收MarkingSoftwareReceiveRecord.ini";
-                //dbjCardManager.SendLogPath = strPath + "打标软件发送记录-发送MarkingSoftwareSendRecord.ini";
-                //dbjCardManager.SendHeartPath = strPath + "打标软件发送记录-心跳MarkingSoftwareHeartbeatRecord.ini";
-                //dbjCardManager.SendDBPath = strPath + "打标软件发送记录-打标MarkingSoftwareMarkingRecord.ini";
-                //dbjCardManager.SendJPPath = strPath + "打标软件发送记录-纠偏MarkingSoftwareOffsetRecord.ini";
-
-                ////重开膜卷初始化主副机软件参数和信息路径
-                slaveMachineManager.ReadLogPath = strPath + "主副机接收记录-接收MarkingSoftwareReceiveRecord.ini";
-                slaveMachineManager.SendLogPath = strPath + "主副机发送记录-发送MarkingSoftwareSendRecord.ini";
-                slaveMachineManager.SendHeartPath = strPath + "主副机发送记录-心跳MarkingSoftwareHeartbeatRecord.ini";
-                slaveMachineManager.SendDBPath = strPath + "主副机发送记录-打标MarkingSoftwareMarkingRecord.ini";
-
-
-
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Log4netRecord.ErrorLog.Debug(ex);
+                    return false;
+                }
             }
         }
 

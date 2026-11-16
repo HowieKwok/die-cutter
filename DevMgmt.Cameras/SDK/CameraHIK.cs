@@ -1,4 +1,4 @@
-﻿
+
 using DevMgmt.Cameras.Models;
 using FrameCommunity;
 using FrameCommunity.Data;
@@ -198,10 +198,18 @@ namespace DevMgmt.Cameras.SDK
         {
             try
             {
+                // 相机未枚举成功时（FindCamera 没找到设备）pDeviceInfo 为 null、ListNum 未赋值，
+                // 直接 Marshal 会抛 NullReferenceException；此处提前拦截并返回 false
+                if (m_pDeviceList.nDeviceNum <= 0 || m_pDeviceList.pDeviceInfo == null ||
+                    ListNum < 0 || ListNum >= m_pDeviceList.nDeviceNum || m_pOperator == null)
+                {
+                    LogDebug.Warn("Hik camera is not initialized or was not found, S/N:" + CameraSerial);
+                    return false;
+                }
+
                 int nRet = MyCamera.MV_OK;
                 MyCamera device = new MyCamera();
 
-                MyCamera.MV_CC_DEVICE_INFO test = (MyCamera.MV_CC_DEVICE_INFO)Marshal.PtrToStructure(m_pDeviceList.pDeviceInfo[ListNum], typeof(MyCamera.MV_CC_DEVICE_INFO));
                 do
                 {
                     // ch:创建设备 | en: Create device

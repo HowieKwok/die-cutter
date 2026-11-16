@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +18,7 @@ namespace Frame_Core
 
         public PurviewParam()
         {
-            //init();
+            init();
         }
         public void init()
         {
