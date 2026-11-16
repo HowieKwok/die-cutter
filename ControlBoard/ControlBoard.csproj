@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net472</TargetFramework>
@@ -19,11 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="CommunityToolkit.Mvvm">
-      <HintPath>..\Mef_VisionFrame\bin\Release\Plugins\CommunityToolkit.Mvvm.dll</HintPath>
-    </Reference>
     <Reference Include="log4net">
       <HintPath>..\DLL\OtherDLL\log4net.dll</HintPath>
+    </Reference>
+    <Reference Include="CommunityToolkit.Mvvm">
+      <HintPath>..\Frame_Core\ChartDLL\CommunityToolkit.Mvvm.dll</HintPath>
     </Reference>
   </ItemGroup>
 

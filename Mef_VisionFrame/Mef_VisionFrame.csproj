@@ -32,7 +32,7 @@
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -44,7 +44,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -103,7 +103,7 @@
   <ItemGroup>
     <Reference Include="AntdUI, Version=1.6.13.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Release\AntdUI.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\AntdUI.dll</HintPath>
     </Reference>
     <Reference Include="CommunityToolkit.Mvvm">
       <HintPath>..\Frame_Core\ChartDLL\CommunityToolkit.Mvvm.dll</HintPath>
@@ -113,22 +113,22 @@
     </Reference>
     <Reference Include="EHolly.FormControl, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Release\EHolly.FormControl.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\EHolly.FormControl.dll</HintPath>
     </Reference>
     <Reference Include="EHolly.ImageTool, Version=1.0.17.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Release\EHolly.ImageTool.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\EHolly.ImageTool.dll</HintPath>
     </Reference>
     <Reference Include="Eholly.Lib.Controls, Version=1.1.3.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Release\Eholly.Lib.Controls.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\Eholly.Lib.Controls.dll</HintPath>
     </Reference>
     <Reference Include="Eholly.ZChart">
       <HintPath>..\Frame_Core\ChartDLL\Eholly.ZChart.dll</HintPath>
     </Reference>
     <Reference Include="halcondotnetxl, Version=20.11.1.0, Culture=neutral, PublicKeyToken=4973bed59ddbf2b8, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
     <Reference Include="HookHSL">
       <HintPath>..\Frame_Core\DLL\CommunicationDLL\HookHSL.dll</HintPath>
@@ -219,8 +219,9 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
+    <Reference Include="System.Buffers">
+      <HintPath>..\packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.ComponentModel.Composition" />
@@ -230,17 +231,20 @@
       <HintPath>..\packages\System.Drawing.Common.4.7.3\lib\net461\System.Drawing.Common.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
+    <Reference Include="System.Memory">
+      <HintPath>..\packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Numerics" />
-    <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
+    <Reference Include="System.Numerics.Vectors">
+      <HintPath>..\packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.5.3\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -654,7 +658,9 @@
     <None Include="Resources\run.png" />
     <None Include="Resources\HSVision.png" />
     <Content Include="Resources\pause.png" />
-    <Content Include="Resources\Debug.png" />
+    <!-- WPF 包 URI pack://application:,,,/Resources/Debug.png 要求该图片作为内嵌资源，
+         用 Content 不会被编译进程序集、也不会复制到输出目录，运行期会找不到（XamlParseException）。-->
+    <Resource Include="Resources\Debug.png" />
     <Content Include="Resources\裁切定位.png" />
     <Content Include="更新日志\更新日志.txt" />
     <None Include="Resources\阴极铝箔.png" />

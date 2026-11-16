@@ -21,7 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -56,7 +56,7 @@
     <OutputPath>bin\x64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -71,7 +71,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AntdUI">
-      <HintPath>..\Mef_VisionFrame\bin\Release\AntdUI.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\AntdUI.dll</HintPath>
     </Reference>
     <Reference Include="BatteryLugClassLibrary, Version=1.1.1.1, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -84,24 +84,24 @@
       <HintPath>..\DLL\3DCamDll\BouncyCastle.Cryptography.dll</HintPath>
     </Reference>
     <Reference Include="CommunityToolkit.Mvvm">
-      <HintPath>..\..\..\..\宽幅打孔新方案1107\宽幅打孔新方案1017\0703计划做流程插件管理修改计划\ProcessWideHoleLaser\Mef_VisionFrame\bin\Release\CommunityToolkit.Mvvm.dll</HintPath>
+      <HintPath>ChartDLL\CommunityToolkit.Mvvm.dll</HintPath>
     </Reference>
     <Reference Include="DotNetDetour">
       <HintPath>DLL\CommunicationDLL\DotNetDetour.dll</HintPath>
     </Reference>
     <Reference Include="EHolly.FormControl, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Mef_VisionFrame\bin\Release\EHolly.FormControl.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\EHolly.FormControl.dll</HintPath>
     </Reference>
     <Reference Include="EHolly.ImageTool, Version=1.0.9.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Mef_VisionFrame\bin\Release\EHolly.ImageTool.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\EHolly.ImageTool.dll</HintPath>
     </Reference>
     <Reference Include="Eholly.Lib.Controls">
-      <HintPath>..\Mef_VisionFrame\bin\Release\Eholly.Lib.Controls.dll</HintPath>
+      <HintPath>..\DLL\UiDLL\Eholly.Lib.Controls.dll</HintPath>
     </Reference>
     <Reference Include="halcondotnetxl">
-      <HintPath>..\Mef_VisionFrame\bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
     <Reference Include="HookHSL">
       <HintPath>DLL\CommunicationDLL\HookHSL.dll</HintPath>
@@ -160,21 +160,25 @@
       <HintPath>..\packages\Sharp7.1.1.84\lib\net40\Sharp7.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
+    <Reference Include="System.Buffers">
+      <HintPath>..\packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
+    <Reference Include="System.Memory">
+      <HintPath>..\packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="System.Numerics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL" />
-    <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
+    <Reference Include="System.Numerics.Vectors">
+      <HintPath>..\packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.5.3\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="System.Runtime.Remoting" />
     <Reference Include="System.Windows.Forms" />
@@ -408,6 +412,8 @@
     <Compile Include="StandardData\DetectItemInfo.cs" />
     <Compile Include="StandardData\ImageInfo.cs" />
     <Compile Include="StandardData\PoleEarsInfo.cs" />
+    <Compile Include="StandardData\TabState.cs" />
+    <Compile Include="StandardData\TabDetectResult.cs" />
     <Compile Include="StandardData\ShowHalconWindow.cs" />
     <Compile Include="System\SystemInfo.cs" />
     <Compile Include="tools\CloneObject.cs" />

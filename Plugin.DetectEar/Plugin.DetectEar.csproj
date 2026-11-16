@@ -68,13 +68,10 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FrameCommunity, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\FrameCommunity\obj\Release\FrameCommunity.dll</HintPath>
-    </Reference>
+    <!-- FrameCommunity 改为工程引用，见下方 ProjectReference -->
     <Reference Include="halcondotnetxl, Version=20.11.1.0, Culture=neutral, PublicKeyToken=4973bed59ddbf2b8, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Mef_VisionFrame\bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -119,6 +116,10 @@
     <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2CC7-4124-B966-FBFF69A7A0E5}</Project>
       <Name>Frame_Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FrameCommunity\FrameCommunity.csproj">
+      <Project>{2E0BC248-E72A-4833-A851-20069A232648}</Project>
+      <Name>FrameCommunity</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

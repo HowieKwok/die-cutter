@@ -1,0 +1,41 @@
+<Project>
+  <!--
+    本解决方案的全部可执行/库都按 x64 编译：
+    Halcon 用的是 halcondotnetxl(x64)，相机/光源 SDK（Basler/DALSA/FlyCapture/GoSdk/IKap/kApi）、
+    EHolly.ImageTool、EHAI2CS 等原生依赖也都是 AMD64。
+    统一在这里设置，避免逐个 csproj 维护 PlatformTarget，
+    也消除 MSB3270（MSIL 与 AMD64 引用不匹配）与随后的连锁警告。
+
+    注意：某个工程若在自己的 PropertyGroup 里显式写了 PlatformTarget，
+    仍然以工程内的值为准（本次已把 Frame_Core / Mef_VisionFrame /
+    DevMgmt.Cameras / Plugin.MQDefects 显式改为 x64）。
+  -->
+  <PropertyGroup>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <!--
+    附属程序集（satellite assembly）生成所需 al.exe 的回退。
+    Frame_Core 带有 en/fr/ja 的 WinForms 本地化资源，MSBuild 的
+    GenerateSatelliteAssemblies 目标要调用 .NET Framework SDK 里的 al.exe；
+    本机只装了 .NET Framework 目标包，没有装 “.NET Framework 4.8 SDK”，
+    `C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\`
+    整个目录不存在，于是报 error MSB3086（找不到 al.exe）。
+    Visual Studio 自带的 AppxPackage 目录里有一份标准的 Assembly Linker
+    （AL.exe，Microsoft .NET Framework 14.7，功能相同），找不到 SDK 版 al.exe 时回退到它。
+    以后若安装了 .NET Framework 4.8 SDK，SDK 版会被优先使用，本段逻辑自动失效。
+    （条件的“是否为项列表”判断只能写在 Target 里，PropertyGroup 的 Condition 不允许引用 @()）
+  -->
+  <Target Name="_MefResolveAlToolPath"
+          BeforeTargets="GenerateSatelliteAssemblies"
+          Condition="'$(_ALExeToolPath)' == '' and !Exists('$(TargetFrameworkSDKToolsDirectory)al.exe')">
+    <ItemGroup>
+      <_MefALExeFallback Include="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v*\AppxPackage\AL.exe" />
+    </ItemGroup>
+    <PropertyGroup Condition="'@(_MefALExeFallback)' != ''">
+      <!-- AL 任务只认 SdkToolsPath（通过 _ALExeToolPath 传入），不认 AlToolPath，
+           所以这里改的是 _ALExeToolPath；任务会先找 <目录>\x64\AL.exe，再找 <目录>\AL.exe。 -->
+      <_ALExeToolPath>@(_MefALExeFallback->'%(RootDir)%(Directory)')</_ALExeToolPath>
+    </PropertyGroup>
+  </Target>
+</Project>

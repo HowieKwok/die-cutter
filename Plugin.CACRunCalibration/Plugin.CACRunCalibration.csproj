@@ -35,7 +35,7 @@
   <ItemGroup>
     <Reference Include="halcondotnetxl, Version=20.11.1.0, Culture=neutral, PublicKeyToken=4973bed59ddbf2b8, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Mef_VisionFrame\bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
     <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a" />
     <Reference Include="PresentationCore" />

@@ -17,9 +17,10 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\Mef_VisionFrame\bin\Debug\Plugins\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -32,10 +33,10 @@
   <ItemGroup>
     <Reference Include="CommunityToolkit.Mvvm, Version=8.1.0.0, Culture=neutral, PublicKeyToken=4aff67a105548ee2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\宽幅打孔新方案1107\宽幅打孔新方案1017\0703计划做流程插件管理修改计划\ProcessWideHoleLaser\Mef_VisionFrame\bin\Release\CommunityToolkit.Mvvm.dll</HintPath>
+      <HintPath>..\Frame_Core\ChartDLL\CommunityToolkit.Mvvm.dll</HintPath>
     </Reference>
     <Reference Include="halcondotnetxl">
-      <HintPath>D:\BaiduNetdiskDownload\宽幅打孔新方案1107\宽幅打孔新方案1017\ProcessWideHoleLaser\Mef_VisionFrame\bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -50,15 +51,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Frame_Core">
-      <HintPath>..\Frame_Core\bin\Release\Frame_Core.dll</HintPath>
-    </Reference>
-    <Reference Include="FrameCommunity">
-      <HintPath>..\Mef_VisionFrame\bin\Release\FrameCommunity.dll</HintPath>
-    </Reference>
-    <Reference Include="LogTool">
-      <HintPath>D:\BaiduNetdiskDownload\宽幅打孔新方案1107\宽幅打孔新方案1017\ProcessWideHoleLaser\Mef_VisionFrame\bin\Release\LogTool.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\FrameCommunity\FrameCommunity.csproj">
+      <Project>{2e0bc248-e72a-4833-a851-20069a232648}</Project>
+      <Name>FrameCommunity</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
+      <Project>{01127398-2cc7-4124-b966-fbff69a7a0e5}</Project>
+      <Name>Frame_Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LogTool\LogTool.csproj">
+      <Project>{EE6D8F10-4CB8-4312-8847-5D7568BE4FA0}</Project>
+      <Name>LogTool</Name>
+    </ProjectReference>
     <Compile Include="Plugin.TemplateMatch.cs" />
     <Compile Include="Core\HalconObjectGuard.cs" />
     <Compile Include="Core\Matching\AngleMath.cs" />

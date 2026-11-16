@@ -4,7 +4,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Platforms>x64</Platforms>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>DefectRuleClassifier</RootNamespace>
     <AssemblyName>DefectRuleClassifier</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -19,9 +19,6 @@
   <ItemGroup>
     <Reference Include="CommunityToolkit.Mvvm">
       <HintPath>..\Frame_Core\ChartDLL\CommunityToolkit.Mvvm.dll</HintPath>
-    </Reference>
-    <Reference Include="FrameCommunity">
-      <HintPath>..\FrameCommunity\obj\Release\FrameCommunity.dll</HintPath>
     </Reference>
     <Reference Include="halcondotnetxl">
       <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>

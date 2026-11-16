@@ -21,6 +21,7 @@
     <OutputPath>..\Mef_VisionFrame\bin\Debug\Plugins\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -32,11 +33,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="halcondotnetxl">
-      <HintPath>D:\BaiduNetdiskDownload\宽幅打孔新方案1107\宽幅打孔新方案1017\ProcessWideHoleLaser\Mef_VisionFrame\bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
-    <Reference Include="Frame_Core">
-      <HintPath>..\Frame_Core\bin\Release\Frame_Core.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
+      <Project>{01127398-2cc7-4124-b966-fbff69a7a0e5}</Project>
+      <Name>Frame_Core</Name>
+    </ProjectReference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />

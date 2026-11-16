@@ -17,10 +17,11 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\Mef_VisionFrame\bin\Debug\Plugins\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -32,15 +33,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FrameCommunity">
-      <HintPath>..\FrameCommunity\bin\Debug\FrameCommunity.dll</HintPath>
-    </Reference>
-    <Reference Include="Frame_Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Frame_Core\bin\Release\Frame_Core.dll</HintPath>
-    </Reference>
     <Reference Include="halcondotnetxl">
-      <HintPath>..\..\..\ProcessWideHoleLaser原版测试突然出问题，暂时排查不到原因\Frame_Core\bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
     <Reference Include="log4net, Version=1.2.15.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -86,6 +80,14 @@
     <Compile Include="ViewROI\ROIRectangle2.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
+      <Project>{01127398-2CC7-4124-B966-FBFF69A7A0E5}</Project>
+      <Name>Frame_Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FrameCommunity\FrameCommunity.csproj">
+      <Project>{2E0BC248-E72A-4833-A851-20069A232648}</Project>
+      <Name>FrameCommunity</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LogTool\LogTool.csproj">
       <Project>{EE6D8F10-4CB8-4312-8847-5D7568BE4FA0}</Project>
       <Name>LogTool</Name>

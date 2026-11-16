@@ -17,7 +17,7 @@
     <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -25,9 +25,10 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>..\Mef_VisionFrame\bin\Release\Plugins\</OutputPath>
@@ -61,17 +62,10 @@
   <ItemGroup>
     <Reference Include="CommunityToolkit.Mvvm, Version=8.1.0.0, Culture=neutral, PublicKeyToken=4aff67a105548ee2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\宽幅打孔新方案1107\宽幅打孔新方案1017\0703计划做流程插件管理修改计划\ProcessWideHoleLaser\Mef_VisionFrame\bin\Release\CommunityToolkit.Mvvm.dll</HintPath>
-    </Reference>
-    <Reference Include="DefectRuleClassifier">
-      <HintPath>..\DefectRuleClassifier\bin\x64\Release\DefectRuleClassifier.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Frame_Core">
-      <HintPath>..\Frame_Core\bin\Release\Frame_Core.dll</HintPath>
+      <HintPath>..\Frame_Core\ChartDLL\CommunityToolkit.Mvvm.dll</HintPath>
     </Reference>
     <Reference Include="halcondotnetxl">
-      <HintPath>..\Frame_Core\bin\Release\halcondotnetxl.dll</HintPath>
+      <HintPath>..\DLL\HalconDLL\halcondotnetxl.dll</HintPath>
     </Reference>
     <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a" />
     <Reference Include="Microsoft.CSharp" />
@@ -147,6 +141,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
+      <Project>{01127398-2CC7-4124-B966-FBFF69A7A0E5}</Project>
+      <Name>Frame_Core</Name>
+    </ProjectReference>
     <ProjectReference Include="..\FrameCommunity\FrameCommunity.csproj">
       <Project>{2E0BC248-E72A-4833-A851-20069A232648}</Project>
       <Name>FrameCommunity</Name>
@@ -155,6 +153,10 @@
       <Project>{EE6D8F10-4CB8-4312-8847-5D7568BE4FA0}</Project>
       <Name>LogTool</Name>
     </ProjectReference>
+    <ProjectReference Include="..\DefectRuleClassifier\DefectRuleClassifier.csproj">
+      <Project>{79981DE2-6002-E880-E3A2-58DFE3F57688}</Project>
+      <Name>DefectRuleClassifier</Name>
+    </ProjectReference>
   </ItemGroup>
   <Target Name="CopyClassifierNativeDlls" AfterTargets="Build">
     <!--
@@ -162,9 +164,10 @@
       保证宿主运行时无需手工部署 onnxruntime.dll / OpenCvSharpExtern.dll。
     -->
     <ItemGroup>
-      <ClassifierNative Include="..\DefectRuleClassifier\bin\x64\$(Configuration)\onnxruntime.dll" />
-      <ClassifierNative Include="..\DefectRuleClassifier\bin\x64\$(Configuration)\onnxruntime_providers_shared.dll" />
-      <ClassifierNative Include="..\DefectRuleClassifier\bin\x64\$(Configuration)\OpenCvSharpExtern.dll" />
+      <ClassifierNative Include="..\DefectRuleClassifier\bin\x64\$(Configuration)\onnxruntime.dll" Condition="Exists('..\DefectRuleClassifier\bin\x64\$(Configuration)\onnxruntime.dll')" />
+      <ClassifierNative Include="..\DefectRuleClassifier\bin\x64\$(Configuration)\onnxruntime_providers_shared.dll" Condition="Exists('..\DefectRuleClassifier\bin\x64\$(Configuration)\onnxruntime_providers_shared.dll')" />
+      <ClassifierNative Include="..\DefectRuleClassifier\bin\x64\$(Configuration)\OpenCvSharpExtern.dll" Condition="Exists('..\DefectRuleClassifier\bin\x64\$(Configuration)\OpenCvSharpExtern.dll')" />
+      <ClassifierNative Include="..\DefectRuleClassifier\bin\x64\$(Configuration)\dll\x64\OpenCvSharpExtern.dll" Condition="Exists('..\DefectRuleClassifier\bin\x64\$(Configuration)\dll\x64\OpenCvSharpExtern.dll')" />
     </ItemGroup>
     <Copy SourceFiles="@(ClassifierNative)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
   </Target>
