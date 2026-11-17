@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -39,6 +39,10 @@ namespace Frame_Core
         [Language("激光模切一体机", "激光模切一体机", "激光模切一体机")]
         [Description("激光模切一体机")]
         激光模切一体机,
+
+        [Language("五金模切", "五金模切", "五金模切")]
+        [Description("五金模切")]
+        五金模切,
 
         //[Language("宽幅打孔机", "BottomEdge1", "france")]
         //[Description("模切机")]

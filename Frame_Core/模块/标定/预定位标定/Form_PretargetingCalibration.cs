@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using LogTool;
 using NPOI.OpenXmlFormats.Dml.Diagram;
 using NPOI.OpenXmlFormats.Vml;
@@ -172,23 +172,12 @@ namespace Frame_Core
                 displayWindow_Cam4.operation_ImageInfo.showHalconWindow.m_regionShowInfos = new List<RegionShowInfo>();
                 displayWindow_Cam4.operation_ImageInfo.showHalconWindow.m_lineShowInfos = new List<LineInfo>();
 
-                Project.Instance.baseProDevice.m_DicCamOperaParam[0].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[0].AutoCalibrationDelegate += CalibrationProcess_Cam1;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[1].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[1].AutoCalibrationDelegate += CalibrationProcess_Cam2;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[2].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[2].AutoCalibrationDelegate += CalibrationProcess_Cam3;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[3].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[3].AutoCalibrationDelegate += CalibrationProcess_Cam4;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].AutoCalibrationDelegate += CalibrationProcess_Cam1;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].AutoCalibrationDelegate += CalibrationProcess_Cam2;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[2].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[2].AutoCalibrationDelegate += CalibrationProcess_Cam3;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[3].AutoCalibrationDelegate = null;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[3].AutoCalibrationDelegate += CalibrationProcess_Cam4;
+                // 标定回调按相机角色绑定：机型没有某个角色时跳过，
+                // 避免把裁切纠偏的标定回调绑到尺寸相机上（五金模切 index 2 是尺寸相机）
+                BindAutoCalibration(CamRole.模切主相机, CalibrationProcess_Cam1);
+                BindAutoCalibration(CamRole.模切从相机, CalibrationProcess_Cam2);
+                BindAutoCalibration(CamRole.裁切纠偏, CalibrationProcess_Cam3);
+                BindAutoCalibration(CamRole.尺寸检测, CalibrationProcess_Cam4);
 
 
                 thd_WorkClass.Start(100, "ThdPretargetingCalibration");
@@ -2349,6 +2338,28 @@ namespace Frame_Core
                 Log4netRecord.ErrorLog.Error(ex);
                 return ProcessExecutionResult.Exception;
             }
+        }
+
+        /// <summary>
+        /// 把自动标定回调绑到指定角色的相机上（实机 + 仿真各一份）。
+        /// 机型没有该角色时直接跳过：五金模切没有裁切纠偏相机。
+        /// </summary>
+        private void BindAutoCalibration(CamRole role, BaseProParam.AutoCalibration handler)
+        {
+            int camIndex;
+            if (!Project.Instance.baseProDevice.TryGetCamIndex(role, 0, out camIndex)) return;
+
+            BindAutoCalibration(Project.Instance.baseProDevice.m_DicCamOperaParam, camIndex, handler);
+            BindAutoCalibration(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, camIndex, handler);
+        }
+
+        private static void BindAutoCalibration(Dictionary<int, BaseProParam> paramMap, int camIndex, BaseProParam.AutoCalibration handler)
+        {
+            BaseProParam param;
+            if (!paramMap.TryGetValue(camIndex, out param) || param == null) return;
+
+            param.AutoCalibrationDelegate = null;
+            param.AutoCalibrationDelegate += handler;
         }
 
         public void CalibrationProcess_Cam1(CameraEnum camName, HObject ho_image)

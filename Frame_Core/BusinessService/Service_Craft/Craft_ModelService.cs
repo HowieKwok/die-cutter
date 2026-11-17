@@ -1,37 +1,16 @@
-﻿using DevMgmt.Cameras.Models;
-using NPOI.SS.Formula.Functions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
 namespace Frame_Core
 {
     public class Craft_ModelService : IBusinessService
     {
+        /// <summary>
+        /// 读取配方参数对象。参数类由机型画像决定：同一份配方目录下不同机型各读各的类型。
+        /// 机型未注册时抛异常，不再静默回落到激光模切的参数类。
+        /// </summary>
         public static CraftBase GetCraft(string CraftBasePath, MaterialCrafEnum craftType, string recipeName)
         {
             CraftBase mc = new CraftBase();
             int length = Project.Instance.M_CamParam?.l_CameraDevs?.Count ?? 10;
-            switch (craftType)
-            {
-                case MaterialCrafEnum.激光模切一体机:
-                    mc = mc.ReadCraft<CraftParam_DieCuttingCut>(CraftBasePath, craftType, recipeName, length);
-
-
-                    break;
-                default:
-                    mc = mc.ReadCraft<CraftParam_DieCuttingCut>(CraftBasePath, craftType, recipeName, length);
-
-
-                    break;
-            }
-            return mc;
+            return DeviceProfileRegistry.Resolve(craftType).ReadCraft(mc, CraftBasePath, recipeName, length);
         }
-
     }
 }

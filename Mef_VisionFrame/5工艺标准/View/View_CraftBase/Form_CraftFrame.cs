@@ -1,4 +1,4 @@
-﻿using AntdUI;
+using AntdUI;
 using Frame_Core;
 using LogTool;
 using NPOI.SS.Formula.Functions;
@@ -36,13 +36,21 @@ namespace Mef_VisionFrame
             comb_materialCraf.SelectedIndex = (int)VM.systemInfo.CraftType;
         }
         #region 私有工具
+        /// <summary>
+        /// 填充机型下拉。只列出已实现（已注册设备画像）的机型：
+        /// 未注册的机型既没有配方参数类也没有工艺窗体，选中它只会读到空数据。
+        /// 注意：选项按枚举声明顺序加入，且激光模切一体机是 0 号，
+        /// 因此下方仍可用 (MaterialCrafEnum)SelectedIndex 反查机型；新增机型请追加在枚举末尾。
+        /// </summary>
         private void InitMaterialSelect()
         {
             comb_materialCraf.Items.Clear();
-            foreach (var name in Enum.GetValues(typeof(MaterialCrafEnum)))
+            foreach (MaterialCrafEnum craftType in Enum.GetValues(typeof(MaterialCrafEnum)))
             {
-                string temp = ((MaterialCrafEnum)name).GetDescription();
-                comb_materialCraf.Items.Add(new SelectItem(name));
+                IDeviceProfile profile;
+                if (!DeviceProfileRegistry.TryResolve(craftType, out profile)) continue;
+
+                comb_materialCraf.Items.Add(new SelectItem(craftType));
             }
         }
         private void InitTableColumns()

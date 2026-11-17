@@ -1,4 +1,4 @@
-﻿using DefectRuleClassifier.Core.Models;
+using DefectRuleClassifier.Core.Models;
 using Extensions;
 using Frame_Core.pluginParams;
 using Frame_Core.业务参数类;
@@ -41,35 +41,32 @@ namespace Frame_Core.业务类
     {
         private CraftParam_DieCuttingCut m_craft => Project.Instance.craftBase as CraftParam_DieCuttingCut;
         public DieCutProDevice()
+            : this(DeviceProfileRegistry.Resolve(Project.Instance.systemInfo.CraftType))
         {
-            m_nCamCount = 6;
-            m_nProcessCount = 8;
+        }
+
+        /// <summary>
+        /// 相机槽位与流程数量全部来自设备画像，不再按下标推断相机角色。
+        /// 槽位下标必须连续，它与 M_CamParam.l_CameraDevs 的顺序一一对应。
+        /// </summary>
+        public DieCutProDevice(IDeviceProfile profile)
+        {
+            if (profile == null) throw new ArgumentNullException("profile");
+
+            m_nCamCount = profile.CameraCount;
+            m_nProcessCount = profile.ProcessCount;
             for (int i = 0; i < m_nCamCount; i++)
             {
-                //默认头两个相机是模切相机
-                if (i <= 1)
-                {
-                    m_DicCamOperaParam[i] = new DieCutParam(((CameraEnum)i).ToString());
-                    m_DicCamOperaParam_Sim[i] = new DieCutParam(((CameraEnum)i).ToString());
-                }
-                //默认第三个为裁切定位相机
-                if (i == 2)
-                {
-                    m_DicCamOperaParam[i] = new CutCorrectParam(((CameraEnum)i).ToString());
-                    m_DicCamOperaParam_Sim[i] = new CutCorrectParam(((CameraEnum)i).ToString());
-                }
-                //默认剩下的为尺寸相机
-                if (i > 2)
-                {
-                    m_DicCamOperaParam[i] = new SizeDetectParam(((CameraEnum)i).ToString());
-                    m_DicCamOperaParam_Sim[i] = new SizeDetectParam(((CameraEnum)i).ToString());
-                }
+                CamSlotDef slot = profile.CamSlots[i];
+                m_DicCamOperaParam[i] = slot.NewParam();
+                m_DicCamOperaParam_Sim[i] = slot.NewParam();
             }
             Project.Instance.BindCamImageSource(m_DicCamOperaParam);
             HOperatorSet.SetSystem("clip_region", "false");
             INIPro();
             //  m_craft.CamNum = m_nCamCount;
-            BuildProcessServiceList();
+            // 流程构建不放在构造函数里：Project.ReadProject() -> ProcessManager.Load 会先 DeleteAll
+            // 再回调本类 BuildProcessServiceList，在这里构建会被立刻销毁重建一遍。
             limitThreadPool = new LimitThreadPool(100);
 
         }
@@ -128,118 +125,63 @@ namespace Frame_Core.业务类
 
         public override void BuildProcessServiceList()
         {
+            IDeviceProfile profile = DeviceProfileRegistry.Resolve(Project.Instance.systemInfo.CraftType);
 
-            int ID = Project.Instance.CreateProcess();
-            int PoleMode = (int)m_craft.Electrode;
-            int tabISLeft = m_craft.Get_GlobalVariableItem("极耳在左侧").Value.ToInt();
-            bool isAT = m_craft.Get_GlobalVariableItem("带AT").Value.ToBool();
-            ProcessServices TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-            TempProcessBase.process.processInfo.CameraID = 0;
-            TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam1);
-
-            TempProcessBase.m_eventINIProcess += Init相机裁图流程;
-            TempProcessBase.m_eventRUNProcess += ProProcess新相机裁图流程
-                ;
-            TempProcessBase.InitProcess();
-            TempProcessBase.OpeningThread();
-
-            ID = Project.Instance.CreateProcess();
-            TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-            TempProcessBase.process.processInfo.CameraID = 1;
-            TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam2);
-            TempProcessBase.m_eventINIProcess += Init相机裁图流程;
-            TempProcessBase.m_eventRUNProcess += ProProcess新相机裁图流程;
-            TempProcessBase.InitProcess();
-            TempProcessBase.OpeningThread();
-
-            ID = Project.Instance.CreateProcess();
-            TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-            TempProcessBase.process.processInfo.CameraID = 0;
-            TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam1) + "_极片EA";
-            TempProcessBase.m_eventINIProcess += Init极片EA流程;
-            TempProcessBase.m_eventRUNProcess += ProProcess极片EA流程;
-            TempProcessBase.InitProcess();
-            TempProcessBase.OpeningThread();
-
-
-            ID = Project.Instance.CreateProcess();
-            TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-            TempProcessBase.process.processInfo.CameraID = 1;
-            TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam2) + "_极片EA";
-            TempProcessBase.m_eventINIProcess += Init极片EA流程;
-            TempProcessBase.m_eventRUNProcess += ProProcess极片EA流程;
-            TempProcessBase.InitProcess();
-            TempProcessBase.OpeningThread();
-
-            ID = Project.Instance.CreateProcess();
-            TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-            TempProcessBase.process.processInfo.CameraID = 2;
-            TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam3);
-            TempProcessBase.m_eventINIProcess += Init纠偏检测流程;
-            TempProcessBase.m_eventRUNProcess += ProProcess纠偏检测流程;
-            TempProcessBase.InitProcess();
-            TempProcessBase.OpeningThread();
-
-
-            ID = Project.Instance.CreateProcess();
-            TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-            TempProcessBase.process.processInfo.CameraID = 3;
-            TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam4);
-            TempProcessBase.m_eventINIProcess += Init极片尺寸检测流程;
-            TempProcessBase.m_eventRUNProcess += ProProcess极片尺寸检测流程;
-            TempProcessBase.InitProcess();
-            TempProcessBase.OpeningThread();
-
-            if (tabISLeft==1)
+            foreach (ProcessSpec spec in profile.BuildProcessList())
             {
-                ID = Project.Instance.CreateProcess();
-                TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-                TempProcessBase.process.processInfo.CameraID = 4;
-                TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam5);
-                TempProcessBase.m_eventINIProcess += Init极片尺寸带极耳检测流程;
-                TempProcessBase.m_eventRUNProcess += ProProcess极片尺寸带极耳检测流程;
-                TempProcessBase.InitProcess();
-                TempProcessBase.OpeningThread();
+                int ID = Project.Instance.CreateProcess();
+                ProcessServices service = Project.Instance.GetProcessServiceById(ID);
+                service.process.processInfo.CameraID = spec.CameraIndex;
+                service.process.processInfo.ProcessName = spec.ProcessName;
 
-                ID = Project.Instance.CreateProcess();
-                TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-                TempProcessBase.process.processInfo.CameraID = 5;
-                TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam6);
-                TempProcessBase.m_eventINIProcess += Init极片尺寸检测流程;
-                TempProcessBase.m_eventRUNProcess += ProProcess极片尺寸检测流程;
-                TempProcessBase.InitProcess();
-                TempProcessBase.OpeningThread();
+                DelegateINIProcess onInit;
+                DelegateRUNProcess onRun;
+                ResolveProcessHandlers(spec.Kind, out onInit, out onRun);
+                service.m_eventINIProcess += onInit;
+                service.m_eventRUNProcess += onRun;
+
+                service.InitProcess();
+                service.OpeningThread();
             }
-            else
-            {
-
-                ID = Project.Instance.CreateProcess();
-                TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-                TempProcessBase.process.processInfo.CameraID = 4;
-                TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam5);
-                TempProcessBase.m_eventINIProcess += Init极片尺寸检测流程;
-                TempProcessBase.m_eventRUNProcess += ProProcess极片尺寸检测流程;
-                TempProcessBase.InitProcess();
-                TempProcessBase.OpeningThread();
-
-                ID = Project.Instance.CreateProcess();
-                TempProcessBase = Project.Instance.GetProcessServiceById(ID);
-                TempProcessBase.process.processInfo.CameraID = 5;
-                TempProcessBase.process.processInfo.ProcessName = Service_Camera.GetCam_Name((int)CameraEnum.Cam6);
-                TempProcessBase.m_eventINIProcess += Init极片尺寸带极耳检测流程;
-                TempProcessBase.m_eventRUNProcess += ProProcess极片尺寸带极耳检测流程;
-                TempProcessBase.InitProcess();
-                TempProcessBase.OpeningThread();
-
-             
-            }
-
-
-
-
-
-
         }
+
+        /// <summary>
+        /// 流程种类 → 本机型的装配与运行实现。
+        /// 新增流程种类时在这里补一条；同一种流程在清单里可以出现多次（多路相机共用）。
+        /// </summary>
+        private void ResolveProcessHandlers(ProcessKind kind, out DelegateINIProcess onInit, out DelegateRUNProcess onRun)
+        {
+            switch (kind)
+            {
+                case ProcessKind.相机裁图:
+                    onInit = Init相机裁图流程;
+                    onRun = ProProcess新相机裁图流程;
+                    return;
+                case ProcessKind.极片EA:
+                    onInit = Init极片EA流程;
+                    onRun = ProProcess极片EA流程;
+                    return;
+                case ProcessKind.纠偏检测:
+                    onInit = Init纠偏检测流程;
+                    onRun = ProProcess纠偏检测流程;
+                    return;
+                case ProcessKind.极片尺寸检测:
+                    onInit = Init极片尺寸检测流程;
+                    onRun = ProProcess极片尺寸检测流程;
+                    return;
+                case ProcessKind.极片尺寸带极耳检测:
+                    onInit = Init极片尺寸带极耳检测流程;
+                    onRun = ProProcess极片尺寸带极耳检测流程;
+                    return;
+                default:
+                    throw new NotSupportedException("未实现该流程种类：" + kind);
+            }
+        }
+
+
+
+
+
 
         //初始化流程
         /// <summary>
@@ -795,7 +737,8 @@ namespace Frame_Core.业务类
 
                 // 选择参数和队列基于是否模拟
                 DieCutParam ProParam主相机模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as DieCutParam : m_DicCamOperaParam[camID] as DieCutParam;
-                DieCutParam ProParam从相机模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID + 1] as DieCutParam : m_DicCamOperaParam[camID + 1] as DieCutParam;
+                // 从相机按角色取，不再依赖"主相机下标 + 1"的假设
+                DieCutParam ProParam从相机模切业务 = Project.Instance.Is_simulation ? GetCamParamSim(CamRole.模切从相机) as DieCutParam : GetCamParam(CamRole.模切从相机) as DieCutParam;
                 var imageQueue = ProParam主相机模切业务.alreadyDealGrabImage;
                 //通过信号量把控线程
                 ProParam主相机模切业务.semaphoreSlimCam.Wait(50);
@@ -1624,7 +1567,8 @@ namespace Frame_Core.业务类
 
 
                 // 选择参数和队列基于是否模拟
-                DieCutParam ProParam从相机模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID + 1] as DieCutParam : m_DicCamOperaParam[camID + 1] as DieCutParam;
+                // 从相机按角色取，不再依赖"主相机下标 + 1"的假设
+                DieCutParam ProParam从相机模切业务 = Project.Instance.Is_simulation ? GetCamParamSim(CamRole.模切从相机) as DieCutParam : GetCamParam(CamRole.模切从相机) as DieCutParam;
                 var imageQueue = ProParam从相机模切业务.alreadyDealGrabImage;
                 //通过信号量把控线程
                 ProParam从相机模切业务.semaphoreSlimCam.Wait(50);

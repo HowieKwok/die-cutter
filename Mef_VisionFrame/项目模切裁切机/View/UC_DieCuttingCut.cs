@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using FrameCommunity.Data;
 using LogTool;
 using ScottPlot;
@@ -50,6 +50,7 @@ namespace Mef_VisionFrame
         public BindingList<QualityData> DefectStation_BindingDatas { get; } = new BindingList<QualityData>();
         public BindingList<QualityData> SizeStation_BindingDatas { get; } = new BindingList<QualityData>();
         VM_DieCuttingCut VM;
+        private readonly List<CamDisplayUnit> displayUnits = new List<CamDisplayUnit>();
 
 
 
@@ -95,6 +96,8 @@ namespace Mef_VisionFrame
             CombinationHWindowControl_cam5 = new CombinationHWindowControl<NewDisplayWindowClass>("Cam5", new List<NewDisplayWindowClass>() { DisplayWindowClassNGImage8, DisplayWindowClassNGImage11 });
             CombinationHWindowControl_cam6 = new CombinationHWindowControl<NewDisplayWindowClass>("Cam6", new List<NewDisplayWindowClass>() { DisplayWindowClassNGImage9, DisplayWindowClassNGImage12 });
 
+            BuildDisplayUnits();
+
             var sizeName = VM.Data.Craft.Get_Station3_SizeCrafts();
             foreach (var item in sizeName)
             {
@@ -131,14 +134,13 @@ namespace Mef_VisionFrame
             {
                 this.Invoke((EventHandler)delegate
                 {
-                    FrontInitHalconView1.Title = Service_Camera.GetCam_Name(0) + "大图";
-                    FrontEAHalconView1.Title = Service_Camera.GetCam_Name(0) + "EA图";
-                    FrontInitHalconView2.Title = Service_Camera.GetCam_Name(1) + "大图";
-                    FrontEAHalconView2.Title = Service_Camera.GetCam_Name(1) + "EA图";
-                    FrontSizeHalconView.Title = Service_Camera.GetCam_Name(2);
-                    FrontSizeHalconView1.Title = Service_Camera.GetCam_Name(3);
-                    FrontSizeHalconView2.Title = Service_Camera.GetCam_Name(4);
-                    FrontSizeHalconView3.Title = Service_Camera.GetCam_Name(5);
+                    foreach (var unit in displayUnits)
+                    {
+                        foreach (var slot in unit.Titles)
+                        {
+                            slot.Control.Title = Service_Camera.GetCam_Name(unit.CamIndex) + (slot.Suffix ?? string.Empty);
+                        }
+                    }
 
                     var sizeName = VM.Data.Craft.Get_Station3_SizeCrafts();
                     foreach (var item in sizeName)
@@ -194,160 +196,81 @@ namespace Mef_VisionFrame
 
         public void ImageShowAndSave()
         {
-            int camIndex = 0;
-            string camName = Service_Camera.GetCam_Name(camIndex);
-            ImageSaveParamConfig saveParamConfig = Project.Instance.M_NewImageSaveParamer.ImageSaveConfigItems.GetSaveParam(camIndex);
-
-            #region //相机1图像显示与保存
-            if (true)
+            foreach (var unit in displayUnits)
             {
-                //原图        
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam1_SourceImage_ImageSave, VM.Data.Cam1_SourceImage_ImageDispose);
-
-                //大图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass1_BigImage, showHalconWindow),
-                                                  VM.Data.Cam1_BigImage_ImageShow, VM.Data.Cam1_BigImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam1_BigImage_ImageSave, VM.Data.Cam1_BigImage_ImageDispose);
-
-
-                //EA图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass1_EAImage, showHalconWindow, VM.Data.Cam1_EAImage_ScreenshotSave, VM.Data.Cam1_EAImage_HighScreenshotQueue),
-                                                  VM.Data.Cam1_EAImage_ImageShow, VM.Data.Cam1_EAImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam1_EAImage_ImageSave, VM.Data.Cam1_EAImage_ImageDispose);
-
-                Server_ImageProcess.HighScreenshotAsync((showHalconWindow) => Server_ImageProcess.HighScreenshotCallback(DisplayWindowClass1_EAImage, showHalconWindow, VM.Data.Cam1_EAImage_ScreenshotSave),
-                                                  VM.Data.Cam1_EAImage_HighScreenshotQueue);
-
-                Server_ImageProcess.SaveScreenshotAsync(Server_ImageProcess.ScreenshotSaveCallback, VM.Data.Cam1_EAImage_ScreenshotSave);
-
-                //NG缺陷图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(CombinationHWindowControl_cam1.GetDisplayWindowClass(), showHalconWindow),
-                                                  VM.Data.Cam1_NGDefectImage_ImageShow, VM.Data.Cam1_NGDefectImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam1_NGDefectImage_ImageSave, VM.Data.Cam1_NGDefectImage_ImageDispose);
+                CamStreamUnit.Handle(unit.RawSaveOnly);
+                CamStreamUnit.Handle(unit.Main);
+                CamStreamUnit.Handle(unit.Ea);
+                CamStreamUnit.Handle(unit.Ng);
             }
-            #endregion
+        }
 
-            #region //相机2图像显示与保存
-            if (true)
+        /// <summary>
+        /// 界面显示单元表：一路相机一行，全部差异集中在行内，循环体里不再有分支。
+        /// 控件仍是 Designer 画好的固定格子，此表只声明"这一路用哪几个"。
+        /// </summary>
+        private void BuildDisplayUnits()
+        {
+            var d = VM.Data;
+
+            displayUnits.Clear();
+
+            // 线扫 / 模切主（0）：原图只存不显，大图 + EA 图 + NG 轮播
+            displayUnits.Add(new CamDisplayUnit
             {
-                //原图        
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam2_SourceImage_ImageSave, VM.Data.Cam2_SourceImage_ImageDispose);
+                CamIndex = 0, TabGroup = "线扫",
+                Titles = { CamTitleSlot.Of(FrontInitHalconView1, "大图"), CamTitleSlot.Of(FrontEAHalconView1, "EA图") },
+                RawSaveOnly = CamStreamUnit.SaveOnly(d.Cam1_SourceImage_ImageSave, d.Cam1_SourceImage_ImageDispose),
+                Main = CamStreamUnit.ShowAt(DisplayWindowClass1_BigImage, d.Cam1_BigImage_ImageShow, d.Cam1_BigImage_ImageSave, d.Cam1_BigImage_ImageDispose),
+                Ea = CamStreamUnit.ShowAt(DisplayWindowClass1_EAImage, d.Cam1_EAImage_ImageShow, d.Cam1_EAImage_ImageSave, d.Cam1_EAImage_ImageDispose, d.Cam1_EAImage_ScreenshotSave, d.Cam1_EAImage_HighScreenshotQueue),
+                Ng = CamStreamUnit.RotateAt(CombinationHWindowControl_cam1.GetDisplayWindowClass, d.Cam1_NGDefectImage_ImageShow, d.Cam1_NGDefectImage_ImageSave, d.Cam1_NGDefectImage_ImageDispose)
+            });
 
-                //大图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass2_BigImage, showHalconWindow),
-                                                  VM.Data.Cam2_BigImage_ImageShow, VM.Data.Cam2_BigImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam2_BigImage_ImageSave, VM.Data.Cam2_BigImage_ImageDispose);
-
-
-                //EA图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass2_EAImage, showHalconWindow, VM.Data.Cam2_EAImage_ScreenshotSave, VM.Data.Cam2_EAImage_HighScreenshotQueue),
-                                                  VM.Data.Cam2_EAImage_ImageShow, VM.Data.Cam2_EAImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam2_EAImage_ImageSave, VM.Data.Cam2_EAImage_ImageDispose);
-
-                Server_ImageProcess.HighScreenshotAsync((showHalconWindow) => Server_ImageProcess.HighScreenshotCallback(DisplayWindowClass2_EAImage, showHalconWindow, VM.Data.Cam2_EAImage_ScreenshotSave),
-                                                  VM.Data.Cam2_EAImage_HighScreenshotQueue);
-
-                Server_ImageProcess.SaveScreenshotAsync(Server_ImageProcess.ScreenshotSaveCallback, VM.Data.Cam2_EAImage_ScreenshotSave);
-
-                //NG缺陷图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(CombinationHWindowControl_cam2.GetDisplayWindowClass(), showHalconWindow),
-                                                  VM.Data.Cam2_NGDefectImage_ImageShow, VM.Data.Cam2_NGDefectImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam2_NGDefectImage_ImageSave, VM.Data.Cam2_NGDefectImage_ImageDispose);
-            }
-            #endregion
-
-            #region //相机3图像显示与保存
-            if (true)
+            // 线扫 / 模切从（1）：同上
+            displayUnits.Add(new CamDisplayUnit
             {
-                //原图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass3, showHalconWindow, VM.Data.Cam3_SourceImage_ScreenshotSave, VM.Data.Cam3_SourceImage_HighScreenshotQueue),
-                                                  VM.Data.Cam3_SourceImage_ImageShow, VM.Data.Cam3_SourceImage_ImageSave);
+                CamIndex = 1, TabGroup = "线扫",
+                Titles = { CamTitleSlot.Of(FrontInitHalconView2, "大图"), CamTitleSlot.Of(FrontEAHalconView2, "EA图") },
+                RawSaveOnly = CamStreamUnit.SaveOnly(d.Cam2_SourceImage_ImageSave, d.Cam2_SourceImage_ImageDispose),
+                Main = CamStreamUnit.ShowAt(DisplayWindowClass2_BigImage, d.Cam2_BigImage_ImageShow, d.Cam2_BigImage_ImageSave, d.Cam2_BigImage_ImageDispose),
+                Ea = CamStreamUnit.ShowAt(DisplayWindowClass2_EAImage, d.Cam2_EAImage_ImageShow, d.Cam2_EAImage_ImageSave, d.Cam2_EAImage_ImageDispose, d.Cam2_EAImage_ScreenshotSave, d.Cam2_EAImage_HighScreenshotQueue),
+                Ng = CamStreamUnit.RotateAt(CombinationHWindowControl_cam2.GetDisplayWindowClass, d.Cam2_NGDefectImage_ImageShow, d.Cam2_NGDefectImage_ImageSave, d.Cam2_NGDefectImage_ImageDispose)
+            });
 
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam3_SourceImage_ImageSave, VM.Data.Cam3_SourceImage_ImageDispose);
-
-                Server_ImageProcess.HighScreenshotAsync((showHalconWindow) => Server_ImageProcess.HighScreenshotCallback(DisplayWindowClass3, showHalconWindow, VM.Data.Cam3_SourceImage_ScreenshotSave),
-                                                  VM.Data.Cam3_SourceImage_HighScreenshotQueue);
-
-                Server_ImageProcess.SaveScreenshotAsync(Server_ImageProcess.ScreenshotSaveCallback, VM.Data.Cam3_SourceImage_ScreenshotSave);
-
-            }
-            #endregion
-
-            #region //相机4图像显示与保存
-            if (true)
+            // 面阵 / 裁切纠偏（2）：无 EA、无 NG
+            displayUnits.Add(new CamDisplayUnit
             {
-                //原图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass4, showHalconWindow, VM.Data.Cam4_SourceImage_ScreenshotSave, VM.Data.Cam4_SourceImage_HighScreenshotQueue),
-                                                  VM.Data.Cam4_SourceImage_ImageShow, VM.Data.Cam4_SourceImage_ImageSave);
+                CamIndex = 2, TabGroup = "面阵",
+                Titles = { CamTitleSlot.Of(FrontSizeHalconView) },
+                Main = CamStreamUnit.ShowAt(DisplayWindowClass3, d.Cam3_SourceImage_ImageShow, d.Cam3_SourceImage_ImageSave, d.Cam3_SourceImage_ImageDispose, d.Cam3_SourceImage_ScreenshotSave, d.Cam3_SourceImage_HighScreenshotQueue)
+            });
 
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam4_SourceImage_ImageSave, VM.Data.Cam4_SourceImage_ImageDispose);
-
-                Server_ImageProcess.HighScreenshotAsync((showHalconWindow) => Server_ImageProcess.HighScreenshotCallback(DisplayWindowClass4, showHalconWindow, VM.Data.Cam4_SourceImage_ScreenshotSave),
-                                                  VM.Data.Cam4_SourceImage_HighScreenshotQueue);
-
-                Server_ImageProcess.SaveScreenshotAsync(Server_ImageProcess.ScreenshotSaveCallback, VM.Data.Cam4_SourceImage_ScreenshotSave);
-
-
-                //NG缺陷图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(CombinationHWindowControl_cam4.GetDisplayWindowClass(), showHalconWindow),
-                                                  VM.Data.Cam4_NGDefectImage_ImageShow, VM.Data.Cam4_NGDefectImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam4_NGDefectImage_ImageSave, VM.Data.Cam4_NGDefectImage_ImageDispose);
-            }
-            #endregion
-
-            #region //相机5图像显示与保存
-            if (true)
+            // 面阵 / 尺寸 1（3）
+            displayUnits.Add(new CamDisplayUnit
             {
-                //原图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass5, showHalconWindow, VM.Data.Cam5_SourceImage_ScreenshotSave, VM.Data.Cam5_SourceImage_HighScreenshotQueue),
-                                                  VM.Data.Cam5_SourceImage_ImageShow, VM.Data.Cam5_SourceImage_ImageSave);
+                CamIndex = 3, TabGroup = "面阵",
+                Titles = { CamTitleSlot.Of(FrontSizeHalconView1) },
+                Main = CamStreamUnit.ShowAt(DisplayWindowClass4, d.Cam4_SourceImage_ImageShow, d.Cam4_SourceImage_ImageSave, d.Cam4_SourceImage_ImageDispose, d.Cam4_SourceImage_ScreenshotSave, d.Cam4_SourceImage_HighScreenshotQueue),
+                Ng = CamStreamUnit.RotateAt(CombinationHWindowControl_cam4.GetDisplayWindowClass, d.Cam4_NGDefectImage_ImageShow, d.Cam4_NGDefectImage_ImageSave, d.Cam4_NGDefectImage_ImageDispose)
+            });
 
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam5_SourceImage_ImageSave, VM.Data.Cam5_SourceImage_ImageDispose);
-
-                Server_ImageProcess.HighScreenshotAsync((showHalconWindow) => Server_ImageProcess.HighScreenshotCallback(DisplayWindowClass5, showHalconWindow, VM.Data.Cam5_SourceImage_ScreenshotSave),
-                                                  VM.Data.Cam5_SourceImage_HighScreenshotQueue);
-
-                Server_ImageProcess.SaveScreenshotAsync(Server_ImageProcess.ScreenshotSaveCallback, VM.Data.Cam5_SourceImage_ScreenshotSave);
-
-
-
-                //NG缺陷图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(CombinationHWindowControl_cam5.GetDisplayWindowClass(), showHalconWindow),
-                                                  VM.Data.Cam5_NGDefectImage_ImageShow, VM.Data.Cam5_NGDefectImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam5_NGDefectImage_ImageSave, VM.Data.Cam5_NGDefectImage_ImageDispose);
-            }
-            #endregion
-
-            #region //相机6图像显示与保存
-            if (true)
+            // 面阵 / 尺寸 2（4）
+            displayUnits.Add(new CamDisplayUnit
             {
-                //原图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(DisplayWindowClass6, showHalconWindow, VM.Data.Cam6_SourceImage_ScreenshotSave, VM.Data.Cam6_SourceImage_HighScreenshotQueue),
-                                                  VM.Data.Cam6_SourceImage_ImageShow, VM.Data.Cam6_SourceImage_ImageSave);
+                CamIndex = 4, TabGroup = "面阵",
+                Titles = { CamTitleSlot.Of(FrontSizeHalconView2) },
+                Main = CamStreamUnit.ShowAt(DisplayWindowClass5, d.Cam5_SourceImage_ImageShow, d.Cam5_SourceImage_ImageSave, d.Cam5_SourceImage_ImageDispose, d.Cam5_SourceImage_ScreenshotSave, d.Cam5_SourceImage_HighScreenshotQueue),
+                Ng = CamStreamUnit.RotateAt(CombinationHWindowControl_cam5.GetDisplayWindowClass, d.Cam5_NGDefectImage_ImageShow, d.Cam5_NGDefectImage_ImageSave, d.Cam5_NGDefectImage_ImageDispose)
+            });
 
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam6_SourceImage_ImageSave, VM.Data.Cam6_SourceImage_ImageDispose);
-
-                Server_ImageProcess.HighScreenshotAsync((showHalconWindow) => Server_ImageProcess.HighScreenshotCallback(DisplayWindowClass6, showHalconWindow, VM.Data.Cam6_SourceImage_ScreenshotSave),
-                                                  VM.Data.Cam6_SourceImage_HighScreenshotQueue);
-
-                Server_ImageProcess.SaveScreenshotAsync(Server_ImageProcess.ScreenshotSaveCallback, VM.Data.Cam6_SourceImage_ScreenshotSave);
-
-
-                //NG缺陷图
-                Server_ImageProcess.ShowImagesAsync((showHalconWindow) => Server_ImageProcess.ImageShowCallback(CombinationHWindowControl_cam6.GetDisplayWindowClass(), showHalconWindow),
-                                                  VM.Data.Cam6_NGDefectImage_ImageShow, VM.Data.Cam6_NGDefectImage_ImageSave);
-
-                Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, VM.Data.Cam6_NGDefectImage_ImageSave, VM.Data.Cam6_NGDefectImage_ImageDispose);
-            }
-            #endregion
+            // 面阵 / 尺寸 3（5）
+            displayUnits.Add(new CamDisplayUnit
+            {
+                CamIndex = 5, TabGroup = "面阵",
+                Titles = { CamTitleSlot.Of(FrontSizeHalconView3) },
+                Main = CamStreamUnit.ShowAt(DisplayWindowClass6, d.Cam6_SourceImage_ImageShow, d.Cam6_SourceImage_ImageSave, d.Cam6_SourceImage_ImageDispose, d.Cam6_SourceImage_ScreenshotSave, d.Cam6_SourceImage_HighScreenshotQueue),
+                Ng = CamStreamUnit.RotateAt(CombinationHWindowControl_cam6.GetDisplayWindowClass, d.Cam6_NGDefectImage_ImageShow, d.Cam6_NGDefectImage_ImageSave, d.Cam6_NGDefectImage_ImageDispose)
+            });
         }
 
         private void timer_Viewrefresh_Tick(object sender, EventArgs e)

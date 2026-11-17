@@ -1,25 +1,15 @@
-﻿using Frame_Core;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
 namespace Mef_VisionFrame
 {
+    /// <summary>
+    /// 工位数据模型工厂。具体类型由设备描述符决定，工厂本身不再判断机型。
+    /// </summary>
     public class ModelFactory : IModelFactory
     {
         public ModelBase WorkModelBase;
-        public void Load()
-        {
-            MaterialCrafEnum crafEnum = Project.Instance.systemInfo.CraftType;
-            if (crafEnum == MaterialCrafEnum.激光模切一体机)
-            {
-                WorkModelBase = new Model_DieCuttingCut();             
-            }
-        }
 
-    
+        public void Load(IDeviceDescriptor descriptor)
+        {
+            WorkModelBase = descriptor.CreateModel();
+        }
     }
 }

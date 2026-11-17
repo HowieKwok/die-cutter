@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Mef_VisionFrame
 {
     public interface IServerFactory
     {
-        void Load(ModelFactory modelFactory);
+        void Load(IDeviceDescriptor descriptor, ModelFactory modelFactory);
     }
 }

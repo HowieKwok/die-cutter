@@ -1,4 +1,4 @@
-﻿using ControlBoard.Model;
+using ControlBoard.Model;
 using ControlBoard.服务类;
 using ControlBoard.板卡库;
 using DefectRuleClassifier.Core.Models;
@@ -121,23 +121,37 @@ namespace Mef_VisionFrame
             // DefectStation_RequestSignal = new IODigitalInput(Project.Instance.M_ParamControlCord.CardNo, 2, ServiceCardManage.Instance.GetIControlCard());
             // DefectStation_RequestSignal.InvertLogic(false).OnRising(DefectStation_IOSendResult);
 
-            CutStation_Heartbeat = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 1, ServiceCardManage.Instance.GetIControlCard()).SetIsSaveLog(false);
+            // IO 位号/脉宽/日志开关来自机型点位表：换机型只换表，本段代码不动
+            IoPointTable ioPoints = new IoPointTable(DeviceProfileRegistry.Resolve(Project.Instance.systemInfo.CraftType).IoPoints);
 
-            DefectStation_Heartbeat = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 2, ServiceCardManage.Instance.GetIControlCard()).SetIsSaveLog(false);
-            DefectStation_MinorNGSignal = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 3, ServiceCardManage.Instance.GetIControlCard());
-            DefectStation_SevereNGSignal = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 4, ServiceCardManage.Instance.GetIControlCard());
-            DefectStation_OKSignal = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 5, ServiceCardManage.Instance.GetIControlCard());
-            DefectStation_ContinuousNGSignal = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 6, ServiceCardManage.Instance.GetIControlCard());
+            CutStation_Heartbeat = CreateIoOutput(ioPoints, "CutStation_Heartbeat");
+
+            DefectStation_Heartbeat = CreateIoOutput(ioPoints, "DefectStation_Heartbeat");
+            DefectStation_MinorNGSignal = CreateIoOutput(ioPoints, "DefectStation_MinorNGSignal");
+            DefectStation_SevereNGSignal = CreateIoOutput(ioPoints, "DefectStation_SevereNGSignal");
+            DefectStation_OKSignal = CreateIoOutput(ioPoints, "DefectStation_OKSignal");
+            DefectStation_ContinuousNGSignal = CreateIoOutput(ioPoints, "DefectStation_ContinuousNGSignal");
 
 
-            SizeStation_Heartbeat = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 7, ServiceCardManage.Instance.GetIControlCard()).SetIsSaveLog(false);
-            SizeStation_NGSignal = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 8, ServiceCardManage.Instance.GetIControlCard());
-            SizeStation_OKSignal = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 9, ServiceCardManage.Instance.GetIControlCard());
-            SizeStation_ContinuousNGSignal = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, 10, ServiceCardManage.Instance.GetIControlCard());
+            SizeStation_Heartbeat = CreateIoOutput(ioPoints, "SizeStation_Heartbeat");
+            SizeStation_NGSignal = CreateIoOutput(ioPoints, "SizeStation_NGSignal");
+            SizeStation_OKSignal = CreateIoOutput(ioPoints, "SizeStation_OKSignal");
+            SizeStation_ContinuousNGSignal = CreateIoOutput(ioPoints, "SizeStation_ContinuousNGSignal");
 
             Udpate();
 
             InitThread();
+        }
+
+        /// <summary>
+        /// 按机型点位表创建一路 IO 输出；位号、脉宽、是否记日志全部来自点位表。
+        /// </summary>
+        private static IOPulseOutput CreateIoOutput(IoPointTable ioPoints, string pointName)
+        {
+            IoPoint point = ioPoints.Get(pointName);
+            return new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, point.BitNo,
+                ServiceCardManage.Instance.GetIControlCard(), point.PulseWidthMs)
+                .SetIsSaveLog(point.SaveLog);
         }
 
         #region 流程任务

@@ -1,27 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Controls;
+using Frame_Core;
 
 namespace Mef_VisionFrame
 {
+    /// <summary>
+    /// 业务对象装配入口：解析一次设备描述符，按 Model → Server → VM → View 的顺序构建。
+    /// 装配顺序不能调换：Server 需要 Model，VM 需要两者，View 需要 VM。
+    /// </summary>
     public static class ProjectFactory
     {
-        public static ModelFactory F_Model = new ModelFactory();     
+        public static ModelFactory F_Model = new ModelFactory();
         public static ServerFactory F_Server = new ServerFactory();
         public static VMFactory F_VM = new VMFactory();
         public static ViewFactory F_View = new ViewFactory();
+
         public static void Load()
         {
-            F_Model.Load();
+            IDeviceDescriptor descriptor = DeviceRegistry.Resolve(Project.Instance.systemInfo.CraftType);
 
-            F_Server.Load(F_Model);
+            F_Model.Load(descriptor);
 
-            F_VM.Load(F_Model, F_Server);
+            F_Server.Load(descriptor, F_Model);
 
-            F_View.Load(F_VM);
+            F_VM.Load(descriptor, F_Model, F_Server);
+
+            F_View.Load(descriptor, F_VM);
         }
     }
 }

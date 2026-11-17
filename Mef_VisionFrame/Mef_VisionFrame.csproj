@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -327,6 +327,9 @@
     <Compile Include="5工艺标准\View\模切裁片一体机\Form_DieCuttingCut.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="5工艺标准\View\五金模切\Form_五金模切.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="5工艺标准\View\模切裁片一体机\Form_DieCuttingCut.Designer.cs">
       <DependentUpon>Form_DieCuttingCut.cs</DependentUpon>
     </Compile>
@@ -392,6 +395,9 @@
     <Compile Include="加载进度界面\Form_LoadProgressBar.Designer.cs">
       <DependentUpon>Form_LoadProgressBar.cs</DependentUpon>
     </Compile>
+    <Compile Include="项目工厂\Factory\DeviceRegistry.cs" />
+    <Compile Include="项目工厂\Factory\DieCuttingCutDescriptor.cs" />
+    <Compile Include="项目工厂\Factory\五金模切Descriptor.cs" />
     <Compile Include="项目工厂\Factory\ModelFactory.cs" />
     <Compile Include="项目工厂\Factory\ProjectFactory.cs" />
     <Compile Include="项目工厂\Factory\ServerFactory.cs" />
@@ -426,17 +432,24 @@
     <Compile Include="项目工厂\View\UC_ToolView.Designer.cs">
       <DependentUpon>UC_ToolView.cs</DependentUpon>
     </Compile>
+    <Compile Include="项目工厂\接口\CamSlot.cs" />
+    <Compile Include="项目工厂\接口\IDeviceDescriptor.cs" />
     <Compile Include="项目工厂\接口\IModelFactory.cs" />
     <Compile Include="项目工厂\接口\IServerFactory.cs" />
     <Compile Include="项目工厂\接口\IViewFactory.cs" />
     <Compile Include="项目工厂\接口\IViewModel.cs" />
     <Compile Include="项目模切裁切机\Model\Model_DieCuttingCut.cs" />
+    <Compile Include="项目五金模切\Model\Model_五金模切.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.cs" />
+    <Compile Include="项目五金模切\ViewModel\VM_五金模切.cs" />
+    <Compile Include="项目五金模切\View\UC_五金模切.cs" />
     <Compile Include="项目模切裁切机\Server\Server_DieCuttingCut.cs" />
     <Compile Include="项目模切裁切机\Server\SizeComputationalFormula.cs" />
     <Compile Include="项目模切裁切机\ViewModel\VM_DieCuttingCut.cs" />
     <Compile Include="项目模切裁切机\View\UC_DieCuttingCut.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="项目模切裁切机\View\CamDisplayUnit.cs" />
     <Compile Include="项目模切裁切机\View\UC_DieCuttingCut.Designer.cs">
       <DependentUpon>UC_DieCuttingCut.cs</DependentUpon>
     </Compile>

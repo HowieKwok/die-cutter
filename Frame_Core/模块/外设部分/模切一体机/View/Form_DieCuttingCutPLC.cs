@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -82,7 +82,7 @@ namespace Frame_Core
   
         private void btn_connectPLC_Click(object sender, EventArgs e)
         {
-            Server.Connect(Server.m_pLCDevParam.IsConnect, PLCTypeEnum.Omron, (CommunicationProtocolEnum)Server.m_pLCDevParam.ComType,
+            Server.Connect(Server.m_pLCDevParam.IsConnect, Server.m_pLCDevParam.GetPLCType(), (CommunicationProtocolEnum)Server.m_pLCDevParam.ComType,
                      Server.m_pLCDevParam.PLC_IP,  Server.m_pLCDevParam.DevPort, (emDataFormat) Server.m_pLCDevParam.nByteTrans);
         }
   

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -203,6 +203,7 @@
     <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\DataSourceEnum.cs" />
     <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\GlobalVariableItem.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\CraftParam_DieCuttingCut.cs" />
+    <Compile Include="BusinessParams\Model_Craft\五金模切\CraftParam_五金模切.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\CraftParam_DieCuttingCutExtension.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\DefectCraft_DieCuttingCut.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\SizeCraftStation_DieCuttingCut.cs" />
@@ -383,6 +384,16 @@
     <Compile Include="ViewROI2\ROIRectangle1.cs" />
     <Compile Include="ViewROI2\ROIRectangle2.cs" />
     <Compile Include="StandardData\EnumInfo.cs" />
+    <Compile Include="设备描述\CamRole.cs" />
+    <Compile Include="设备描述\CamSlotDef.cs" />
+    <Compile Include="设备描述\IDeviceProfile.cs" />
+    <Compile Include="设备描述\五金模切\五金模切Profile.cs" />
+    <Compile Include="设备描述\IoPoint.cs" />
+    <Compile Include="设备描述\DieCuttingCutIoPoints.cs" />
+    <Compile Include="设备描述\ProcessSpec.cs" />
+    <Compile Include="设备描述\DeviceProfileBase.cs" />
+    <Compile Include="设备描述\DeviceProfileRegistry.cs" />
+    <Compile Include="设备描述\激光模切一体机\LaserDieCuttingProfile.cs" />
     <Compile Include="Plugin\PluginBase\FormPluginBase.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -761,6 +772,7 @@
     <Compile Include="流程汇总文件\业务类\BaseProDevice.cs" />
     <Compile Include="流程汇总文件\业务类\DieCutProDevice.cs" />
     <Compile Include="流程汇总文件\业务类\DieCutProDeviceMethod.cs" />
+    <Compile Include="流程汇总文件\业务类\五金模切ProDevice.cs" />
     <Compile Include="流程汇总文件\业务类\PFTCleanProDevice.cs" />
     <Compile Include="流程汇总文件\产品类\DieCutProduct.cs" />
     <Compile Include="流程汇总文件\产品类\PFTImageProduct.cs" />

@@ -1,72 +1,47 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Forms;
 
 namespace Mef_VisionFrame
 {
+    /// <summary>
+    /// 业务服务工厂。创建流程业务对象后，把描述符里声明的相机回调挂到设备参数上。
+    /// </summary>
     public class ServerFactory : IServerFactory
     {
         public ServerBase WorkServerBase;
 
-        public void Load(ModelFactory modelFactory)
+        public void Load(IDeviceDescriptor descriptor, ModelFactory modelFactory)
         {
-            MaterialCrafEnum crafEnum = Project.Instance.systemInfo.CraftType;
-            if (crafEnum == MaterialCrafEnum.激光模切一体机)
-            {
-                Server_DieCuttingCut server_DieCuttingCut= new Server_DieCuttingCut(modelFactory.WorkModelBase as Model_DieCuttingCut); ;
-                WorkServerBase = server_DieCuttingCut;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[0].ProductCallBack -= server_DieCuttingCut.ALineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[0].ProductCallBack += server_DieCuttingCut.ALineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[0].ProductCallBackCraft -= server_DieCuttingCut.ALineCam_EAImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[0].ProductCallBackCraft += server_DieCuttingCut.ALineCam_EAImage_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam[1].ProductCallBack -= server_DieCuttingCut.BLineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[1].ProductCallBack += server_DieCuttingCut.BLineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[1].ProductCallBackCraft -= server_DieCuttingCut.BLineCam_EAImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[1].ProductCallBackCraft += server_DieCuttingCut.BLineCam_EAImage_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam[2].ProductCallBack -= server_DieCuttingCut.纠偏检测数据处理_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[2].ProductCallBack += server_DieCuttingCut.纠偏检测数据处理_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam[3].ProductCallBack -= server_DieCuttingCut.SizeCam4_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[3].ProductCallBack += server_DieCuttingCut.SizeCam4_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam[4].ProductCallBack -= server_DieCuttingCut.SizeCam5_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[4].ProductCallBack += server_DieCuttingCut.SizeCam5_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam[5].ProductCallBack -= server_DieCuttingCut.SizeCam6_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam[5].ProductCallBack += server_DieCuttingCut.SizeCam6_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].ProductCallBack -= server_DieCuttingCut.ALineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].ProductCallBack += server_DieCuttingCut.ALineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].ProductCallBackCraft -= server_DieCuttingCut.ALineCam_EAImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].ProductCallBackCraft += server_DieCuttingCut.ALineCam_EAImage_Process;
-                                       
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].ProductCallBack -= server_DieCuttingCut.BLineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].ProductCallBack += server_DieCuttingCut.BLineCam_SourceImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].ProductCallBackCraft -= server_DieCuttingCut.BLineCam_EAImage_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].ProductCallBackCraft += server_DieCuttingCut.BLineCam_EAImage_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[2].ProductCallBack -= server_DieCuttingCut.纠偏检测数据处理_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[2].ProductCallBack += server_DieCuttingCut.纠偏检测数据处理_Process;
-
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[3].ProductCallBack -= server_DieCuttingCut.SizeCam4_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[3].ProductCallBack += server_DieCuttingCut.SizeCam4_Process;
-                                       
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[4].ProductCallBack -= server_DieCuttingCut.SizeCam5_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[4].ProductCallBack += server_DieCuttingCut.SizeCam5_Process;
-                                           
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[5].ProductCallBack -= server_DieCuttingCut.SizeCam6_Process;
-                Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[5].ProductCallBack += server_DieCuttingCut.SizeCam6_Process;
-
-              
-            }
+            ServerBase server = descriptor.CreateServer(modelFactory.WorkModelBase);
+            BindCameraCallbacks(descriptor, server);
+            WorkServerBase = server;
         }
 
+        /// <summary>
+        /// 把每路相机的处理函数挂到对应的 BaseProParam 上，实机与仿真各挂一套。
+        /// 槽位缺失时立即报出机型名和相机下标，不再用魔法下标硬取字典。
+        /// </summary>
+        private static void BindCameraCallbacks(IDeviceDescriptor descriptor, ServerBase server)
+        {
+            BaseProDevice device = Project.Instance.baseProDevice;
+
+            foreach (CamSlot slot in descriptor.CamSlots)
+            {
+                BaseProParam workParam;
+                if (!device.m_DicCamOperaParam.TryGetValue(slot.Index, out workParam))
+                {
+                    throw new InvalidOperationException(string.Format(
+                        "设备 {0} 缺少相机槽位 {1}（{2}），请检查 AllCamParam 中配置的相机数量。",
+                        descriptor.DisplayName, slot.Index, slot.Name));
+                }
+                slot.BindCallbacks(server, workParam);
+
+                BaseProParam simParam;
+                if (device.m_DicCamOperaParam_Sim.TryGetValue(slot.Index, out simParam))
+                {
+                    slot.BindCallbacks(server, simParam);
+                }
+            }
+        }
     }
 }

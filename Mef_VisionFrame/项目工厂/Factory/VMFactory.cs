@@ -1,22 +1,15 @@
-﻿using Frame_Core;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Mef_VisionFrame
 {
+    /// <summary>
+    /// 视图模型工厂。ViewModel 只是 Model + Server 的聚合，具体类型由设备描述符决定。
+    /// </summary>
     public class VMFactory : IViewModel
     {
-        public VMBase WorkVMBase; 
-        public void Load(ModelFactory modelFactory, ServerFactory serverFactory)
+        public VMBase WorkVMBase;
+
+        public void Load(IDeviceDescriptor descriptor, ModelFactory modelFactory, ServerFactory serverFactory)
         {
-            MaterialCrafEnum crafEnum = Project.Instance.systemInfo.CraftType;
-            if (crafEnum == MaterialCrafEnum.激光模切一体机)
-            {
-                WorkVMBase = new VM_DieCuttingCut(modelFactory.WorkModelBase as Model_DieCuttingCut, serverFactory.WorkServerBase as Server_DieCuttingCut);
-            }
+            WorkVMBase = descriptor.CreateViewModel(modelFactory.WorkModelBase, serverFactory.WorkServerBase);
         }
     }
 }

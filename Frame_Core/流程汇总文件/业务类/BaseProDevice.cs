@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using LogTool;
 using NPOI.SS.Formula.Functions;
 
@@ -45,6 +45,60 @@ namespace Frame_Core
         public Dictionary<int, BaseProParam> m_DicCamOperaParam = new Dictionary<int, BaseProParam>();
 
         public Dictionary<int, BaseProParam> m_DicCamOperaParam_Sim = new Dictionary<int, BaseProParam>();
+
+        private IDeviceProfile camProfile;
+
+        /// <summary>
+        /// 当前机型的设备画像（相机槽位、IO 点位等）。
+        /// 缓存一次即可：一台机器运行期不会换机型。
+        /// </summary>
+        protected IDeviceProfile Profile
+        {
+            get
+            {
+                if (camProfile == null)
+                {
+                    camProfile = DeviceProfileRegistry.Resolve(Project.Instance.systemInfo.CraftType);
+                }
+                return camProfile;
+            }
+        }
+
+        /// <summary>
+        /// 按角色取相机下标（occurrence = 该角色的第几路，从 0 开始）。
+        /// 机型没有这个角色时返回 false，调用方据此跳过，而不是硬取下标的近似值。
+        /// </summary>
+        public bool TryGetCamIndex(CamRole role, int occurrence, out int index)
+        {
+            index = -1;
+            if (occurrence < 0) return false;
+
+            int matched = 0;
+            IReadOnlyList<CamSlotDef> slots = Profile.CamSlots;
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if (slots[i].Role != role) continue;
+                if (matched == occurrence)
+                {
+                    index = i;
+                    return true;
+                }
+                matched++;
+            }
+            return false;
+        }
+
+        /// <summary>按角色取实机参数；机型没有该角色时抛异常。</summary>
+        public BaseProParam GetCamParam(CamRole role)
+        {
+            return m_DicCamOperaParam[Profile.IndexOf(role)];
+        }
+
+        /// <summary>按角色取仿真参数；机型没有该角色时抛异常。</summary>
+        public BaseProParam GetCamParamSim(CamRole role)
+        {
+            return m_DicCamOperaParam_Sim[Profile.IndexOf(role)];
+        }
 
 
 
@@ -165,18 +219,15 @@ namespace Frame_Core
             return OffsetPos;
         }
 
+        /// <summary>
+        /// 取流程所属的相机下标。
+        /// 直接用流程记录里的 CameraID：流程名是配置里的相机名（如"A线扫"），
+        /// 按名字匹配 Cam1/Cam2 永远匹配不到。
+        /// </summary>
         public int GetCamID(ProcessInfo info)
         {
-            int id = 0;
-            for (int i = 0; i < m_nCamCount; i++)
-            {
-                bool flag = info.ProcessName.Contains(((CameraEnum)i).ToString());
-                if (flag)
-                {
-                    id = i; break;
-                }
-            }
-            return id;
+            if (info == null) return 0;
+            return info.CameraID;
         }
 
         public bool CalculateLinesX(LineInfo lineInfo1, LineInfo lineInfo2, out double Val)

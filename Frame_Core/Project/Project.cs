@@ -188,7 +188,7 @@ namespace Frame_Core
                 M_LightControllerParam.l_LightControllerDevs.OpenAllLight();
                 LightOnOff = M_LightControllerParam.l_LightControllerDevs.GetAllLightOpenState();
 
-                server_DiecuttingCutPLC.Connect(M_PLCDevParam.IsConnect, PLCTypeEnum.Omron, (CommunicationProtocolEnum)M_PLCDevParam.ComType, M_PLCDevParam.PLC_IP, M_PLCDevParam.DevPort, (emDataFormat)M_PLCDevParam.nByteTrans);
+                server_DiecuttingCutPLC.Connect(M_PLCDevParam.IsConnect, M_PLCDevParam.GetPLCType(), (CommunicationProtocolEnum)M_PLCDevParam.ComType, M_PLCDevParam.PLC_IP, M_PLCDevParam.DevPort, (emDataFormat)M_PLCDevParam.nByteTrans);
 
                 ServiceCardManage.Instance.InitServiceCard(M_ParamControlCord);
             }
@@ -319,13 +319,8 @@ namespace Frame_Core
                     InitCamRelevancies(i);
                 }
 
-                if (systemInfo.CraftType == MaterialCrafEnum.激光模切一体机)
-                {
-
-                    // Init3DThickManage(2);
-                    baseProDevice = new DieCutProDevice();
-
-                }
+                // 机型差异统一由设备画像提供，新增机型只需在 DeviceProfileRegistry 注册一条
+                baseProDevice = DeviceProfileRegistry.Resolve(systemInfo.CraftType).CreateProDevice();
 
 
                 //初始化点检功能

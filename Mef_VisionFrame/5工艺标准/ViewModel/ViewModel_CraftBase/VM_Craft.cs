@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using NPOI.SS.Formula.Functions;
 using System;
 using System.Collections.Generic;
@@ -158,6 +158,15 @@ namespace Mef_VisionFrame
 
             switch (craftType)
             {
+                case MaterialCrafEnum.五金模切:
+                    CraftParam_五金模切 craftBaseHW = new CraftParam_五金模切
+                    {
+                        CraftType = craftType,
+                        RecipeName = recipeName
+                    };
+                    craftBaseHW.Init();
+                    craftBaseHW.SaveCraft(CraftBasePath, craftType, recipeName);
+                    break;
                 case MaterialCrafEnum.激光模切一体机:
                     CraftParam_DieCuttingCut craftBaseTemp = new CraftParam_DieCuttingCut
                     {
