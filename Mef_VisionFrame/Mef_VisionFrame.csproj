@@ -461,6 +461,7 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="项目工厂\View\CamDisplayUnit.cs" />
+    <Compile Include="项目工厂\View\CollapseRail.cs" />
     <Compile Include="项目模切裁切机\View\UC_DieCuttingCut.Designer.cs">
       <DependentUpon>UC_DieCuttingCut.cs</DependentUpon>
     </Compile>

@@ -452,6 +452,8 @@ namespace Frame_Core
         调试设置,
         [Language("工艺设置", "Process Settings", "Paramètres de processus")]
         工艺设置,
+        [Language("数据分析", "Data Analysis", "Analyse des données")]
+        数据分析,
         [Language("相机设置", "Camera Settings", "Paramètres de processus")]
         相机设置,
         [Language("光源设置", "Light Source Settings", "Paramètres de source lumineuse")]

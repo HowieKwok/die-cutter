@@ -105,15 +105,25 @@ namespace Mef_VisionFrame
         /// <summary>
         /// 按"显示 -> 保存 -> 高清截图 -> 截图保存"的固定顺序处理一路流。
         /// 顺序与改造前逐行一致，不可调整：显示回调会把图像转存到 SaveQueue。
+        ///
+        /// displayEnabled=false 用于界面收起/不在图像页时：画面不画、轮播池不推进，
+        /// 但图仍然走 ShowQueue -> SaveQueue 的同一条流水线，所以缺陷小图照常落盘，
+        /// 显示队列也不会因为没人取而堆起来。
         /// </summary>
-        public static void Handle(CamStreamUnit stream)
+        public static void Handle(CamStreamUnit stream, bool displayEnabled = true)
         {
             if (stream == null) return;
 
             if (stream.ShowQueue != null)
             {
+                if (!displayEnabled)
+                {
+                    // 委托传 null：ShowImagesAsync 内部是 ?.Invoke，图仍会转存到 SaveQueue。
+                    // 池不在这里 ResolveShowWindow，轮播下标因此保持不动。
+                    Server_ImageProcess.ShowImagesAsync(null, stream.ShowQueue, stream.SaveQueue);
+                }
                 // 取格子必须留在 lambda 内部：队列为空时原本不会推进轮播索引
-                if (stream.HasScreenshot)
+                else if (stream.HasScreenshot)
                 {
                     Server_ImageProcess.ShowImagesAsync(
                         (showHalconWindow) => Server_ImageProcess.ImageShowCallback(stream.ResolveShowWindow(), showHalconWindow, stream.ScreenshotSaveQueue, stream.HighScreenshotQueue),
@@ -126,6 +136,7 @@ namespace Mef_VisionFrame
                         stream.ShowQueue, stream.SaveQueue);
                 }
             }
+
 
             Server_ImageProcess.SaveImagesAsync(Server_ImageProcess.ImageSaveCallback, stream.SaveQueue, stream.DisposeQueue);
 

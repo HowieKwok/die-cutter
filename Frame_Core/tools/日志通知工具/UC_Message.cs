@@ -1,4 +1,4 @@
-﻿using log4net.Util;
+using log4net.Util;
 
 using NPOI.SS.Formula.Functions;
 
@@ -45,6 +45,14 @@ namespace Frame_Core
             set { _HeaderHeight = value; }
         }
 
+        /// <summary>
+        /// 暂停整页刷新：折叠/切走日志页时由宿主置 true。
+        /// 只停界面——日志本身已经落 log4net 文件，MessageNotify 的队列也有 500 条上限，
+        /// 恢复后的第一个节拍会把整份内容重新刷进来，不看的那段时间不会丢。
+        /// 代价：暂停期间静态快照（DebugText/ErrorText/CommText）不更新，浮窗日志会停在旧内容。
+        /// </summary>
+        public bool Paused { get; set; }
+
         public UC_Message()
         {
             InitializeComponent();
@@ -67,7 +75,16 @@ namespace Frame_Core
            
 
             timerUpdate.Enabled = false;
+
+            /*---------- 暂停：折叠或不在本页时不刷新（从窗不暂停，它自己没有数据源）----------*/
+            if (Paused && !IsSlave)
+            {
+                timerUpdate.Enabled = true;
+                return;
+            }
+
             /*---------- 从模式：用主窗体里的长度记忆 ----------*/
+
             if (IsSlave)
             {
                 var host = this.Parent as FloatingMessageForm; // 拿到弹窗实例

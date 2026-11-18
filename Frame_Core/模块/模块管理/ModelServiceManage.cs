@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,7 +24,8 @@ namespace Frame_Core
         public void AddModel(string modelName, ModelControl model)
         {
             m_dicModels[modelName] = model;
-            m_dicModels[modelName].modelPrivilege.ModelName = modelName;
+            // 默认权限按模块分级（系统设置/工艺标准/数据分析对操作员开放，调试/外联关闭）
+            m_dicModels[modelName].modelPrivilege = ModelPrivilege.DefaultFor(modelName);
         }
 
         /// <summary>

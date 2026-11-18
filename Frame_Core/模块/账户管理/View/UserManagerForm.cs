@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -24,12 +24,6 @@ namespace Frame_Core
             InitializeComponent();
         }
 
-        private void btnModifyPwd_Click(object sender, EventArgs e)
-        {
-            ModifyPwdForm frm = new ModifyPwdForm(userManage);
-            frm.ShowDialog();
-        }
-
         private void btnAddAccount_Click(object sender, EventArgs e)
         {
             AddUserForm frm = new AddUserForm(userManage);
@@ -41,20 +35,15 @@ namespace Frame_Core
         {
             try
             {
-                ////userManage.userData = (UserData)userManage.userData.Read();//读取会刷新当前用户和ID会导致报错
-                //string CurrentUserStr = LanguageSwitch.ToUserLanguageg(userManage.userData.CurrentUser, UserLanguageg.中文);
-                //label1.Text = "当前用户：\n  " + CurrentUserStr + "\n  " + userManage.userData.CurrentUserID;
-
-
                 string userType = LanguageProject.GetLangeuageAttribute(StatusStripEnum.当前用户类型, Project.Instance.systemInfo.m_CurrentLanguageType) +
            LanguageProject.GetLangeuageAttribute(Project.Instance.userManage.userData.CurrentUser, Project.Instance.systemInfo.m_CurrentLanguageType);
                 string userID = LanguageProject.GetLangeuageAttribute(StatusStripEnum.当前用户ID, Project.Instance.systemInfo.m_CurrentLanguageType) + Project.Instance.userManage.userData.CurrentUserID;
                 label1.Text = userType + "\r\n" + userID;
 
                 AllUserShow();
+
                 //==================================================================================================================
-                //=====【】
-                btnModifyPwd.Enabled = false;
+                //=====【】本界面入口已限定为“已登录管理员”，这里只保留权限分配的管理员校验
                 btnAddAccount.Enabled = false;
                 btnDelAccount.Enabled = false;
                 btnControlAccount.Enabled = false;
@@ -63,19 +52,10 @@ namespace Frame_Core
                 lbl_path.Visible = false;
                 if (userManage.userData.CurrentUser == UserType.Admin)
                 {
+                    btnAddAccount.Enabled = true;
+                    btnDelAccount.Enabled = true;
                     btnControlAccount.Enabled = true;
-
                 }
-                if (userManage.userData.CurrentUser != UserType.Null)
-                {
-                    btnModifyPwd.Enabled = true;
-                    if (userManage.userData.CurrentUser != UserType.Operator)
-                    {
-                        btnAddAccount.Enabled = true;
-                        btnDelAccount.Enabled = true;
-                    }
-                }
-
             }
             catch (Exception ex)
             {
@@ -84,64 +64,41 @@ namespace Frame_Core
             }
 
         }
+
+        /// <summary>
+        /// 列出全部账户。密码按当前 isEncrypt 设置解密后显示
+        /// </summary>
         private void AllUserShow()
         {
-
             try
             {
                 this.lvwUserList.Items.Clear();
                 int num = 1;
-                for (int i = 0; i < userManage.userData.OperatorUser.Count; i++)
+                foreach (UserModel user in userManage.userData.AllUsers())
                 {
                     ListViewItem userItem = new ListViewItem((num++).ToString());
-                    string UserTypeStr = LanguageSwitch.ToUserLanguageg(userManage.userData.OperatorUser[i].userType, UserLanguageg.中文);
-                    string UseIDStr = userManage.userData.OperatorUser[i].Id;
-                    userItem.SubItems.Add(UserTypeStr);//用户类型
-                    userItem.SubItems.Add(UseIDStr);//用户ID
-                    this.lvwUserList.Items.Add(userItem);
-                }
-                for (int i = 0; i < userManage.userData.TechnicianUser.Count; i++)
-                {
-                    ListViewItem userItem = new ListViewItem((num++).ToString());
-                    string UserTypeStr = LanguageSwitch.ToUserLanguageg(userManage.userData.TechnicianUser[i].userType, UserLanguageg.中文);
-                    string UseIDStr = userManage.userData.TechnicianUser[i].Id;
-                    userItem.SubItems.Add(UserTypeStr);//用户类型
-                    userItem.SubItems.Add(UseIDStr);//用户ID
-                    this.lvwUserList.Items.Add(userItem);
-                }
-
-                for (int i = 0; i < userManage.userData.EngineerUser.Count; i++)
-                {
-                    ListViewItem userItem = new ListViewItem((num++).ToString());
-                    string UserTypeStr = LanguageSwitch.ToUserLanguageg(userManage.userData.EngineerUser[i].userType, UserLanguageg.中文);
-                    string UseIDStr = userManage.userData.EngineerUser[i].Id;
-                    userItem.SubItems.Add(UserTypeStr);//用户类型
-                    userItem.SubItems.Add(UseIDStr);//用户ID
-                    this.lvwUserList.Items.Add(userItem);
-                }
-
-                for (int i = 0; i < userManage.userData.AdminUser.Count; i++)
-                {
-                    ListViewItem userItem = new ListViewItem((num++).ToString());
-                    string UserTypeStr = LanguageSwitch.ToUserLanguageg(userManage.userData.AdminUser[i].userType, UserLanguageg.中文);
-                    string UseIDStr = userManage.userData.AdminUser[i].Id;
-                    userItem.SubItems.Add(UserTypeStr);//用户类型
-                    userItem.SubItems.Add(UseIDStr);//用户ID
-                    this.lvwUserList.Items.Add(userItem);
-                }
-
-                for (int i = 0; i < userManage.userData.SupervisorUser.Count; i++)
-                {
-                    ListViewItem userItem = new ListViewItem((num++).ToString());
-                    string UserTypeStr = LanguageSwitch.ToUserLanguageg(userManage.userData.SupervisorUser[i].userType, UserLanguageg.中文);
-                    string UseIDStr = userManage.userData.SupervisorUser[i].Id;
-                    userItem.SubItems.Add(UserTypeStr);//用户类型
-                    userItem.SubItems.Add(UseIDStr);//用户ID
+                    userItem.SubItems.Add(LanguageSwitch.ToUserLanguageg(user.userType, UserLanguageg.中文));//用户类型
+                    userItem.SubItems.Add(user.Id);//用户ID
+                    userItem.SubItems.Add(DisplayPassword(user.password));//密码
                     this.lvwUserList.Items.Add(userItem);
                 }
             }
             catch (Exception ex)
             {
+            }
+        }
+
+        private string DisplayPassword(string password)
+        {
+            if (string.IsNullOrEmpty(password)) return string.Empty;
+            if (!userManage.userData.isEncrypt) return password;
+            try
+            {
+                return SecurityHelper.Decrypt(password);
+            }
+            catch (Exception)
+            {
+                return password;
             }
         }
 
@@ -159,7 +116,6 @@ namespace Frame_Core
                 {
                     selectUserTypeCN = lvwUserList.Items[i].SubItems[1].Text;
                     selectUserId = lvwUserList.Items[i].SubItems[2].Text;
-                    //userTypeTemp = LanguageSwitch.ToUserType(selectUserTypeCN);
 
                     var userTypeEnum = LanguageProject.MatchStringToEnum<UserType>(selectUserTypeCN);
                     if (userTypeEnum != null)
@@ -177,16 +133,6 @@ namespace Frame_Core
                         System.Windows.Forms.MessageBox.Show("禁止删除当前用户！");
                         return;
                     }
-                    if (userManage.userData.CurrentUser != UserType.Admin)
-                    {
-                        if (userManage.userData.CurrentUser <= userTypeTemp)
-                        {
-                            System.Windows.Forms.MessageBox.Show("当前用户无权删除高等级用户！如需要操作请联系管理员.");
-                            return;
-                        }
-                    }
-
-
                 }
 
                 if (lvwUserList.SelectedIndices.Count > 0)
@@ -198,10 +144,15 @@ namespace Frame_Core
                         UserCtrlStatus delResult = userManage.DelUser(userTypeTemp, selectUserId);
                         if (delResult == UserCtrlStatus.DelUserSucceed)
                         {
-
+                            // 被删账户如果正是自动登录的对象，清掉标记，避免下次启动空转
+                            userManage.ForgetAutoLoginIf(selectUserId);
                             userManage.userData.Save();
                             ParamChangeLog.ParamChangeLog_Inspect("", "", currentUser, currentUserID, "账户管理-用户管理", message, true);
                             System.Windows.Forms.MessageBox.Show("删除成功！");
+                        }
+                        else if (delResult == UserCtrlStatus.LastAdminProtected)
+                        {
+                            System.Windows.Forms.MessageBox.Show("管理员账户仅允许一个，不可删除！");
                         }
                         else
                         {

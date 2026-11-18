@@ -124,6 +124,12 @@ namespace Mef_VisionFrame
 
             Init_LatestTimeProgram("");
             UapateSimPath();
+
+            // 登录态只由 UserManage 持有，徽标订阅事件做渲染（可能来自通讯线程，内部已做 Invoke 保护）
+            Project.Instance.userManage.LoginEvent -= UserManage_LoginEvent;
+            Project.Instance.userManage.LoginEvent += UserManage_LoginEvent;
+            RefreshUserBadge();
+
             //初始化状态
             InitStateBar_Flag = true;
             form_LoadProgressBar.closingFlag = true;
@@ -335,7 +341,15 @@ namespace Mef_VisionFrame
 
 
 
-        private void 用户登录ToolStripMenuItem_Click(object sender, EventArgs e)
+        /// <summary>
+        /// 顶部右侧用户徽标：点击打开登录中心
+        /// </summary>
+        private void tsUserBadge_Click(object sender, EventArgs e)
+        {
+            ShowLoginCenter();
+        }
+
+        private void ShowLoginCenter()
         {
             using (UserLogionForm userLogionForm = new UserLogionForm(Project.Instance.userManage))
             {
@@ -344,13 +358,32 @@ namespace Mef_VisionFrame
             }
         }
 
-        private void 账户管理ToolStripMenuItem_Click(object sender, EventArgs e)
+        /// <summary>
+        /// 仅渲染登录态：未登录红色，已登录绿色 + 用户名 + 用户类型
+        /// </summary>
+        private void RefreshUserBadge()
         {
-            using (UserManagerForm userManagerForm = new UserManagerForm(Project.Instance.userManage))
+            if (tsUserBadge == null) return;
+
+            var data = Project.Instance.userManage?.userData;
+            if (data == null) return;
+
+            bool logged = data.CurrentUser != UserType.Null;
+            tsUserBadge.Text = logged
+                ? string.Format("● {0} / {1}", data.CurrentUserID, LanguageSwitch.ToUserLanguageg(data.CurrentUser, UserLanguageg.中文))
+                : "● 未登录";
+            tsUserBadge.ForeColor = logged ? Color.Green : Color.Red;
+        }
+
+        private void UserManage_LoginEvent(UserType userType)
+        {
+            if (IsDisposed) return;
+            if (InvokeRequired)
             {
-                userManagerForm.StartPosition = FormStartPosition.CenterScreen;
-                userManagerForm.ShowDialog();
+                BeginInvoke((Action)RefreshUserBadge);
+                return;
             }
+            RefreshUserBadge();
         }
 
         public void UapateSimPath()
@@ -508,6 +541,7 @@ namespace Mef_VisionFrame
 
         private void 生产统计ToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (!Project.Instance.purviewManage.GetWhetherPurview(Project.Instance.userManage.userData.CurrentUser, ModelName.数据分析)) { return; }
             System.Diagnostics.Process.Start(Project.Instance.paramPathSet.ProductMojuanPath);
         }
 
@@ -727,6 +761,7 @@ namespace Mef_VisionFrame
 
         private void 数据查询ToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (!Project.Instance.purviewManage.GetWhetherPurview(Project.Instance.userManage.userData.CurrentUser, ModelName.数据分析)) { return; }
             string root = @"E:\生产数据";          // 实际路径可配
             using (FrmCsvViewer form = new FrmCsvViewer(root))
             {
@@ -758,11 +793,6 @@ namespace Mef_VisionFrame
             {
                 Log4netRecord.ErrorLog.Error(ex);
             }
-        }
-
-        private void 注销账户ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Project.Instance.userManage.UserLogin(UserType.Null, "用户未登录", "");
         }
 
 

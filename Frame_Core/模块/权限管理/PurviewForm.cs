@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using LogTool;
 using System;
 using System.Windows.Forms;
@@ -32,20 +32,19 @@ namespace Frame_Core
                 //purviewParam.filePath = pathTemp;
                 dGV_Account.Rows.Clear();
 
-                //dGV_Account.Columns[1].HeaderText = LanguageSwitch.ToUserLanguageg(UserType.Admin, UserLanguageg.中文);
-                dGV_Account.Columns[1].HeaderText = LanguageSwitch.ToUserLanguageg(UserType.Engineer, UserLanguageg.中文); ;
-                dGV_Account.Columns[2].HeaderText = LanguageSwitch.ToUserLanguageg(UserType.Technician, UserLanguageg.中文); ;
-                dGV_Account.Columns[3].HeaderText = LanguageSwitch.ToUserLanguageg(UserType.Operator, UserLanguageg.中文); ;
+                dGV_Account.Columns[1].HeaderText = LanguageSwitch.ToUserLanguageg(UserType.Operator, UserLanguageg.中文);
+                dGV_Account.Columns[2].HeaderText = LanguageSwitch.ToUserLanguageg(UserType.Engineer, UserLanguageg.中文);
+                dGV_Account.Columns[3].HeaderText = LanguageSwitch.ToUserLanguageg(UserType.Admin, UserLanguageg.中文);
 
 
                 for (int i = 0; i < purviewParam.l_modelPrivilege.Count; i++)
                 {
                     dGV_Account.Rows.Add();
                     dGV_Account.Rows[i].Cells[0].Value = purviewParam.l_modelPrivilege[i].ModelName;
-                    //dGV_Account.Rows[i].Cells[1].Value = purviewParam.l_modelPrivilege[i].AdminPurview;
-                    dGV_Account.Rows[i].Cells[1].Value = purviewParam.l_modelPrivilege[i].EngineerPurview;
-                    dGV_Account.Rows[i].Cells[2].Value = purviewParam.l_modelPrivilege[i].TechnicianPurview;
-                    dGV_Account.Rows[i].Cells[3].Value = purviewParam.l_modelPrivilege[i].OperatorPurview;
+                    dGV_Account.Rows[i].Cells[1].Value = purviewParam.l_modelPrivilege[i].OperatorPurview;
+                    dGV_Account.Rows[i].Cells[2].Value = purviewParam.l_modelPrivilege[i].EngineerPurview;
+                    // 管理员等级最高，恒为可访问
+                    dGV_Account.Rows[i].Cells[3].Value = true;
                 }
 
 
@@ -82,11 +81,10 @@ namespace Frame_Core
                 dGV_Account.EndEdit();
                 for (int i = 0; i < purviewParam.l_modelPrivilege.Count; i++)
                 {
-                    //purviewParam.l_modelPrivilege[i].AdminPurview = (bool)dGV_Account.Rows[i].Cells[1].Value;
-                    purviewParam.l_modelPrivilege[i].EngineerPurview = (bool)dGV_Account.Rows[i].Cells[1].Value;
-                    purviewParam.l_modelPrivilege[i].TechnicianPurview = (bool)dGV_Account.Rows[i].Cells[2].Value;
-                    purviewParam.l_modelPrivilege[i].OperatorPurview = (bool)dGV_Account.Rows[i].Cells[3].Value;
-                  
+                    purviewParam.l_modelPrivilege[i].OperatorPurview = (bool)dGV_Account.Rows[i].Cells[1].Value;
+                    purviewParam.l_modelPrivilege[i].EngineerPurview = (bool)dGV_Account.Rows[i].Cells[2].Value;
+                    // 管理员列只读，恒为可访问
+                    purviewParam.l_modelPrivilege[i].AdminPurview = true;
                 }
                 purviewParam.Save();
             }

@@ -44,6 +44,33 @@ namespace Mef_VisionFrame
         /// <summary>日志页：与激光模切共用 UC_Message（自带上限与颜色，自己消费队列）。</summary>
         private UC_Message logView;
 
+        // ── 数据区折叠 ────────────────────────────────────────────────────────
+        // 右侧数据区会挤压相机画面，所以放进可折叠区域：收起后只剩一条窄按钮，
+        // 相机拿到整幅宽度。默认收起，且不持久化——开机就是看画面的状态。
+        private const int RailWidth = 26;
+
+        private bool dataExpanded;
+        private TableLayoutPanel root;
+        private Control dataHost;
+        private CollapseRail rail;
+        private AntdUI.Tabs dataTabs;
+
+        /// <summary>
+        /// 显示线程只读这个快照：由界面线程在折叠/换页时算好写进来。
+        /// 图像线程绝不能去读控件状态（Pages/SelectedIndex 都不是线程安全的）。
+        /// </summary>
+        private volatile bool ngDisplayEnabled;
+
+        /// <summary>
+        /// 刷新闸门按页签分流：只有"展开 + 就是当前页"才允许动 UI。
+        /// 折叠时看的是相机，展开时看的也只有一个页，其余页的控件不该白刷。
+        /// </summary>
+        private enum DataPage { 良率统计, 缺陷过程数据, 极片过程数据, 曲线图, 缺陷图片, 日志 }
+
+        /// <summary>页签 → 下标。只由 AddDataPage 登记，别处不要写死数字。</summary>
+        private readonly Dictionary<DataPage, int> pageIndexes = new Dictionary<DataPage, int>();
+
+
         public UC_五金模切(VM_五金模切 viewModel)
         {
             VM = viewModel;
@@ -78,45 +105,168 @@ namespace Mef_VisionFrame
             {
                 BuildDisplayUnits();
             }
+
+            // NG 格子默认在折叠的数据区里、而且只有切到"缺陷图片"页才可见，
+            // 等它自然显形再建来不及，所以这里主动把句柄建出来再挂显示对象
+            EnsureNgDisplayWindows();
+        }
+
+        /// <summary>
+        /// NG 显示对象必须在格子的窗口句柄就绪之后再建——规矩与 BuildDisplayUnits 相同。
+        ///
+        /// 隐藏控件靠 CreateControl() 建不出句柄（它先检查 Visible 直接返回），
+        /// 只有取一次 Handle 才会真正走 HWindowControl.OnHandleCreated，Halcon 窗口也是那时才打开。
+        /// 幂等，且本控件句柄就绪前直接跳过（构造期由 OnHandleCreated 接手）。
+        /// </summary>
+        private void EnsureNgDisplayWindows()
+        {
+            if (!IsHandleCreated) return;
+
+            for (int cam = 0; cam < 5; cam++)
+            {
+                int slotCount = NgSlotCount(cam);
+                for (int slot = 0; slot < slotCount; slot++)
+                {
+                    if (ngDisplayWindows[cam, slot] != null) continue;
+
+                    UC_HalconWindow window = ngWindows[cam, slot];
+                    if (window == null || !ForceHandle(window)) continue;
+
+                    // HWndCtrl 构造时按控件尺寸算缩放因子：尺寸还没排出来就先不建，
+                    // 展开/切页会再调一次这里（SyncDataAreaState），幂等
+                    if (window.hWindow.Width <= 0 || window.hWindow.Height <= 0) continue;
+
+                    ngDisplayWindows[cam, slot] = new NewDisplayWindowClass(window);
+                }
+            }
+        }
+
+        /// <summary>取一次 Handle 就会为隐藏控件建出窗口，CreateControl() 对 Visible=false 的控件不做事。</summary>
+        private static bool ForceHandle(UC_HalconWindow window)
+        {
+            return window.hWindow.Handle != IntPtr.Zero;
         }
 
         #region 布局
 
         /// <summary>
         /// 左：相机画面（模切主/从 上下两行，尺寸三路并排）；
-        /// 右：数据结果区（工位统计 + 检测项统计 + 尺寸曲线）。
+        /// 中：折叠条；右：数据结果区（工位统计 + 检测项统计 + 尺寸曲线）。
+        ///
+        /// 三列而不是 SplitContainer：折叠等价于"第三列宽度归零 + 数据区隐藏"，
+        /// TableLayoutPanel 换列宽就够，不用处理 Panel2Collapsed 与最小宽度的冲突。
         /// </summary>
         private void BuildLayout()
         {
             Dock = DockStyle.Fill;
 
-            TableLayoutPanel root = new TableLayoutPanel
+            root = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 2,
+                ColumnCount = 3,
                 RowCount = 1,
                 Padding = new Padding(4),
             };
-            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62F));
-            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38F));
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, dataExpanded ? 62F : 100F));
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, RailWidth));
+            root.ColumnStyles.Add(dataExpanded
+                ? new ColumnStyle(SizeType.Percent, 38F)
+                : new ColumnStyle(SizeType.Absolute, 0F));
+
+            dataHost = BuildDataPanel();
+            dataHost.Visible = dataExpanded;
+
+            rail = new CollapseRail { Expanded = dataExpanded };
+            rail.ToggleRequested += ToggleDataPanel;
 
             root.Controls.Add(BuildCameraPanel(), 0, 0);
-            root.Controls.Add(BuildDataPanel(), 1, 0);
+            root.Controls.Add(rail, 1, 0);
+            root.Controls.Add(dataHost, 2, 0);
             Controls.Add(root);
         }
 
-        /// <summary>相机区：上模切主/从（各占一半高度，每行左大图右 EA），下 3 路尺寸并排。</summary>
+        /// <summary>
+        /// 展开/收起只改列宽与可见性，从不重建数据区：
+        /// 重建会换掉 HWindow 句柄（画面变黑）并清空曲线，等于每次折叠都把界面初始化一遍。
+        /// </summary>
+        private void ToggleDataPanel()
+        {
+            dataExpanded = !dataExpanded;
+            ApplyDataPanelState();
+        }
+
+        private void ApplyDataPanelState()
+        {
+            root.SuspendLayout();
+            try
+            {
+                // 先定显隐再定列宽：数据区缩到 0 宽之前已经不可见，重排不会闪
+                dataHost.Visible = dataExpanded;
+                root.ColumnStyles[0] = new ColumnStyle(SizeType.Percent, dataExpanded ? 62F : 100F);
+                root.ColumnStyles[2] = dataExpanded
+                    ? new ColumnStyle(SizeType.Percent, 38F)
+                    : new ColumnStyle(SizeType.Absolute, 0F);
+            }
+            finally
+            {
+                root.ResumeLayout(true);
+            }
+
+            rail.Expanded = dataExpanded;
+            rail.Invalidate();
+
+            SyncDataAreaState();
+
+            // 收起期间一行没刷，展开时立刻补齐一次，否则看到的是折叠前的旧数字
+            if (dataExpanded) RefreshView();
+        }
+
+        /// <summary>
+        /// 折叠状态或页签变化后调用：把"哪些区域现在该动 UI"一次算清。
+        /// 显示线程与日志页只读结果，避免各处各写一份判断条件。
+        /// </summary>
+        private void SyncDataAreaState()
+        {
+            ngDisplayEnabled = IsDataAreaVisible(DataPage.缺陷图片);
+
+            // 幂等：句柄/尺寸就绪后才真正创建；展开、切到"缺陷图片"都会走到这里补一次
+            EnsureNgDisplayWindows();
+
+            if (logView != null) logView.Paused = !IsDataAreaVisible(DataPage.日志);
+        }
+
+
+        /// <summary>
+        /// 唯一刷新闸门：数据区展开、且目标页签就是当前页，才允许往界面上写。
+        /// 折叠、或看着别的页时一律不写——UI 线程要让给相机画面合成。
+        /// </summary>
+        private bool IsDataAreaVisible(DataPage page)
+        {
+            if (!dataExpanded || dataTabs == null) return false;
+
+            int index;
+            if (!pageIndexes.TryGetValue(page, out index)) return false;
+
+            // 页签集合刚建好、尚未选中时 SelectedIndex 可能是 -1，按第一页算
+            int selected = dataTabs.SelectedIndex < 0 ? 0 : dataTabs.SelectedIndex;
+            return selected == index;
+        }
+        /// <summary>
+        /// 相机区：左 2×2 四宫格放四路线扫画面（模切主/从 × 大图/EA），右竖排三路尺寸画面。
+        /// 展开数据区只是把整块相机区压窄，这个结构不变。
+        /// </summary>
         private Control BuildCameraPanel()
         {
             TableLayoutPanel panel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 2,
+                ColumnCount = 2,
+                RowCount = 1,
                 Margin = new Padding(0),
             };
-            panel.RowStyles.Add(new RowStyle(SizeType.Percent, 62F));
-            panel.RowStyles.Add(new RowStyle(SizeType.Percent, 38F));
+            // 线扫四宫格是主视野，尺寸三路只占右侧一条
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66F));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
 
             TableLayoutPanel diePanel = new TableLayoutPanel
             {
@@ -125,8 +275,8 @@ namespace Mef_VisionFrame
                 RowCount = 2,
                 Margin = new Padding(0),
             };
-            diePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
-            diePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
+            diePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            diePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             diePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             diePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
@@ -143,13 +293,13 @@ namespace Mef_VisionFrame
             TableLayoutPanel sizePanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 3,
-                RowCount = 1,
+                ColumnCount = 1,
+                RowCount = 3,
                 Margin = new Padding(0),
             };
             for (int i = 0; i < 3; i++)
             {
-                sizePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / 3));
+                sizePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F / 3));
             }
 
             winSize1 = NewWindow(2, null);
@@ -157,11 +307,11 @@ namespace Mef_VisionFrame
             winSize3 = NewWindow(4, null);
 
             sizePanel.Controls.Add(winSize1, 0, 0);
-            sizePanel.Controls.Add(winSize2, 1, 0);
-            sizePanel.Controls.Add(winSize3, 2, 0);
+            sizePanel.Controls.Add(winSize2, 0, 1);
+            sizePanel.Controls.Add(winSize3, 0, 2);
 
             panel.Controls.Add(diePanel, 0, 0);
-            panel.Controls.Add(sizePanel, 0, 1);
+            panel.Controls.Add(sizePanel, 1, 0);
             return panel;
         }
 
@@ -242,6 +392,7 @@ namespace Mef_VisionFrame
         {
             // 与激光模切同一个容器：AntdUI.Tabs（激光右栏 tabs2 也是它），页签外观才一致
             AntdUI.Tabs tabs = new AntdUI.Tabs { Dock = DockStyle.Fill };
+            dataTabs = tabs;
 
             dg_DefectStatistics = NewStatisticsGrid(VM.Data.DefectStation_BindingDatas);
             dg_SizeStatistics = NewStatisticsGrid(VM.Data.SizeStation_BindingDatas);
@@ -283,26 +434,48 @@ namespace Mef_VisionFrame
             dpSizeDefect = new DynamicDataPanel { Dock = DockStyle.Fill };
             dpSizeSend = new DynamicDataPanel { Dock = DockStyle.Fill };
 
-            tabs.Pages.Add(NewTabPage("良率统计", BuildYieldPage()));
+            AddDataPage(tabs, DataPage.良率统计, "良率统计", BuildYieldPage());
 
             // 顺序与激光模切一致：A 面 → B 面 → 发送（激光 tableLayoutPanel6）
-            tabs.Pages.Add(NewTabPage("缺陷过程数据", BuildSectionStack(
+            AddDataPage(tabs, DataPage.缺陷过程数据, "缺陷过程数据", BuildSectionStack(
                 new[] { "A线扫缺陷过程数据", "B线扫缺陷过程数据", "缺陷工位通讯数据" },
-                new Control[] { dpUpEaDefect, dpDownEaDefect, dpDefectSend })));
+                new Control[] { dpUpEaDefect, dpDownEaDefect, dpDefectSend }));
 
             // 顺序与激光模切一致：尺寸结果 → 尺寸缺陷 → 发送（激光 tableLayoutPanel9）
-            tabs.Pages.Add(NewTabPage("极片过程数据", BuildSectionStack(
+            AddDataPage(tabs, DataPage.极片过程数据, "极片过程数据", BuildSectionStack(
                 new[] { "极片尺寸过程数据", "极片缺陷过程数据", "极片尺寸工位通讯数据" },
-                new Control[] { dpSizeResult, dpSizeDefect, dpSizeSend })));
+                new Control[] { dpSizeResult, dpSizeDefect, dpSizeSend }));
 
-            tabs.Pages.Add(NewTabPage("曲线图", chartScroll));
-            tabs.Pages.Add(NewTabPage("缺陷图片", BuildNgPanel()));
+            AddDataPage(tabs, DataPage.曲线图, "曲线图", chartScroll);
+            AddDataPage(tabs, DataPage.缺陷图片, "缺陷图片", BuildNgPanel());
 
             // 日志页与激光模切同一套控件（UC_Message 自带定时器，消费 MessageNotify 的报警/调试/错误/通讯队列）
             logView = new UC_Message { Dock = DockStyle.Fill, Margin = new Padding(4) };
-            tabs.Pages.Add(NewTabPage("日志", logView));
+            AddDataPage(tabs, DataPage.日志, "日志", logView);
+
+            // 换页 = 换一批要刷的控件：闸门重算一次，然后只补刷新页那一份
+            tabs.SelectedIndexChanged += DataTabs_SelectedIndexChanged;
             return tabs;
         }
+
+        /// <summary>
+        /// 页签登记：页面顺序只在这里确定，闸门表跟着填。
+        /// 用 IndexOf 而不是计数器，页面以后插到中间也不会错位。
+        /// </summary>
+        private void AddDataPage(AntdUI.Tabs tabs, DataPage kind, string title, Control content)
+        {
+            AntdUI.TabPage page = NewTabPage(title, content);
+            tabs.Pages.Add(page);
+            pageIndexes[kind] = tabs.Pages.IndexOf(page);
+        }
+
+        private void DataTabs_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
+        {
+            SyncDataAreaState();
+            RefreshView();   // 刚切到的那一页立刻补齐，不用等下一个 500ms 节拍
+        }
+
+
 
         /// <summary>
         /// 良率统计页：与激光模切一致，两个工位左右并排（激光 tableLayoutPanel2 = 2 列），
@@ -439,7 +612,8 @@ namespace Mef_VisionFrame
         /// <summary>
         /// NG 轮播格：与激光模切同一排列方式（激光 12 格 = 3 列 × 4 行，按行填）。
         /// 五金 = 线扫 2 路 × 3 格 + 尺寸 3 路 × 2 格 = 12 格，正好铺满 3×4。
-        /// 格子在界面初始就建好并留引用——NewDisplayWindowClass 只持有 HWindow，控件被回收画面就黑了。
+        /// 这里只建格子控件并留引用——NewDisplayWindowClass 要等句柄就绪后由
+        /// EnsureNgDisplayWindows 创建，否则它缓存到的是无效窗口，之后一直是黑屏。
         /// </summary>
         private Control BuildNgPanel()
         {
@@ -471,7 +645,6 @@ namespace Mef_VisionFrame
                 {
                     UC_HalconWindow window = NewWindow(cam, "NG" + (slot + 1));
                     ngWindows[cam, slot] = window;
-                    ngDisplayWindows[cam, slot] = new NewDisplayWindowClass(window);
 
                     grid.Controls.Add(window, index % columns, index / columns);
                     index++;
@@ -713,12 +886,15 @@ namespace Mef_VisionFrame
 
         public void ImageShowAndSave()
         {
+            // 只读一次快照：折叠/换页由界面线程写，这里不碰控件
+            bool drawNg = ngDisplayEnabled;
+
             foreach (CamDisplayUnit unit in displayUnits)
             {
                 CamStreamUnit.Handle(unit.RawSaveOnly);
                 CamStreamUnit.Handle(unit.Main);
                 CamStreamUnit.Handle(unit.Ea);
-                CamStreamUnit.Handle(unit.Ng);
+                CamStreamUnit.Handle(unit.Ng, drawNg);
             }
         }
 
@@ -730,7 +906,9 @@ namespace Mef_VisionFrame
             InitDetailPanels();
             RefreshStatistics();
             RefreshCharts();
+            SyncDataAreaState();
         }
+
 
         /// <summary>
         /// 明细面板的表头随配方变化（尺寸项名会变），所以换配方后要重建列。
@@ -791,27 +969,35 @@ namespace Mef_VisionFrame
 
         public override void RefreshView()
         {
-            RefreshTitles();
-            RefreshStatistics();
-            RefreshCharts();
-            FlushDetailPanels();
+            RefreshTitles();    // 相机标题跟折叠无关，照刷
+
+            // 每个区域各自过闸门：收起或不在该页时只排空队列，不往界面上写
+            if (IsDataAreaVisible(DataPage.良率统计)) RefreshStatistics();
+            if (IsDataAreaVisible(DataPage.曲线图)) RefreshCharts();
+
+            ConsumeDetailPanels();
         }
 
         /// <summary>
-        /// 把队列里的明细行刷到面板。一次最多取空队列：明细量本来就小，
-        /// 再限条数反而会让残留行在下个节拍继续刷，看起来像重复数据。
+        /// 明细面板按页签分流。不显示的那一页同样要把队列取空：
+        /// 只是不渲染，否则展开那一刻几百行一起插进 ListView，正好卡在要看的时机。
         /// </summary>
-        private void FlushDetailPanels()
+        private void ConsumeDetailPanels()
         {
-            FlushPanel(dpUpEaDefect, VM.Data.UpCamDefectShowQueue, VM.Data.Station1_DefectTitle);
-            FlushPanel(dpDownEaDefect, VM.Data.DownCamDefectShowQueue, VM.Data.Station1_DefectTitle);
-            FlushPanel(dpDefectSend, VM.Data.Station1_SendShowQueue, VM.Data.Station1_CamSendTitle);
-            FlushPanel(dpSizeResult, VM.Data.Station3_SizeShowQueue, VM.Data.Station3_Title_Size);
-            FlushPanel(dpSizeDefect, VM.Data.Station3_DefectShowQueue, VM.Data.Station3_DefectTitle);
-            FlushPanel(dpSizeSend, VM.Data.Station3_SendShowQueue, VM.Data.Station3_CamSendTitle);
+            bool renderDefect = IsDataAreaVisible(DataPage.缺陷过程数据);
+            Consume(dpUpEaDefect, VM.Data.UpCamDefectShowQueue, VM.Data.Station1_DefectTitle, renderDefect);
+            Consume(dpDownEaDefect, VM.Data.DownCamDefectShowQueue, VM.Data.Station1_DefectTitle, renderDefect);
+            Consume(dpDefectSend, VM.Data.Station1_SendShowQueue, VM.Data.Station1_CamSendTitle, renderDefect);
+
+            bool renderSize = IsDataAreaVisible(DataPage.极片过程数据);
+            Consume(dpSizeResult, VM.Data.Station3_SizeShowQueue, VM.Data.Station3_Title_Size, renderSize);
+            Consume(dpSizeDefect, VM.Data.Station3_DefectShowQueue, VM.Data.Station3_DefectTitle, renderSize);
+            Consume(dpSizeSend, VM.Data.Station3_SendShowQueue, VM.Data.Station3_CamSendTitle, renderSize);
         }
 
-        private static void FlushPanel(DynamicDataPanel panel, QueuePackage<List<RowData>> queue, List<string> titles)
+        /// <summary>render=false 时只出队丢弃——数据本身在 Model 的累计字典里，不看这一行不会丢数。</summary>
+        private static void Consume(DynamicDataPanel panel, QueuePackage<List<RowData>> queue,
+                                    List<string> titles, bool render)
         {
             if (panel == null || queue == null) return;
 
@@ -819,9 +1005,10 @@ namespace Mef_VisionFrame
             while (queue.Count > 0)
             {
                 List<RowData> row = queue.Dequeue();
-                NDataPanelViewModel.Add(panel, titleArray, row.ToArray());
+                if (render) NDataPanelViewModel.Add(panel, titleArray, row.ToArray());
             }
         }
+
 
         #endregion
 

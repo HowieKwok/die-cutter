@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -323,11 +323,18 @@ namespace Frame_Core
                             if (result1 == UserCtrlStatus.UserNameWrong)
                             {
 
-                                userManage.AddUser(user, userId, Password);
-                                userManage.userData.Save();
-                                result1 = userManage.UserLogin(user, userId, Password);
-                                MessageNotify.AddErrorLog($"本地用户不存在，自动创建用户,userType_{userType}_userId_{userId}_Password_{Password}");
-
+                                UserCtrlStatus addResult = userManage.AddUser(user, userId, Password);
+                                if (addResult == UserCtrlStatus.AddUserSucceed)
+                                {
+                                    userManage.userData.Save();
+                                    result1 = userManage.UserLogin(user, userId, Password);
+                                    MessageNotify.AddErrorLog($"本地用户不存在，自动创建用户,userType_{userType}_userId_{userId}_Password_{Password}");
+                                }
+                                else
+                                {
+                                    // 配额已满（管理员 1 / 工程师 3）或类型非法时不创建，避免绕过账户约束
+                                    MessageNotify.AddErrorLog($"本地用户不存在，自动创建失败({addResult}),userType_{userType}_userId_{userId}");
+                                }
 
                             }
                             if (result1 == UserCtrlStatus.PasswordRight)

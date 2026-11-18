@@ -1,4 +1,6 @@
+using System;
 using Frame_Core;
+using LogTool;
 
 namespace Mef_VisionFrame
 {
@@ -15,7 +17,7 @@ namespace Mef_VisionFrame
 
         public static void Load()
         {
-            IDeviceDescriptor descriptor = DeviceRegistry.Resolve(Project.Instance.systemInfo.CraftType);
+            IDeviceDescriptor descriptor = ResolveDescriptor();
 
             F_Model.Load(descriptor);
 
@@ -24,6 +26,29 @@ namespace Mef_VisionFrame
             F_VM.Load(descriptor, F_Model, F_Server);
 
             F_View.Load(descriptor, F_VM);
+        }
+
+        /// <summary>
+        /// 取设备描述符。SystemParam 里的 CraftType 落在注册表之外时（被手改成越界数值、
+        /// 或整份配置从别的机型拷贝过来），DeviceRegistry.Resolve 会抛 NotSupportedException。
+        /// 本方法在 UI 线程上被调用、没有上层兜底，抛出去就是"未处理异常 + 进度条不关"。
+        /// 这里回落到激光模切并留下明显日志，保证程序至少能起来去改配置。
+        /// </summary>
+        private static IDeviceDescriptor ResolveDescriptor()
+        {
+            MaterialCrafEnum craftType = Project.Instance.systemInfo.CraftType;
+
+            try
+            {
+                return DeviceRegistry.Resolve(craftType);
+            }
+            catch (NotSupportedException)
+            {
+                MaterialCrafEnum fallback = MaterialCrafEnum.激光模切一体机;
+                Log4netRecord.ErrorLog.Error(
+                    $"未注册的设备类型：{craftType}，已临时按 {fallback} 启动。请检查 SystemParam 里的 CraftType。");
+                return DeviceRegistry.Resolve(fallback);
+            }
         }
     }
 }

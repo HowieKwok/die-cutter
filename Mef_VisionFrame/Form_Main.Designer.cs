@@ -1,4 +1,4 @@
-﻿namespace Mef_VisionFrame
+namespace Mef_VisionFrame
 {
     partial class Form_Main
     {
@@ -33,10 +33,6 @@
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.panel_Main = new System.Windows.Forms.Panel();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
-            this.用户设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.用户登录ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.账户管理ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.注销账户ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.系统设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.保存设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.磁盘设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -65,6 +61,7 @@
             this.timer_DJ = new System.Windows.Forms.Timer(this.components);
             this.timer_CraftBack = new System.Windows.Forms.Timer(this.components);
             this.uC_StateView1 = new Mef_VisionFrame.UC_StateView();
+            this.tsUserBadge = new System.Windows.Forms.ToolStripMenuItem();
             this.tableLayoutPanel1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -112,7 +109,6 @@
             this.menuStrip1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.用户设置ToolStripMenuItem,
             this.系统设置ToolStripMenuItem,
             this.调试设置ToolStripMenuItem,
             this.工艺标准ToolStripMenuItem,
@@ -120,7 +116,8 @@
             this.点检校验ToolStripMenuItem,
             this.数据分析ToolStripMenuItem,
             this.语言ToolStripMenuItem,
-            this.帮助ToolStripMenuItem});
+            this.帮助ToolStripMenuItem,
+            this.tsUserBadge});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Padding = new System.Windows.Forms.Padding(4, 2, 0, 2);
@@ -129,37 +126,14 @@
             this.menuStrip1.Text = "menuStrip1";
             this.menuStrip1.ItemClicked += new System.Windows.Forms.ToolStripItemClickedEventHandler(this.menuStrip1_ItemClicked);
             // 
-            // 用户设置ToolStripMenuItem
+            // tsUserBadge
             // 
-            this.用户设置ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.用户登录ToolStripMenuItem,
-            this.账户管理ToolStripMenuItem,
-            this.注销账户ToolStripMenuItem});
-            this.用户设置ToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
-            this.用户设置ToolStripMenuItem.Name = "用户设置ToolStripMenuItem";
-            this.用户设置ToolStripMenuItem.Size = new System.Drawing.Size(68, 26);
-            this.用户设置ToolStripMenuItem.Text = "用户设置";
-            // 
-            // 用户登录ToolStripMenuItem
-            // 
-            this.用户登录ToolStripMenuItem.Name = "用户登录ToolStripMenuItem";
-            this.用户登录ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
-            this.用户登录ToolStripMenuItem.Text = "用户登录";
-            this.用户登录ToolStripMenuItem.Click += new System.EventHandler(this.用户登录ToolStripMenuItem_Click);
-            // 
-            // 账户管理ToolStripMenuItem
-            // 
-            this.账户管理ToolStripMenuItem.Name = "账户管理ToolStripMenuItem";
-            this.账户管理ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
-            this.账户管理ToolStripMenuItem.Text = "账户管理";
-            this.账户管理ToolStripMenuItem.Click += new System.EventHandler(this.账户管理ToolStripMenuItem_Click);
-            // 
-            // 注销账户ToolStripMenuItem
-            // 
-            this.注销账户ToolStripMenuItem.Name = "注销账户ToolStripMenuItem";
-            this.注销账户ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
-            this.注销账户ToolStripMenuItem.Text = "注销账户";
-            this.注销账户ToolStripMenuItem.Click += new System.EventHandler(this.注销账户ToolStripMenuItem_Click);
+            this.tsUserBadge.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.tsUserBadge.ForeColor = System.Drawing.Color.Red;
+            this.tsUserBadge.Name = "tsUserBadge";
+            this.tsUserBadge.Size = new System.Drawing.Size(80, 26);
+            this.tsUserBadge.Text = "● 未登录";
+            this.tsUserBadge.Click += new System.EventHandler(this.tsUserBadge_Click);
             // 
             // 系统设置ToolStripMenuItem
             // 
@@ -419,11 +393,8 @@
         private System.Windows.Forms.ToolStripMenuItem 系统设置ToolStripMenuItem;
         private System.Windows.Forms.Panel panel_Main;
         private System.Windows.Forms.ToolStripMenuItem 帮助ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 用户设置ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 点检校验ToolStripMenuItem;
         private System.Windows.Forms.Timer timer_StatusBarUpdate;
-        private System.Windows.Forms.ToolStripMenuItem 用户登录ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 账户管理ToolStripMenuItem;
         public System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem 保存设置ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 语言ToolStripMenuItem;
@@ -438,7 +409,7 @@
         private System.Windows.Forms.ToolStripMenuItem 数据查询ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 灰度自适应ToolStripMenuItem;
         private System.Windows.Forms.Timer timer_DJ;
-        private System.Windows.Forms.ToolStripMenuItem 注销账户ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem tsUserBadge;
         public System.Windows.Forms.ToolStripMenuItem toolStripMenuItem3;
         public System.Windows.Forms.ToolStripMenuItem toolStripMenuItem4;
         public System.Windows.Forms.ToolStripMenuItem toolStripMenuItem5;

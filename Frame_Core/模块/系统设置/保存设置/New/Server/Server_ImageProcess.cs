@@ -260,6 +260,10 @@ namespace Frame_Core
 
         public static void ImageShowCallback(NewDisplayWindowClass newDisplayWindowClass, ShowHalconWindow showHalconWindow)
         {
+            // 格子还没建出显示对象（句柄未就绪）时只跳过显示：
+            // 图仍会被 ShowImagesAsync 转进保存队列，不会丢
+            if (newDisplayWindowClass == null) return;
+
             // 显示失败以前被静默丢弃：图照常入保存队列，界面上却永远是黑的，没有任何线索。
             ExecuteResult result = newDisplayWindowClass.RepaintCam(showHalconWindow);
             if (result != null && !result.IsSuccess)
@@ -270,6 +274,8 @@ namespace Frame_Core
 
         public static void ImageShowCallback(NewDisplayWindowClass newDisplayWindowClass, ShowHalconWindow showHalconWindow, ImageQueueData target_SaveScreenshotQueue, ImageQueueData target_HighScreenshotQueue)
         {
+            if (newDisplayWindowClass == null) return;
+
             ExecuteResult result = newDisplayWindowClass.RepaintCam(showHalconWindow);
             if (result != null && !result.IsSuccess)
             {

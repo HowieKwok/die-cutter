@@ -301,6 +301,8 @@ namespace Frame_Core
                 if (purviewManage.purviewParam != null)
                 {
                     purviewManage.UpdateModelPurviewParam(modelServiceManage.m_dicModels, ref purviewManage.purviewParam.l_modelPrivilege);
+                    // 旧权限文件一次性对齐角色规范（之后以管理员在界面的修改为准）
+                    purviewManage.purviewParam.ApplyCurrentPolicyDefaults();
                     purviewManage.purviewParam.Save();
                 }
 
@@ -360,7 +362,10 @@ namespace Frame_Core
                 ///加载磁盘参数
                 if (driveParameter == null) driveParameter = new DriveParameter();
                 driveParameter.filePath = paramPathSet.DiverParamPathName;
-                driveParameter = (DriveParameter)driveParameter.Read();
+                // Read() 在 XML 损坏、或默认文件写不出去时返回 null。这里必须兜底：
+                // 状态栏的磁盘检查与"磁盘设置"菜单都会直接解引用 driveParameter。
+                driveParameter = driveParameter.Read() as DriveParameter;
+                if (driveParameter == null) driveParameter = new DriveParameter();
 
                 Project.Instance.paramPathSet.initProdDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "生产数据") + "\\";
 

@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -108,6 +108,10 @@ namespace Frame_Core
                 {
                     System.Windows.Forms.MessageBox.Show("用户ID已存在，请确认！");
                 }
+                else if (result == UserCtrlStatus.QuotaExceeded)
+                {
+                    System.Windows.Forms.MessageBox.Show(userTypeStr + "账户数量已达上限，请确认！");
+                }
                 else if (result == UserCtrlStatus.AddUserError)
                 {
                     System.Windows.Forms.MessageBox.Show("添加失败！");
@@ -153,51 +157,16 @@ namespace Frame_Core
         {
             try
             {
-                string strOperator = LanguageSwitch.ToUserLanguageg(UserType.Operator, UserLanguageg.中文);
-                string strTechnician = LanguageSwitch.ToUserLanguageg(UserType.Technician, UserLanguageg.中文);
-                string strEngineer = LanguageSwitch.ToUserLanguageg(UserType.Engineer, UserLanguageg.中文);
-                string strAdmin = LanguageSwitch.ToUserLanguageg(UserType.Admin, UserLanguageg.中文);
-                string strSupervisor = LanguageSwitch.ToUserLanguageg(UserType.Supervisor, UserLanguageg.中文);
-                //==================================================================================================================
-                //=====【】高级可以添加低级账户
-                #region >>>高级可以添加低级账户
+                // 角色收敛为三种：操作员 / 工程师 / 管理员（技术员与超级管理员已取消）
                 cmbUserType.Items.Clear();
-                if (userManage.userData.CurrentUser == UserType.Operator)//目前没有应用，为了后续需求
+                foreach (UserType role in UserManage.SelectableRoles)
                 {
-
+                    cmbUserType.Items.Add(LanguageSwitch.ToUserLanguageg(role, UserLanguageg.中文));
                 }
-                else if (userManage.userData.CurrentUser == UserType.Technician)
-                {
-                    cmbUserType.Items.Add(strOperator);
-                    //cmbUserType.Items.Add(userManage.strTechnician);
-                }
-                else if (userManage.userData.CurrentUser == UserType.Engineer)
-                {
-                    cmbUserType.Items.Add(strOperator);
-                    cmbUserType.Items.Add(strTechnician);
-                    //cmbUserType.Items.Add(UserName.EngineerCN);
-                }
-                else if (userManage.userData.CurrentUser == UserType.Admin)
-                {
-                    cmbUserType.Items.Add(strOperator);
-                    cmbUserType.Items.Add(strTechnician);
-                    cmbUserType.Items.Add(strEngineer);
-                    cmbUserType.Items.Add(strAdmin);
-                }
-                //else
-                //{
-                //    cmbUserType.Items.Add(strOperator);
-                //    cmbUserType.Items.Add(strTechnician);
-                //    cmbUserType.Items.Add(strEngineer);
-                //    cmbUserType.Items.Add(strAdmin);
-                //    cmbUserType.Items.Add(strSupervisor);
-                //}
                 if (cmbUserType.Items.Count > 0)
                 {
                     cmbUserType.SelectedIndex = 0;
                 }
-              
-                #endregion
             }
             catch (Exception ex)
             {

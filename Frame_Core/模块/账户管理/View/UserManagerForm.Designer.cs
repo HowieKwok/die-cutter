@@ -1,4 +1,4 @@
-﻿namespace Frame_Core
+namespace Frame_Core
 {
     partial class UserManagerForm
     {
@@ -28,18 +28,17 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.btnModifyPwd = new System.Windows.Forms.Button();
             this.btnAddAccount = new System.Windows.Forms.Button();
             this.btnDelAccount = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.btnControlAccount = new System.Windows.Forms.Button();
-            this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.lvwUserList = new System.Windows.Forms.ListView();
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader4 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.groupBox_Pwd = new System.Windows.Forms.GroupBox();
             this.btn_PwdFile_Refresh = new System.Windows.Forms.Button();
             this.cb_PwdFile_Enable = new System.Windows.Forms.CheckBox();
@@ -50,19 +49,9 @@
             this.groupBox_Pwd.SuspendLayout();
             this.SuspendLayout();
             // 
-            // btnModifyPwd
-            // 
-            this.btnModifyPwd.Location = new System.Drawing.Point(51, 154);
-            this.btnModifyPwd.Name = "btnModifyPwd";
-            this.btnModifyPwd.Size = new System.Drawing.Size(98, 37);
-            this.btnModifyPwd.TabIndex = 0;
-            this.btnModifyPwd.Text = "修改密码";
-            this.btnModifyPwd.UseVisualStyleBackColor = true;
-            this.btnModifyPwd.Click += new System.EventHandler(this.btnModifyPwd_Click);
-            // 
             // btnAddAccount
             // 
-            this.btnAddAccount.Location = new System.Drawing.Point(51, 214);
+            this.btnAddAccount.Location = new System.Drawing.Point(51, 150);
             this.btnAddAccount.Name = "btnAddAccount";
             this.btnAddAccount.Size = new System.Drawing.Size(98, 37);
             this.btnAddAccount.TabIndex = 1;
@@ -72,7 +61,7 @@
             // 
             // btnDelAccount
             // 
-            this.btnDelAccount.Location = new System.Drawing.Point(51, 274);
+            this.btnDelAccount.Location = new System.Drawing.Point(51, 210);
             this.btnDelAccount.Name = "btnDelAccount";
             this.btnDelAccount.Size = new System.Drawing.Size(98, 37);
             this.btnDelAccount.TabIndex = 2;
@@ -83,9 +72,7 @@
             // groupBox2
             // 
             this.groupBox2.Controls.Add(this.btnControlAccount);
-            this.groupBox2.Controls.Add(this.label2);
             this.groupBox2.Controls.Add(this.label1);
-            this.groupBox2.Controls.Add(this.btnModifyPwd);
             this.groupBox2.Controls.Add(this.btnAddAccount);
             this.groupBox2.Controls.Add(this.btnDelAccount);
             this.groupBox2.Location = new System.Drawing.Point(562, 13);
@@ -97,23 +84,13 @@
             // 
             // btnControlAccount
             // 
-            this.btnControlAccount.Location = new System.Drawing.Point(51, 339);
+            this.btnControlAccount.Location = new System.Drawing.Point(51, 270);
             this.btnControlAccount.Name = "btnControlAccount";
             this.btnControlAccount.Size = new System.Drawing.Size(98, 35);
             this.btnControlAccount.TabIndex = 5;
             this.btnControlAccount.Text = "权限分配";
             this.btnControlAccount.UseVisualStyleBackColor = true;
             this.btnControlAccount.Click += new System.EventHandler(this.btnControlAccount_Click);
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.BackColor = System.Drawing.Color.Yellow;
-            this.label2.Location = new System.Drawing.Point(7, 108);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(136, 32);
-            this.label2.TabIndex = 4;
-            this.label2.Text = "密码修改\r\n仅可修改当前用户";
             // 
             // label1
             // 
@@ -143,7 +120,8 @@
             this.lvwUserList.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnHeader1,
             this.columnHeader2,
-            this.columnHeader3});
+            this.columnHeader3,
+            this.columnHeader4});
             this.lvwUserList.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lvwUserList.FullRowSelect = true;
             this.lvwUserList.GridLines = true;
@@ -162,12 +140,17 @@
             // columnHeader2
             // 
             this.columnHeader2.Text = "用户类型";
-            this.columnHeader2.Width = 180;
+            this.columnHeader2.Width = 120;
             // 
             // columnHeader3
             // 
             this.columnHeader3.Text = "用户ID";
-            this.columnHeader3.Width = 400;
+            this.columnHeader3.Width = 150;
+            // 
+            // columnHeader4
+            // 
+            this.columnHeader4.Text = "密码";
+            this.columnHeader4.Width = 180;
             // 
             // groupBox_Pwd
             // 
@@ -254,7 +237,6 @@
 
         #endregion
 
-        private System.Windows.Forms.Button btnModifyPwd;
         private System.Windows.Forms.Button btnAddAccount;
         private System.Windows.Forms.Button btnDelAccount;
         private System.Windows.Forms.GroupBox groupBox2;
@@ -263,7 +245,7 @@
         private System.Windows.Forms.ColumnHeader columnHeader1;
         private System.Windows.Forms.ColumnHeader columnHeader2;
         private System.Windows.Forms.ColumnHeader columnHeader3;
-        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.ColumnHeader columnHeader4;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button btnControlAccount;
         private System.Windows.Forms.GroupBox groupBox_Pwd;

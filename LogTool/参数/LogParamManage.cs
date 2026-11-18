@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,8 +21,15 @@ namespace LogTool
         {
             try
             {
+                if (logParam == null) logParam = new LogParam();
                 logParam.filePath = path;
-                logParam = (LogParam)logParam.Read();
+
+                // 读失败（文件损坏、或默认文件写不出去）会返回 null。
+                // 不兜底的话 InitLog4netConfigure 会对 null 取 LogSavePath，
+                // 结果是一个异常框 + 整场日志不初始化。
+                logParam = logParam.Read() as LogParam;
+                if (logParam == null) logParam = new LogParam();
+
                 logParam.filePath = path;
 
             }

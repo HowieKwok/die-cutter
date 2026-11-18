@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -60,7 +60,7 @@ namespace Frame_Core
                     return;
                 }
 
-                UserCtrlStatus modifyResult = userManage.ChangePwd(userManage.userData.CurrentUser, userManage.userData.CurrentUserID, oldPwd, newPwd);
+                UserCtrlStatus modifyResult = userManage.ChangeOwnPwd(oldPwd, newPwd);
                 if (modifyResult == UserCtrlStatus.PasswordWrong)
                 {
                     System.Windows.Forms.MessageBox.Show("原密码不正确，请确认！");
@@ -74,7 +74,7 @@ namespace Frame_Core
                 {
 
                     userManage.userData.Save();
-                    ParamChangeLog.ParamChangeLog_Inspect(oldPwd, newPwd, currentUser, currentUserID, "账户管理-用户管理", "当前用户密码");
+                    ParamChangeLog.ParamChangeLog_Inspect(oldPwd, newPwd, currentUser, currentUserID, "登录-修改密码", "当前用户密码");
                     System.Windows.Forms.MessageBox.Show("修改成功！");
 
                     this.Close();
