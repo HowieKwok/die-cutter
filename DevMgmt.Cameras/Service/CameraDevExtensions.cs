@@ -280,6 +280,86 @@ namespace DevMgmt
             }
         }
 
+        public static void StopGrabImage(this List<CameraDev> cameraDevs)
+        {
+            try
+            {
+                foreach (var item in cameraDevs)
+                {
+                    StopGrabImage(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString());
+                Log4netRecord.ErrorLog.Error(ex);
+            }
+        }
+        public static void StopGrabImage(this CameraDev cameraDev)
+        {
+            try
+            {
+                if (cameraDev.Camera?.ConnStatus ?? false)
+                    cameraDev.Camera.StopGrabImage();
+
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString());
+                Log4netRecord.ErrorLog.Error(ex);
+            }
+        }
+
+        public static void ResetEncoderCounter(this List<CameraDev> cameraDevs)
+        {
+            try
+            {
+                foreach (var item in cameraDevs)
+                {
+                    ResetEncoderCounter(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString());
+                Log4netRecord.ErrorLog.Error(ex);
+            }
+        }
+
+        public static void ResetEncoderCounter(this CameraDev cameraDev)
+        {
+            try
+            {
+                if (cameraDev.Camera?.ConnStatus ?? false)
+                    cameraDev.Camera.ResetEncoderCounter();
+
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString());
+                Log4netRecord.ErrorLog.Error(ex);
+            }
+        }
+
+ 
+
+        public static bool TryGetEncoderValue(this CameraDev cameraDev, out long encoderValue)
+        {
+            encoderValue = 0;
+            try
+            {
+                if (cameraDev.Camera?.ConnStatus ?? false)
+                   return  cameraDev.Camera.TryGetEncoderValue(out encoderValue);
+
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString());
+                Log4netRecord.ErrorLog.Error(ex);
+            }
+            return false;
+        }
+
         public static CameraObj GetCamObj(this CamParam camParam, int camIndex)
         {
             try

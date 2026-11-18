@@ -432,5 +432,16 @@ namespace DevMgmt.Cameras.SDK
                     break;
             }
         }
+
+        public virtual bool TryGetEncoderValue(out long encoderValue)
+        {
+            encoderValue = 0;
+            return false;
+        }
+
+        public virtual bool ResetEncoderCounter()
+        {
+            return false;
+        }
     }
 }

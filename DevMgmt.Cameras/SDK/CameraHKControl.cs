@@ -369,12 +369,18 @@ namespace DevMgmt.Cameras.SDK
             }
         }
 
-   
+
 
         public void get_Image(object sender, FrameGrabbedEventArgs e)
         {
             try
-            {            
+            {
+                int nLen = (int)e.FrameOut.FrameLen;
+                long FirstLineEncoderCount = e.FrameOut.FirstLineEncoderCount;
+                long LastLineEncoderCount = e.FrameOut.LastLineEncoderCount;
+
+
+
                 Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + (GrabCount + 1).ToString());
                 CamCallbackStartEvent?.Invoke(GrabCount + 1);
                 bo_jisuan = true;
@@ -385,7 +391,7 @@ namespace DevMgmt.Cameras.SDK
                     HOperatorSet.GenImage1(out image, "byte", e.FrameOut.Image.Width, e.FrameOut.Image.Height, e.FrameOut.Image.PixelDataPtr);
                     HOperatorSet.GetImageSize(image, out w, out h);
                     if (w != 0 && h != 0)
-                        Queue_GrabImage.Enqueue(new FrameCommunity.Data.ImageInfo() { ho_image = Image, image_ID = GrabCount, imageWidth = e.FrameOut.Image.Width, imageHeight = e.FrameOut.Image.Height });//图像进队 
+                        Queue_GrabImage.Enqueue(new FrameCommunity.Data.ImageInfo() { ho_image = Image, image_ID = GrabCount, imageWidth = e.FrameOut.Image.Width, imageHeight = e.FrameOut.Image.Height, nFirstLineEncoderCount = FirstLineEncoderCount, nLastLineEncoderCount = LastLineEncoderCount });//图像进队 
                 }
                 else if (e.FrameOut.Image.PixelType == MvGvspPixelType.PixelType_Gvsp_RGB8_Packed)
                 {
@@ -393,7 +399,7 @@ namespace DevMgmt.Cameras.SDK
                     HOperatorSet.GenImageInterleaved(out image, e.FrameOut.Image.PixelDataPtr, "rgb", e.FrameOut.Image.Width, e.FrameOut.Image.Height, -1, "byte", e.FrameOut.Image.Width, e.FrameOut.Image.Height, 0, 0, -1, 0);
                     HOperatorSet.GetImageSize(image, out w, out h);
                     if (w != 0 && h != 0)
-                        Queue_GrabImage.Enqueue(new FrameCommunity.Data.ImageInfo() { ho_image = Image, image_ID = GrabCount, imageWidth = e.FrameOut.Image.Width, imageHeight = e.FrameOut.Image.Height });//图像进队 
+                        Queue_GrabImage.Enqueue(new FrameCommunity.Data.ImageInfo() { ho_image = Image, image_ID = GrabCount, imageWidth = e.FrameOut.Image.Width, imageHeight = e.FrameOut.Image.Height, nFirstLineEncoderCount = FirstLineEncoderCount, nLastLineEncoderCount = LastLineEncoderCount });//图像进队 
                 }
                 else
                 {
@@ -495,6 +501,84 @@ namespace DevMgmt.Cameras.SDK
             {
                 LogDebug.Error("LineTriggerSoftware-fail! nRet {0:x8}" + ret);
                 return;
+            }
+        }
+
+        /// <summary>
+        /// 读取已打开采集卡的当前编码器原始计数。
+        /// 调用前应确保 OpenCam 成功，且不能与 DestroyCam 并发执行。
+        /// </summary>
+        /// <param name="encoderValue">
+        /// 成功时返回当前计数；失败时为零，必须结合返回值判断有效性。
+        /// </param>
+        /// <returns>读取成功返回 true，否则返回 false。</returns>
+        public override bool TryGetEncoderValue(out long encoderValue)
+        {
+            // 初始化输出，复用当前类已经打开的采集卡对象。
+            encoderValue = 0;
+            IInterface currentInterface = ifInstance;
+            if (currentInterface == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                // 编码器接在采集卡 I/O 上，直接读取 EncoderCounter 节点。
+                IIntValue value;
+                int ret = currentInterface.Parameters.GetIntValue("EncoderCounter", out value);
+                if (ret != MvError.MV_OK || value == null)
+                {
+                    LogDebug.Error("读取采集卡编码器失败，错误码：0x"
+                        + ret.ToString("X8"));
+                    return false;
+                }
+
+                // 读取成功后返回计数；IIntValue 不需要手动释放。
+                encoderValue = value.CurValue;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // 沿用现有日志方式记录异常。
+                LogDebug.Error(ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 向已打开的采集卡提交编码器计数复位命令。
+        /// 调用须与采集卡打开、关闭及其他编码器配置操作串行。
+        /// </summary>
+        /// <returns>SDK 接受复位命令返回 true，否则返回 false。</returns>
+        public override bool ResetEncoderCounter()
+        {
+            // 固定复位节点名，复用现有采集卡对象。
+            const string resetNodeName = "EncoderCounterReset";
+            IInterface currentInterface = ifInstance;
+            if (currentInterface == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                // 使用指定接口执行复位，并检查 SDK 返回结果。
+                int ret = currentInterface.Parameters.SetCommandValue(resetNodeName);
+                if (ret != MvError.MV_OK)
+                {
+                    LogDebug.Error("复位编码器失败，节点：" + resetNodeName
+                        + "，错误码：0x" + ret.ToString("X8"));
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // 沿用现有异常日志方式。
+                LogDebug.Error(ex);
+                return false;
             }
         }
     }

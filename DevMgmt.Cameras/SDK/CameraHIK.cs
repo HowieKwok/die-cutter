@@ -1,4 +1,4 @@
-
+﻿
 using DevMgmt.Cameras.Models;
 using FrameCommunity;
 using FrameCommunity.Data;
@@ -210,6 +210,7 @@ namespace DevMgmt.Cameras.SDK
                 int nRet = MyCamera.MV_OK;
                 MyCamera device = new MyCamera();
 
+                MyCamera.MV_CC_DEVICE_INFO test = (MyCamera.MV_CC_DEVICE_INFO)Marshal.PtrToStructure(m_pDeviceList.pDeviceInfo[ListNum], typeof(MyCamera.MV_CC_DEVICE_INFO));
                 do
                 {
                     // ch:创建设备 | en: Create device
