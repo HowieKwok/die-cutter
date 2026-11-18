@@ -8,6 +8,11 @@ x86/
 [Ll]og/
 [Ll]ogs/
 
+# ---- 例外：源码目录 Frame_Core/tools/Log ----
+# 该目录名虽为 Log，但存放的是日志相关源码（被 Frame_Core.csproj 编译引用），必须纳入版本库
+!Frame_Core/tools/Log/
+!Frame_Core/tools/Log/**
+
 # ---- Visual Studio / IDE ----
 .vs/
 *.user
