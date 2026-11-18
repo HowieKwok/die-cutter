@@ -1,4 +1,4 @@
-﻿using ControlBoard.服务类;
+using ControlBoard.服务类;
 using DevMgmt.Cameras.View;
 using DevMgmt.Light.View;
 using Eholly.ZChart;
@@ -401,7 +401,13 @@ namespace Mef_VisionFrame
         {
             if (!Project.Instance.purviewManage.GetWhetherPurview(Project.Instance.userManage.userData.CurrentUser, ModelName.主设备通讯)) { return; }
 
-            using (Form_DieCuttingCutPLC form = new Form_DieCuttingCutPLC(Project.Instance.server_DiecuttingCutPLC))
+            // 按机型选对应的 PLC 服务实例：五金是 CIP 符号表，激光是 Fins 的 D 寄存器表，
+            // 两者各有一份参数。传错了会出现"参数存下来了但连的是另一台的对象"。
+            PLCCommunicationBase plc = Project.Instance.Is五金模切
+                ? (PLCCommunicationBase)Project.Instance.server_五金模切PLC
+                : Project.Instance.server_DiecuttingCutPLC;
+
+            using (Form_DieCuttingCutPLC form = new Form_DieCuttingCutPLC(plc))
             {
                 form.StartPosition = FormStartPosition.CenterScreen;
                 form.ShowDialog();

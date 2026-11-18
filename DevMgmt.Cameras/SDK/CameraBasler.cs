@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -342,7 +342,7 @@ namespace DevMgmt.Cameras.SDK
                 {
                     GrabCount++;
                     Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + GrabCount.ToString());
-                    CamCallbackStartEvent?.Invoke(GrabCount);
+                    RaiseCamCallbackStart(GrabCount);
                     if (IsMonoData(grabResult))
                     {
                         if (latestFrameAddress == IntPtr.Zero)

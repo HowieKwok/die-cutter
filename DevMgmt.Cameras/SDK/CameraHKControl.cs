@@ -1,4 +1,4 @@
-﻿using FrameCommunity;
+using FrameCommunity;
 using FrameCommunity.Data;
 using HalconDotNet;
 using Lmi3d.GoSdk;
@@ -382,7 +382,7 @@ namespace DevMgmt.Cameras.SDK
 
 
                 Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + (GrabCount + 1).ToString());
-                CamCallbackStartEvent?.Invoke(GrabCount + 1);
+                RaiseCamCallbackStart(GrabCount + 1);
                 bo_jisuan = true;
                 HTuple w = new HTuple(), h = new HTuple();
                 if (e.FrameOut.Image.PixelType == MvGvspPixelType.PixelType_Gvsp_Mono8)

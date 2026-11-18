@@ -1,203 +1,309 @@
-using ControlBoard.服务类;
 using Frame_Core;
-using LogTool;
 using System;
-using System.Collections.Generic;
 
 namespace Mef_VisionFrame
 {
     /// <summary>
-    /// 五金模切的工位 IO 信号：心跳 + 判定结果回传 PLC。
+    /// 回传 PLC 的三路结果值。PLC 侧按这四个值判断"能不能放行下一片"。
+    /// 只有本文件可以出现这几个字面量的语义，别处一律用枚举。
+    /// </summary>
+    public enum PlcResult : short
+    {
+        Stopped = 0,
+        Ok = 1,
+        Ng = 2,
+        Pending = 3,
+    }
+
+    /// <summary>
+    /// 五金模切的 PLC 信号层：把"结论"翻译成"值 + 时机"，是唯一知道 1 是 OK 的地方。
     ///
-    /// 名字、位号、脉宽全部来自机型点位表（<see cref="DieCuttingCutIoPoints"/>），
-    /// 上机后换成五金自己的点位表即可，本文件不用改。
+    /// 与激光模切的关系：零。激光走控制卡脉冲 + PLC 请求中断，五金走 CIP 符号地址，
+    /// 结果一片一写、不需要请求。两边的点位表、日志、状态机都不共用。
     ///
-    /// 当前只有尺寸工位会真正发结果信号；缺陷工位的心跳先跑起来（PLC 侧要看到心跳），
-    /// 缺陷判定接入后再补 MinorNG/SevereNG/OK/连续NG 的触发。
-    /// 裁切工位那一路在五金上是冲模的位置，先只发心跳。
+    /// 三条独立的时间线：
+    ///   结果（0/1/2/3）  ：帧开始写 3，判定完写 1 或 2，停机/复位/换卷写 0；
+    ///   多次NG（0/1）    ：满阈值写 1，2 秒后写 0，三路各自独立；
+    ///   心跳（0/1）      ：通讯连上就每 1 秒翻转，与运行/停机无关。
     /// </summary>
     public partial class Server_五金模切
     {
-        /// <summary>已创建的所有脉冲输出，统一在这里跑状态机（OnTimerTick）。</summary>
-        private readonly List<IOPulseOutput> 工位信号表 = new List<IOPulseOutput>();
-
-        public IOPulseOutput CutStation_Heartbeat = null;
-
-        public IOPulseOutput DefectStation_Heartbeat = null;
-        public IOPulseOutput DefectStation_MinorNGSignal = null;
-        public IOPulseOutput DefectStation_SevereNGSignal = null;
-        public IOPulseOutput DefectStation_OKSignal = null;
-        public IOPulseOutput DefectStation_ContinuousNGSignal = null;
-
-        public IOPulseOutput SizeStation_Heartbeat = null;
-        public IOPulseOutput SizeStation_NGSignal = null;
-        public IOPulseOutput SizeStation_OKSignal = null;
-        public IOPulseOutput SizeStation_ContinuousNGSignal = null;
-
-        /// <summary>尺寸工位连续 NG 片数。达到配方阈值后发一次连续 NG 信号并清零。</summary>
-        private int 尺寸连续NG计数 = 0;
-
-        /// <summary>
-        /// 按机型点位表创建 IO 输出。没有控制卡时全部保持 null，后续触发都有 null 判断，
-        /// 这样没有板卡的调试环境也能正常启动。
-        /// </summary>
-        private void InitIoOutputs()
+        private static Server_五金模切PLC Plc
         {
-            IoPointTable ioPoints = new IoPointTable(DeviceProfileRegistry.Resolve(Project.Instance.systemInfo.CraftType).IoPoints);
-
-            CutStation_Heartbeat = CreateIoOutput(ioPoints, "CutStation_Heartbeat");
-
-            DefectStation_Heartbeat = CreateIoOutput(ioPoints, "DefectStation_Heartbeat");
-            DefectStation_MinorNGSignal = CreateIoOutput(ioPoints, "DefectStation_MinorNGSignal");
-            DefectStation_SevereNGSignal = CreateIoOutput(ioPoints, "DefectStation_SevereNGSignal");
-            DefectStation_OKSignal = CreateIoOutput(ioPoints, "DefectStation_OKSignal");
-            DefectStation_ContinuousNGSignal = CreateIoOutput(ioPoints, "DefectStation_ContinuousNGSignal");
-
-            SizeStation_Heartbeat = CreateIoOutput(ioPoints, "SizeStation_Heartbeat");
-            SizeStation_NGSignal = CreateIoOutput(ioPoints, "SizeStation_NGSignal");
-            SizeStation_OKSignal = CreateIoOutput(ioPoints, "SizeStation_OKSignal");
-            SizeStation_ContinuousNGSignal = CreateIoOutput(ioPoints, "SizeStation_ContinuousNGSignal");
+            get { return Project.Instance.server_五金模切PLC; }
         }
 
-        private IOPulseOutput CreateIoOutput(IoPointTable ioPoints, string pointName)
+        private static PLCAddress_五金模切 Addr
         {
-            var card = ServiceCardManage.Instance.GetIControlCard();
-            if (card == null)
+            get
             {
-                Log4netRecord.ErrorLog.Error("五金模切未获取到控制卡，IO 信号不发送：" + pointName);
-                return null;
+                Server_五金模切PLC plc = Plc;
+                return plc == null ? null : plc.Address;
             }
+        }
 
-            IoPoint point = ioPoints.Get(pointName);
-            IOPulseOutput output = new IOPulseOutput(Project.Instance.M_ParamControlCord.CardNo, point.BitNo,
-                card, point.PulseWidthMs)
-                .SetIsSaveLog(point.SaveLog);
+        /// <summary>多次NG 的置位/复位值。与结果值的 1 同名不同义，单独给常量避免误读。</summary>
+        private const short PulseHigh = 1;
+        private const short PulseLow = 0;
 
-            工位信号表.Add(output);
-            return output;
+        /// <summary>心跳翻转周期，点位表规定 1 秒。</summary>
+        private const int HeartbeatPeriodMs = 1000;
+
+        /// <summary>多次NG 的脉宽，点位表规定 2 秒后置 0。</summary>
+        private const int NgPulseMs = 2000;
+
+        /// <summary>
+        /// PLC 读写不是线程安全的：上线/下线各在自己的相机线程写，心跳在通讯线程写。
+        /// 所有写入口都过这把锁，避免两条线程半包交错把值写坏。
+        /// </summary>
+        private static readonly object PlcWriteLock = new object();
+
+        /// <summary>
+        /// 结果值的写入口。只做枚举到 short 的翻译，实际写入统一走 <see cref="WriteRaw"/>，
+        /// 避免两份一模一样的锁与 InitState 判断各自演化。
+        /// </summary>
+        private static void WriteResult(CommunicationData<short> point, PlcResult value)
+        {
+            WriteRaw(point, (short)value);
         }
 
         /// <summary>
-        /// 尺寸工位结果回传：OK / NG 二选一，另外维护连续 NG。
-        /// PLC 收到这一片的结果才放下一个触发，这是"三路不串片"的实际保证。
+        /// 所有点位的唯一写入口：0/1 通道（心跳、多次NG）也用这里，不借结果枚举。
         /// </summary>
-        /// <returns>本次是否触发了连续 NG</returns>
-        private bool 尺寸工位_发送结果(bool isNG, string 说明)
+        private static void WriteRaw(CommunicationData<short> point, short value)
         {
-            if (isNG)
-            {
-                SizeStation_NGSignal?.Trigger("尺寸工位——发送_NG信号:" + 说明);
-                尺寸连续NG计数++;
-            }
-            else
-            {
-                SizeStation_OKSignal?.Trigger("尺寸工位——发送_OK信号:" + 说明);
-                尺寸连续NG计数 = 0;
-            }
+            if (point == null) return;
 
-            bool continuousNG = false;
-            int 阈值 = Data.Craft?.Get_GlobalVariableItem("SizeStation_ContinuousCount")?.Value.ToInt() ?? 0;
-            if (阈值 > 0 && 尺寸连续NG计数 >= 阈值)
-            {
-                尺寸连续NG计数 = 0;
-                continuousNG = true;
-                SizeStation_ContinuousNGSignal?.Trigger("尺寸工位——发送_连续NG信号:" + 说明);
-            }
+            Server_五金模切PLC plc = Plc;
+            if (plc == null || !plc.InitState) return;
 
-            return continuousNG;
+            lock (PlcWriteLock)
+            {
+                point.Value = value;
+                plc.Write(point, true, plc.CommunicationLog);
+            }
+        }
+
+        #region 结果：帧开始写待检，判定完写 OK/NG
+
+        /// <summary>
+        /// 上线扫（模切主相机）本片已触发、结论未出。
+        /// 与写结果同一个闸门：停机后相机若仍出一帧，不能把停机写的 0 抹成 3。
+        /// </summary>
+        public void WriteAppearancePending(bool isUp)
+        {
+            if (!Project.Instance.Is_Run) return;
+            WriteResult(isUp ? Addr?.UpLineScanResult : Addr?.DownLineScanResult, PlcResult.Pending);
         }
 
         /// <summary>
-        /// 缺陷工位结果回传：OK / 轻度NG / 重度NG 三选一，另外维护连续 NG。
-        /// A/B 合片后每片只调一次。
+        /// 上线/下线本片外观结论。上线与下线各自独立，互不影响。
+        ///
+        /// 停止后写 1/2 是被禁止的：停机瞬间可能有帧正在判定，
+        /// 让它把刚写下去的 0 覆盖成 1/2，PLC 会以为机器还在跑。
         /// </summary>
-        /// <returns>本次是否触发了连续 NG</returns>
-        private bool 缺陷工位_发送结果(bool isNG, bool isSevere, string 说明)
+        public void WriteAppearanceResult(bool isUp, bool isNG)
         {
-            if (isNG)
-            {
-                if (isSevere)
-                {
-                    DefectStation_SevereNGSignal?.Trigger("缺陷工位——发送_重度NG信号:" + 说明);
-                }
-                else
-                {
-                    DefectStation_MinorNGSignal?.Trigger("缺陷工位——发送_轻度NG信号:" + 说明);
-                }
-                Data.DefectStation_ContinuousCount++;
-            }
-            else
-            {
-                DefectStation_OKSignal?.Trigger("缺陷工位——发送_OK信号:" + 说明);
-                Data.DefectStation_ContinuousCount = 0;
-            }
-
-            bool continuousNG = false;
-            int 阈值 = Data.Craft?.Get_GlobalVariableItem("DefectStation_ContinuousCount")?.Value.ToInt() ?? 0;
-            if (阈值 > 0 && Data.DefectStation_ContinuousCount >= 阈值)
-            {
-                Data.DefectStation_ContinuousCount = 0;
-                continuousNG = true;
-                DefectStation_ContinuousNGSignal?.Trigger("缺陷工位——发送_连续NG信号:" + 说明);
-            }
-
-            return continuousNG;
+            if (!Project.Instance.Is_Run) return;
+            WriteResult(isUp ? Addr?.UpLineScanResult : Addr?.DownLineScanResult, isNG ? PlcResult.Ng : PlcResult.Ok);
         }
 
         /// <summary>
-        /// 通讯线程：心跳按配方节拍触发，所有脉冲输出每 5ms 推进一次状态机。
+        /// 三路尺寸相机已触发、组结论未出。
+        /// 与写结果同一个闸门：停机后不能再往点位写 3。
         /// </summary>
+        public void WriteSizePending()
+        {
+            if (!Project.Instance.Is_Run) return;
+            WriteResult(Addr?.SizeResult, PlcResult.Pending);
+        }
+
+        /// <summary>
+        /// 三路尺寸合成后的本片结论，一个 SN 只写一次。
+        /// 与外观同理：停止后不再写 1/2，避免覆盖停机写的 0。
+        /// </summary>
+        public void WriteSizeResult(bool isNG)
+        {
+            if (!Project.Instance.Is_Run) return;
+            WriteResult(Addr?.SizeResult, isNG ? PlcResult.Ng : PlcResult.Ok);
+        }
+
+        /// <summary>
+        /// 停机/复位/换卷：三路结果回 0，多次NG 清回 0。
+        /// 心跳不在其中——它只跟 PLC 通讯状态有关，停机也照常翻转，
+        /// 否则 PLC 无法区分"机器停了"和"通讯断了"。
+        /// </summary>
+        public void ResetAllResults()
+        {
+            WriteResult(Addr?.UpLineScanResult, PlcResult.Stopped);
+            WriteResult(Addr?.DownLineScanResult, PlcResult.Stopped);
+            WriteResult(Addr?.SizeResult, PlcResult.Stopped);
+
+            _upNgChannel?.Clear();
+            _downNgChannel?.Clear();
+            _sizeNgChannel?.Clear();
+        }
+
+        #endregion
+
+        #region 多次NG：置 1，2 秒后置 0
+
+        /// <summary>一个多次NG 信号 = 点位 + 到期时间。三个信号共用同一份逻辑，只是点位不同。</summary>
+        private sealed class PulseChannel
+        {
+            private readonly CommunicationData<short> point;
+            private DateTime? expireAt;
+
+            public PulseChannel(CommunicationData<short> point)
+            {
+                this.point = point;
+            }
+
+            public void Trigger()
+            {
+                if (point == null) return;
+                WriteRaw(point, PulseHigh);
+                expireAt = DateTime.Now.AddMilliseconds(NgPulseMs);
+            }
+
+            public void Tick()
+            {
+                if (point == null || !expireAt.HasValue) return;
+                if (DateTime.Now < expireAt.Value) return;
+
+                WriteRaw(point, PulseLow);
+                expireAt = null;
+            }
+
+            public void Clear()
+            {
+                expireAt = null;
+                if (point != null) WriteRaw(point, PulseLow);
+            }
+        }
+
+        private PulseChannel _upNgChannel;
+        private PulseChannel _downNgChannel;
+        private PulseChannel _sizeNgChannel;
+
+        /// <summary>把三个信号绑到当前机型点位表。PLC 未创建时点位为 null，通道内部全部走空判断。</summary>
+        private void InitSignalChannels()
+        {
+            PLCAddress_五金模切 addr = Addr;
+
+            _upNgChannel = new PulseChannel(addr == null ? null : addr.UpLineScanNgOverTimes);
+            _downNgChannel = new PulseChannel(addr == null ? null : addr.DownLineScanNgOverTimes);
+            _sizeNgChannel = new PulseChannel(addr == null ? null : addr.SizeNgOverTimes);
+        }
+
+        /// <summary>上线扫满阈值：上线自己的那一路，不受下线影响。</summary>
+        public void TriggerUpNg()
+        {
+            _upNgChannel?.Trigger();
+        }
+
+        /// <summary>下线扫满阈值。</summary>
+        public void TriggerDownNg()
+        {
+            _downNgChannel?.Trigger();
+        }
+
+        /// <summary>尺寸满阈值。</summary>
+        public void TriggerSizeNg()
+        {
+            _sizeNgChannel?.Trigger();
+        }
+
+        /// <summary>
+        /// 连续NG 归属哪一路：外观分上线/下线两个独立点位（按相机分），
+        /// 尺寸三路共用一个点位。
+        /// </summary>
+        private void TriggerNgSignal(bool isAppearanceStation, int camIndex)
+        {
+            if (!isAppearanceStation)
+            {
+                TriggerSizeNg();
+                return;
+            }
+
+            int upCamIndex;
+            bool isUp = Project.Instance.baseProDevice.TryGetCamIndex(CamRole.模切主相机, 0, out upCamIndex)
+                          && upCamIndex == camIndex;
+
+            if (isUp) TriggerUpNg();
+            else TriggerDownNg();
+        }
+
+        #endregion
+
+        #region 心跳
+
+        private DateTime _nextHeartbeat;
+        private short _heartbeatValue;
+
+        private void HeartbeatTick()
+        {
+            // 心跳只表达"PLC 通讯是活的"，与运行/停机无关：连上就一直翻转，断线就停。
+            // 翻转放在通讯检查之后，断线期间相位不空转，重连后不会补发一串值。
+            Server_五金模切PLC plc = Plc;
+            if (plc == null || !plc.InitState) return;
+
+            if (DateTime.Now < _nextHeartbeat) return;
+
+            _heartbeatValue = (short)(_heartbeatValue == 0 ? 1 : 0);
+            WriteRaw(Addr?.Heartbeat, _heartbeatValue);
+            _nextHeartbeat = DateTime.Now.AddMilliseconds(HeartbeatPeriodMs);
+        }
+
+        #endregion
+
+        #region 连接复位
+
+        /// <summary>上一次看到的 PLC 连接状态。null = 还没看过，首次连上也要复位一次。</summary>
+        private bool? _lastPlcConnected;
+
+        /// <summary>
+        /// PLC 从"未连接"变成"已连接"的瞬间，把三路结果清回停止态。
+        ///
+        /// 为什么需要这层：停机写 0 依赖 InitState，断线那一刻写不进去；软件重启后
+        /// PLC 里还留着上一片的 1/2/3。连上瞬间补一次 0，让"软件起来"与"点位归零"是同一时刻。
+        /// 心跳不在这里清——它只要连上就自己开始翻转。
+        /// </summary>
+        private void ResetOnConnectEdge()
+        {
+            Server_五金模切PLC plc = Plc;
+            bool connected = plc != null && plc.InitState;
+
+            bool wasConnected = _lastPlcConnected ?? false;
+            _lastPlcConnected = connected;
+
+            if (connected && !wasConnected) ResetAllResults();
+        }
+
+        #endregion
+
+        /// <summary>通讯线程入口：所有定时推进都在这里，5ms 一次。</summary>
         public override void Communication()
         {
             ExecuteMethodClass.ExecuteMethod(() =>
             {
-                int 心跳周期 = Data.Craft?.Get_GlobalVariableItem("HeartbeatPollingTime")?.Value.ToInt() ?? 500;
-
-                if (Project.Instance.Is_Run)
-                {
-                    if (CutStation_Heartbeat != null && CutStation_Heartbeat.GetIsArrivalTime(心跳周期))
-                    {
-                        CutStation_Heartbeat.Trigger("冲模工位——心跳");
-                    }
-                    if (DefectStation_Heartbeat != null && DefectStation_Heartbeat.GetIsArrivalTime(心跳周期))
-                    {
-                        DefectStation_Heartbeat.Trigger("缺陷工位——心跳");
-                    }
-                    if (SizeStation_Heartbeat != null && SizeStation_Heartbeat.GetIsArrivalTime(心跳周期))
-                    {
-                        SizeStation_Heartbeat.Trigger("尺寸工位——心跳");
-                    }
-                }
-
-                foreach (IOPulseOutput output in 工位信号表)
-                {
-                    output.OnTimerTick();
-                }
+                ResetOnConnectEdge();
+                HeartbeatTick();
+                _upNgChannel?.Tick();
+                _downNgChannel?.Tick();
+                _sizeNgChannel?.Tick();
             });
         }
 
-        /// <summary>脉宽下发：心跳用 HeartbeatPulseWidth，结果信号用 PulseWidth。</summary>
+        /// <summary>
+        /// 配方切换回调。五金没有脉宽需要下发（多次NG 的 2 秒、心跳的 1 秒都是点位表规定的固定值），
+        /// 这里只重建通道，保证换机型/换点位后绑的是新表。
+        /// </summary>
         public override void Udpate()
         {
             ExecuteMethodClass.ExecuteMethod(() =>
             {
-                if (Data.Craft == null) return;
-
-                int 心跳脉宽 = Data.Craft.Get_GlobalVariableItem("HeartbeatPulseWidth")?.Value.ToInt() ?? 100;
-                int 信号脉宽 = Data.Craft.Get_GlobalVariableItem("PulseWidth")?.Value.ToInt() ?? 10;
-
-                CutStation_Heartbeat?.SetPulseWidth(心跳脉宽);
-
-                DefectStation_Heartbeat?.SetPulseWidth(心跳脉宽);
-                DefectStation_MinorNGSignal?.SetPulseWidth(信号脉宽);
-                DefectStation_SevereNGSignal?.SetPulseWidth(信号脉宽);
-                DefectStation_OKSignal?.SetPulseWidth(信号脉宽);
-                DefectStation_ContinuousNGSignal?.SetPulseWidth(信号脉宽);
-
-                SizeStation_Heartbeat?.SetPulseWidth(心跳脉宽);
-                SizeStation_NGSignal?.SetPulseWidth(信号脉宽);
-                SizeStation_OKSignal?.SetPulseWidth(信号脉宽);
-                SizeStation_ContinuousNGSignal?.SetPulseWidth(信号脉宽);
+                InitSignalChannels();
             });
         }
     }

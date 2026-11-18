@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -313,7 +313,7 @@ namespace DevMgmt.Cameras.SDK
                 //HImage hImage = new HImage();
                 //Console.WriteLine("Grab frame ready");
                 Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + GrabCount + 1.ToString());
-                CamCallbackStartEvent?.Invoke(GrabCount + 1);
+                RaiseCamCallbackStart(GrabCount + 1);
                 IntPtr hDev = (IntPtr)pParam;
                 IntPtr pUserBuffer = IntPtr.Zero;
                 int nFrameSize = 0;
@@ -357,7 +357,7 @@ namespace DevMgmt.Cameras.SDK
             try
             {
                 Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + GrabCount + 1.ToString());
-                CamCallbackStartEvent?.Invoke(GrabCount + 1);
+                RaiseCamCallbackStart(GrabCount + 1);
                 IntPtr hDev = (IntPtr)pParam;
                 IntPtr pUserBuffer = IntPtr.Zero;
                 int nFrameSize = 0;

@@ -151,9 +151,9 @@ namespace Mef_VisionFrame
         /// 统计表最上面三行的固定名称。与激光模切一致：这两张表不是纯缺陷分布，
         /// 前 3 行是"这一卷检了多少片、其中多少 OK/NG"，下面才是各检测项占了多少片。
         /// </summary>
-        public const string 统计_总数 = "总数";
-        public const string 统计_OK数 = "OK数";
-        public const string 统计_NG数 = "NG数";
+        public const string StatTotal = "总数";
+        public const string StatOk = "OK数";
+        public const string StatNg = "NG数";
 
         /// <summary>
         /// 把累计计数刷进两张统计表。必须在界面线程调用（由 UC 的刷新定时器驱动），
@@ -161,15 +161,15 @@ namespace Mef_VisionFrame
         /// </summary>
         public void ApplyCounts()
         {
-            应用计数(DefectStation_BindingDatas, DefectCounts, Station1_StatisticalData);
-            应用计数(SizeStation_BindingDatas, SizeDefectCounts, Station3_StatisticalData);
+            ApplyCountsTo(DefectStation_BindingDatas, DefectCounts, Station1_StatisticalData);
+            ApplyCountsTo(SizeStation_BindingDatas, SizeDefectCounts, Station3_StatisticalData);
         }
 
-        private static void 应用计数(BindingList<QualityData> rows, ConcurrentDictionary<string, int> counts, StatisticalData data)
+        private static void ApplyCountsTo(BindingList<QualityData> rows, ConcurrentDictionary<string, int> counts, StatisticalData data)
         {
-            double 总数 = data?.SumupCount ?? 0;
-            double OK数 = data?.OKCount ?? 0;
-            double NG数 = data?.NGCount ?? 0;
+            double total = data?.SumupCount ?? 0;
+            double okCount = data?.OKCount ?? 0;
+            double ngCount = data?.NGCount ?? 0;
 
             // 配方里没有、流程却报出来的缺陷名追加到表尾。
             // 不追加的话它在表里"查无此项"，良率掉了却找不到是哪一类。
@@ -183,47 +183,47 @@ namespace Mef_VisionFrame
 
             foreach (QualityData row in rows)
             {
-                double 次数;
-                if (row.Name == 统计_总数) 次数 = 总数;
-                else if (row.Name == 统计_OK数) 次数 = OK数;
-                else if (row.Name == 统计_NG数) 次数 = NG数;
+                double count;
+                if (row.Name == StatTotal) count = total;
+                else if (row.Name == StatOk) count = okCount;
+                else if (row.Name == StatNg) count = ngCount;
                 else
                 {
                     int value;
                     counts.TryGetValue(row.Name, out value);
-                    次数 = value;
+                    count = value;
                 }
 
-                row.Count = (int)次数;
-                row.Ratio = row.Name == 统计_总数 ? "100%"
-                    : 总数 > 0 ? (次数 / 总数 * 100).ToString("0.00") + "%" : "";
+                row.Count = (int)count;
+                row.Ratio = row.Name == StatTotal ? "100%"
+                    : total > 0 ? (count / total * 100).ToString("0.00") + "%" : "";
             }
         }
 
         /// <summary>
         /// 生成当前统计快照，供落盘使用。
-        /// 与 <see cref="应用计数"/> 同一套行序与占比算法（含前 3 行的总数/OK/NG），
+        /// 与 <see cref="ApplyCountsTo"/> 同一套行序与占比算法（含前 3 行的总数/OK/NG），
         /// 保证 CSV 与界面看到的一致；在判定线程调用，所以只读并发字典、不碰 BindingList。
         /// </summary>
         public static List<QualityData> Snapshot(ConcurrentDictionary<string, int> counts, StatisticalData data)
         {
             List<QualityData> rows = new List<QualityData>();
-            double 总数 = data?.SumupCount ?? 0;
-            double OK数 = data?.OKCount ?? 0;
-            double NG数 = data?.NGCount ?? 0;
+            double total = data?.SumupCount ?? 0;
+            double okCount = data?.OKCount ?? 0;
+            double ngCount = data?.NGCount ?? 0;
 
-            rows.Add(new QualityData { Name = 统计_总数, Count = (int)总数, Ratio = "100%" });
+            rows.Add(new QualityData { Name = StatTotal, Count = (int)total, Ratio = "100%" });
             rows.Add(new QualityData
             {
-                Name = 统计_OK数,
-                Count = (int)OK数,
-                Ratio = 总数 > 0 ? (OK数 / 总数 * 100).ToString("0.00") + "%" : "",
+                Name = StatOk,
+                Count = (int)okCount,
+                Ratio = total > 0 ? (okCount / total * 100).ToString("0.00") + "%" : "",
             });
             rows.Add(new QualityData
             {
-                Name = 统计_NG数,
-                Count = (int)NG数,
-                Ratio = 总数 > 0 ? (NG数 / 总数 * 100).ToString("0.00") + "%" : "",
+                Name = StatNg,
+                Count = (int)ngCount,
+                Ratio = total > 0 ? (ngCount / total * 100).ToString("0.00") + "%" : "",
             });
 
             foreach (KeyValuePair<string, int> item in counts)
@@ -232,7 +232,7 @@ namespace Mef_VisionFrame
                 {
                     Name = item.Key,
                     Count = item.Value,
-                    Ratio = 总数 > 0 ? (item.Value / 总数 * 100).ToString("0.00") + "%" : "",
+                    Ratio = total > 0 ? (item.Value / total * 100).ToString("0.00") + "%" : "",
                 });
             }
             return rows;
@@ -244,20 +244,8 @@ namespace Mef_VisionFrame
         public QueuePackage<ProductDataResult> ALine_DieCutEAProduct { get; } = new QueuePackage<ProductDataResult>();
         public QueuePackage<ProductDataResult> BLine_DieCutEAProduct { get; } = new QueuePackage<ProductDataResult>();
 
-        /// <summary>合片完成的产品队列，等 PLC 请求时按产品号取走发送结果。</summary>
+        /// <summary>合片完成的产品队列。只用于统计与界面，PLC 结果在判定时已回传，不等这里。</summary>
         public QueuePackage<Station1Product> Station1_Product { get; } = new QueuePackage<Station1Product>();
-
-        /// <summary>
-        /// 尺寸工位的上一次结果。判定只写这里，由尺寸相机"下一帧开始"回调发送给 PLC，
-        /// 保证发出去的是已经到位的上一片。Frame_Cam4/5/6 对应五金的三路尺寸相机。
-        /// </summary>
-        public Station3Result Station3_LastResult { get; } = new Station3Result();
-
-        /// <summary>PLC 请求结果时的当前帧号与请求时刻（超时判定用）。</summary>
-        public long DefectStation_CurrentFrame = 0;
-        public DateTime DefectStation_UpdateTime = DateTime.Now;
-
-        public int DefectStation_ContinuousCount = 0;
 
         public string Station1_ALineCamPath_Defect = "";
         public string Station1_BLineCamPath_Defect = "";
@@ -318,8 +306,8 @@ namespace Mef_VisionFrame
         /// 右侧"实时明细"面板的数据源：一行一条记录，由界面线程 500ms 取出刷面板。
         /// 用队列而不是直接推控件，Server 就不持有任何界面引用。
         /// </summary>
-        public QueuePackage<List<RowData>> 主相机_DefectShowQueue { get; } = new QueuePackage<List<RowData>>();
-        public QueuePackage<List<RowData>> 从相机_DefectShowQueue { get; } = new QueuePackage<List<RowData>>();
+        public QueuePackage<List<RowData>> UpCamDefectShowQueue { get; } = new QueuePackage<List<RowData>>();
+        public QueuePackage<List<RowData>> DownCamDefectShowQueue { get; } = new QueuePackage<List<RowData>>();
         public QueuePackage<List<RowData>> Station3_DefectShowQueue { get; } = new QueuePackage<List<RowData>>();
         public QueuePackage<List<RowData>> Station3_SizeShowQueue { get; } = new QueuePackage<List<RowData>>();
 
@@ -329,12 +317,12 @@ namespace Mef_VisionFrame
 
         public List<string> Station1_CamSendTitle { get; } = new List<string>
         {
-            "时间", "当前帧号", "发送EA", "请求信号耗时", "发送结果", "连续NG", "通讯耗时"
+            "时间", "线别", "帧号", "回传结果"
         };
 
         public List<string> Station3_CamSendTitle { get; } = new List<string>
         {
-            "时间", "当前帧号", "发送帧号", "发送结果", "连续NG", "通讯耗时"
+            "时间", "帧号", "回传结果"
         };
 
         /// <summary>缺陷明细 CSV 的表头（与激光模切一致）。</summary>
@@ -355,11 +343,9 @@ namespace Mef_VisionFrame
             while (BLine_DieCutEAProduct.Count > 0) BLine_DieCutEAProduct.Dequeue();
             while (Station1_Product.Count > 0) Station1_Product.Dequeue();
 
-            Station3_LastResult.Reset();
-            DefectStation_ContinuousCount = 0;
 
-            主相机_DefectShowQueue.Clear();
-            从相机_DefectShowQueue.Clear();
+            UpCamDefectShowQueue.Clear();
+            DownCamDefectShowQueue.Clear();
             Station3_DefectShowQueue.Clear();
             Station3_SizeShowQueue.Clear();
 
@@ -378,7 +364,7 @@ namespace Mef_VisionFrame
         /// </summary>
         public void Reset_StationStatistics()
         {
-            建统计表(DefectStation_BindingDatas, Craft?.Get_Station1_DefectNames() ?? new List<string>());
+            BuildStatisticsRows(DefectStation_BindingDatas, Craft?.Get_Station1_DefectNames() ?? new List<string>());
 
             if (Craft != null)
             {
@@ -390,11 +376,11 @@ namespace Mef_VisionFrame
                 {
                     if (!names.Contains(name)) names.Add(name);
                 }
-                建统计表(SizeStation_BindingDatas, names);
+                BuildStatisticsRows(SizeStation_BindingDatas, names);
             }
             else
             {
-                建统计表(SizeStation_BindingDatas, new List<string>());
+                BuildStatisticsRows(SizeStation_BindingDatas, new List<string>());
             }
 
             Station1_StatisticalData = new StatisticalData();
@@ -409,17 +395,17 @@ namespace Mef_VisionFrame
         /// 前 3 行是这一卷的产量与良率，固定在最上面，与激光模切的行序一致——
         /// 两台机的统计 CSV 才能直接对照。
         /// </summary>
-        private static void 建统计表(BindingList<QualityData> rows, IEnumerable<string> names)
+        private static void BuildStatisticsRows(BindingList<QualityData> rows, IEnumerable<string> names)
         {
             rows.Clear();
-            rows.Add(new QualityData { Name = 统计_总数, Count = 0, Ratio = "" });
-            rows.Add(new QualityData { Name = 统计_OK数, Count = 0, Ratio = "" });
-            rows.Add(new QualityData { Name = 统计_NG数, Count = 0, Ratio = "" });
+            rows.Add(new QualityData { Name = StatTotal, Count = 0, Ratio = "" });
+            rows.Add(new QualityData { Name = StatOk, Count = 0, Ratio = "" });
+            rows.Add(new QualityData { Name = StatNg, Count = 0, Ratio = "" });
 
             foreach (string name in names)
             {
                 if (string.IsNullOrEmpty(name)) continue;
-                if (name == 统计_总数 || name == 统计_OK数 || name == 统计_NG数) continue;
+                if (name == StatTotal || name == StatOk || name == StatNg) continue;
                 rows.Add(new QualityData { Name = name, Count = 0, Ratio = "" });
             }
         }
@@ -460,8 +446,8 @@ namespace Mef_VisionFrame
             DefectStation_BindingDatasSave.Clear();
             SizeStation_BindingDatasSave.Clear();
 
-            主相机_DefectShowQueue.Clear();
-            从相机_DefectShowQueue.Clear();
+            UpCamDefectShowQueue.Clear();
+            DownCamDefectShowQueue.Clear();
             Station3_DefectShowQueue.Clear();
             Station3_SizeShowQueue.Clear();
             Station1_SendShowQueue.Clear();

@@ -1,4 +1,4 @@
-﻿using LogTool;
+using LogTool;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,11 +31,6 @@ namespace Frame_Core
         /// PLC地址
         /// </summary>
         public PLCAddress_DieCuttingCut m_DevAddress = new PLCAddress_DieCuttingCut();
-
-        /// <summary>
-        /// PLC参数
-        /// </summary>
-        public PLCDevParam  m_pLCDevParam = null;
 
         #endregion
     }

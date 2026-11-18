@@ -1,4 +1,4 @@
-﻿using HslCommunication.Core.Net;
+using HslCommunication.Core.Net;
 using HslCommunication.Profinet.Omron;
 using HslCommunication;
 using LogTool;
@@ -21,6 +21,14 @@ namespace Frame_Core
     public class PLCCommunicationBase
     {
         public bool InitState = false;
+
+        /// <summary>
+        /// 本连接自己的 PLC 参数（IP/端口/协议/字节序）。
+        /// 声明在基类是因为每个机型各连一台 PLC，参数必须各存一份：
+        /// 五金是 CIP 符号寻址，激光是 Fins 的 D 寄存器，共用一份会互相改掉对方的协议与地址。
+        /// </summary>
+        public PLCDevParam m_pLCDevParam = null;
+
         /// <summary>
         /// 写入失败数量
         /// </summary>

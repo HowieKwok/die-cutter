@@ -53,18 +53,18 @@ namespace Mef_VisionFrame
             // 模切主：原图/大图走 ProductCallBack，极片 EA 走 ProductCallBackCraft
             slot(0, (server, param) =>
             {
-                Bind(param, server.模切主相机_Process);
-                BindEa(param, server.模切主相机_EA_Process);
+                Bind(param, server.DieCutMainCamProcess);
+                BindEa(param, server.DieCutMainCamEaProcess);
             }),
             // 模切从
             slot(1, (server, param) =>
             {
-                Bind(param, server.模切从相机_Process);
-                BindEa(param, server.模切从相机_EA_Process);
+                Bind(param, server.DieCutSubCamProcess);
+                BindEa(param, server.DieCutSubCamEaProcess);
             }),
-            slot(2, (server, param) => Bind(param, server.尺寸相机1_Process)),  // 尺寸 1
-            slot(3, (server, param) => Bind(param, server.尺寸相机2_Process)),  // 尺寸 2
-            slot(4, (server, param) => Bind(param, server.尺寸相机3_Process)),  // 尺寸 3
+            slot(2, (server, param) => Bind(param, server.SizeCam1Process)),  // 尺寸 1
+            slot(3, (server, param) => Bind(param, server.SizeCam2Process)),  // 尺寸 2
+            slot(4, (server, param) => Bind(param, server.SizeCam3Process)),  // 尺寸 3
         };
 
         /// <summary>

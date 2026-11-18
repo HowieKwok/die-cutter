@@ -34,9 +34,8 @@ namespace Mef_VisionFrame
         {
             Data = modelBase;
 
-            // IO 先建好再起通讯线程：通讯线程一启动就会推进脉冲状态机
-            InitIoOutputs();
-            Udpate();
+            // 信号通道先建好再起通讯线程：通讯线程一启动就会推进心跳与多次NG
+            InitSignalChannels();
             InitPlcResultCallbacks();
             InitThread();
         }
@@ -101,6 +100,11 @@ namespace Mef_VisionFrame
                     Project.Instance.StopRun(item.process.processInfo.ProcessID);
                 }
 
+                // 停机立刻把三路结果写 0，PLC 靠这个值判断这一片还在不在检。
+                // 放在 StopRun 之后，确保所有流程已停，不会再有帧开始写"待检"。
+                // 心跳不在这里停：它只跟 PLC 通讯状态有关，停机仍继续翻转。
+                ResetAllResults();
+
                 RefreshToolView?.Invoke();
                 return true;
             });
@@ -111,7 +115,9 @@ namespace Mef_VisionFrame
             ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
             {
                 Project.Instance.baseProDevice.INIProduct();
-                尺寸连续NG计数 = 0;
+                ClearConsecutiveCounts();
+                ResetAllResults();
+                ClearSizeGroups();
                 Data.Reset_DefectStation();
             });
         }
@@ -180,6 +186,12 @@ namespace Mef_VisionFrame
 
                 // 清业务数据（图像队列、统计、合片队列、面板队列）
                 Data.Init();
+                // 连续 NG 的逐项计数跨卷没有意义，否则上一卷末尾的计数会算进新卷第一片
+                ClearConsecutiveCounts();
+                // 换卷把 PLC 侧的三路结果与心跳清回停止态，新卷从 0 开始
+                ResetAllResults();
+                // 上一卷没合算完的尺寸组跟着作废，否则新卷第一片会把它凑齐
+                ClearSizeGroups();
                 Project.Instance.baseProDevice.INIPro();
                 Project.Instance.baseProDevice.INIProduct();
 
@@ -221,25 +233,25 @@ namespace Mef_VisionFrame
         // 闭包 lambda 每次都会生成新的委托实例，-= 摘不掉上一次绑定的那个。
 
         /// <summary>模切主相机：裁图流程产出的原图 + 大图，大图进"大图"窗口。</summary>
-        public void 模切主相机_Process(ProductBase productBase)
+        public void DieCutMainCamProcess(ProductBase productBase)
         {
-            模切大图_Process(CamRole.模切主相机, 0, productBase);
+            ProcessDieCutImage(CamRole.模切主相机, 0, productBase);
         }
 
-        public void 模切从相机_Process(ProductBase productBase)
+        public void DieCutSubCamProcess(ProductBase productBase)
         {
-            模切大图_Process(CamRole.模切从相机, 0, productBase);
+            ProcessDieCutImage(CamRole.模切从相机, 0, productBase);
         }
 
         /// <summary>极片 EA：裁图流程切出的 EA 图，进"EA图"窗口。</summary>
-        public void 模切主相机_EA_Process(ProductBase productBase)
+        public void DieCutMainCamEaProcess(ProductBase productBase)
         {
-            EA图_Process(CamRole.模切主相机, 0, productBase);
+            ProcessEaImage(CamRole.模切主相机, 0, productBase);
         }
 
-        public void 模切从相机_EA_Process(ProductBase productBase)
+        public void DieCutSubCamEaProcess(ProductBase productBase)
         {
-            EA图_Process(CamRole.模切从相机, 0, productBase);
+            ProcessEaImage(CamRole.模切从相机, 0, productBase);
         }
 
         // 尺寸三路的回调在 Server_五金模切.尺寸工位.cs：它们要等齐三路再判，
@@ -249,7 +261,7 @@ namespace Mef_VisionFrame
         /// 裁图流程产出两张图：showHalconGroup[0] 原图、showHalconGroup[1] 大图。
         /// 界面只显示大图；原图当前没有存档通道（五金不需要激光那套原图留档），直接释放。
         /// </summary>
-        private void 模切大图_Process(CamRole role, int occurrence, ProductBase productBase)
+        private void ProcessDieCutImage(CamRole role, int occurrence, ProductBase productBase)
         {
             DieCutImageProduct product = productBase as DieCutImageProduct;
             if (product?.showHalconGroup == null || product.showHalconGroup.Count < 2) return;
@@ -261,16 +273,16 @@ namespace Mef_VisionFrame
 
             // 原图：拼图输入，界面不显示但必须留档。入队后由显示线程保存并释放，
             // 不能在这里同步 Dispose——裁剪流程的 imageInfos 用的正是这张图。
-            投递图像(camIndex, product.showHalconGroup[0], "原图", Data.Cams[camIndex].RawSave);
+            DeliverImage(camIndex, product.showHalconGroup[0], "原图", Data.Cams[camIndex].RawSave);
 
             HOperatorSet.CountSeconds(out product.detectionTime.Data_EndTime);
-            写检测耗时(camIndex, 0, product.showHalconGroup[1], product.detectionTime);
+            WriteDetectionTime(camIndex, 0, product.showHalconGroup[1], product.detectionTime);
 
-            投递图像(camIndex, product.showHalconGroup[1], "大图", Data.Cams[camIndex].MainShow, 图像流.大图);
+            DeliverImage(camIndex, product.showHalconGroup[1], "大图", Data.Cams[camIndex].MainShow, 图像流.大图);
         }
 
         /// <summary>EA 图：一张。判定的 NG 标记由调用方先写在 window 上，这里不再覆盖。</summary>
-        private void EA图_Process(CamRole role, int occurrence, ProductBase productBase)
+        private void ProcessEaImage(CamRole role, int occurrence, ProductBase productBase)
         {
             DieCutEAProduct product = productBase as DieCutEAProduct;
             ShowHalconWindow window = product?.showHalconGroup?.FirstOrDefault();
@@ -281,27 +293,33 @@ namespace Mef_VisionFrame
 
             HOperatorSet.CountSeconds(out product.detectionTime.Data_StartTime);
 
-            缺陷帧结论 结论 = 外观缺陷判定(camIndex, product, window);
-            window.m_bIsNG = 结论.IsNG;
+            DefectFrameResult result = JudgeAppearanceDefects(camIndex, product, window);
+            window.m_bIsNG = result.IsNG;
+
+            // 本片外观结论直接回传 PLC：上线/下线各写各的，不需要等合片、也不需要 PLC 请求。
+            // 宁可先给结论再落盘，机构在等这个值。
+            bool isUp = role == CamRole.模切主相机;
+            WriteAppearanceResult(isUp, result.IsNG);
+            WriteAppearanceSendLog(isUp, result.IsNG, window.m_nImageFrameID);
 
             // 明细落盘：这一帧检出的每个缺陷一行（没有缺陷时为空表，与激光一致）
-            string 明细路径 = role == CamRole.模切主相机 ? Data.Station1_ALineCamPath_Defect : Data.Station1_BLineCamPath_Defect;
-            FileOperationCSV.WriteData_CSV(明细路径, Data.Station1_DefectTitle.ToArray(), product.productDataResult.DefectData, Service_Camera.GetCam_Name(camIndex));
+            string detailPath = role == CamRole.模切主相机 ? Data.Station1_ALineCamPath_Defect : Data.Station1_BLineCamPath_Defect;
+            FileOperationCSV.WriteData_CSV(detailPath, Data.Station1_DefectTitle.ToArray(), product.productDataResult.DefectData, Service_Camera.GetCam_Name(camIndex));
 
             // 右侧"EA 缺陷明细"面板：与 CSV 同一批行，界面线程取走显示
-            QueuePackage<List<RowData>> 明细队列 = role == CamRole.模切主相机 ? Data.主相机_DefectShowQueue : Data.从相机_DefectShowQueue;
+            QueuePackage<List<RowData>> detailQueue = role == CamRole.模切主相机 ? Data.UpCamDefectShowQueue : Data.DownCamDefectShowQueue;
             foreach (List<RowData> row in product.productDataResult.DefectData)
             {
-                明细队列.Enqueue(row, 200);
+                detailQueue.Enqueue(row, 200);
             }
 
             // 结果入 A/B 队列，由合片线程按 EA 号配对；统计在合片后按“一片”计，不在这里算
             product.productDataResult.m_nImageFrameID = window.m_nImageFrameID;
             product.productDataResult.m_nProductID = window.m_nProductID;
-            product.productDataResult.IsNG = 结论.IsNG;
-            product.productDataResult.IsSevereDefect = 结论.IsSevere;
+            product.productDataResult.IsNG = result.IsNG;
+            product.productDataResult.IsSevereDefect = result.IsSevere;
             // 片级统计只取这一项，见 计缺陷片分布
-            product.productDataResult.highestPriorityNgDefect = 结论.HighestPriority;
+            product.productDataResult.highestPriorityNgDefect = result.HighestPriority;
 
             if (role == CamRole.模切主相机)
             {
@@ -313,9 +331,9 @@ namespace Mef_VisionFrame
             }
 
             HOperatorSet.CountSeconds(out product.detectionTime.Data_EndTime);
-            写检测耗时(camIndex, 1, window, product.detectionTime);
+            WriteDetectionTime(camIndex, 1, window, product.detectionTime);
 
-            投递图像(camIndex, window, "EA图", Data.Cams[camIndex].EaShow, 图像流.EA图);
+            DeliverImage(camIndex, window, "EA图", Data.Cams[camIndex].EaShow, 图像流.EA图);
         }
 
         /// <summary>相机下标按角色解析，不写死 0..4——画像换顺序时这里不用改。</summary>
@@ -331,19 +349,19 @@ namespace Mef_VisionFrame
         /// 其中图像时间由流程自己记，数据处理时间由调用方在入口/出口各打一次点。
         /// 流：0 = 大图/原图，1 = EA 图。
         /// </summary>
-        private void 写检测耗时(int camIndex, int 流, ShowHalconWindow window, DetectionTime detectionTime)
+        private void WriteDetectionTime(int camIndex, int flow, ShowHalconWindow window, DetectionTime detectionTime)
         {
             if (Data.DetectionTimePath == null || camIndex < 0 || camIndex >= Data.DetectionTimePath.Length) return;
             if (window == null) return;
 
-            string path = Data.DetectionTimePath[camIndex][流];
+            string path = Data.DetectionTimePath[camIndex][flow];
             if (string.IsNullOrEmpty(path)) return;
 
             double imageTime = ((detectionTime.Image_EndTime - detectionTime.Image_StartTime) * 1000).D;
             double dataTime = ((detectionTime.Data_EndTime - detectionTime.Data_StartTime) * 1000).D;
             double sumTime = ((detectionTime.Data_EndTime - detectionTime.Image_StartTime) * 1000).D;
 
-            List<RowData> 行 = new List<RowData>
+            List<RowData> row = new List<RowData>
             {
                 new RowData { dataStr = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff") },
                 new RowData { dataStr = window.m_nImageFrameID.ToString() },
@@ -353,7 +371,7 @@ namespace Mef_VisionFrame
                 new RowData { dataStr = sumTime.ToString("0.00") },
             };
 
-            FileOperationCSV.WriteData_CSV(path, Data.DetectionTimeTitle.ToArray(), 行.ToArray(), Service_Camera.GetCam_Name(camIndex));
+            FileOperationCSV.WriteData_CSV(path, Data.DetectionTimeTitle.ToArray(), row.ToArray(), Service_Camera.GetCam_Name(camIndex));
         }
 
         /// <summary>图像流：决定取哪一套保存/显示参数。</summary>
@@ -372,7 +390,7 @@ namespace Mef_VisionFrame
         /// 线扫相机在配置里关掉了"显示原图"（IsShow=false），但大图/EA 图是开的。
         /// 统一取原图参数会让大图和 EA 图被判定为"只存不显"，界面永远是黑的。
         /// </summary>
-        private void 投递图像(int camIndex, ShowHalconWindow window, string 子目录, ImageQueueData showQueue, 图像流 流 = 图像流.原图)
+        private void DeliverImage(int camIndex, ShowHalconWindow window, string subDir, ImageQueueData showQueue, 图像流 flow = 图像流.原图)
         {
             if (window == null) return;
             if (camIndex < 0 || camIndex >= Data.Cams.Length) return;
@@ -381,7 +399,7 @@ namespace Mef_VisionFrame
             // 而且显示失败是被 RepaintCam 内层 catch 吞掉的，界面上看不到任何线索。
             if (window.m_hImage == null || !window.m_hImage.IsInitialized())
             {
-                MessageNotify.AddErrorLog($"【{Service_Camera.GetCam_Name(camIndex)}】-【{子目录}】图像已失效，跳过显示，帧号{window.m_nImageFrameID}");
+                MessageNotify.AddErrorLog($"【{Service_Camera.GetCam_Name(camIndex)}】-【{subDir}】图像已失效，跳过显示，帧号{window.m_nImageFrameID}");
                 return;
             }
 
@@ -393,7 +411,7 @@ namespace Mef_VisionFrame
             ImageSaveFormat imageFormat;
             bool isShow;
             ImageSaveSelect saveMode;
-            switch (流)
+            switch (flow)
             {
                 case 图像流.大图:
                     imageFormat = saveParam.BigImageSaveParamer.ImageFormat;
@@ -416,15 +434,15 @@ namespace Mef_VisionFrame
             window.WindowName = camName;
             window.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"帧号：{window.m_nImageFrameID}" });
 
-            string 文件名 = window.m_nImageFrameID.ToString().PadLeft(5, '0') + "_" + window.m_nProductID + "_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff");
-            window.m_imageSavePathInfo.Path = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, 子目录);
-            window.m_imageSavePathInfo.FileName = 文件名;
+            string fileName = window.m_nImageFrameID.ToString().PadLeft(5, '0') + "_" + window.m_nProductID + "_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff");
+            window.m_imageSavePathInfo.Path = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir);
+            window.m_imageSavePathInfo.FileName = fileName;
             window.m_imageSavePathInfo.FileFormat = imageFormat;
             window.m_imageSavePathInfo.IsShow = isShow;
             window.m_imageSavePathInfo.IsSave = SaveImageTool.GetIsSave(saveMode, window.m_bIsNG);
 
-            window.m_imageSavePathInfo.ScreenshotPath = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, 子目录 + "截图");
-            window.m_imageSavePathInfo.ScreenshotFileName = 文件名;
+            window.m_imageSavePathInfo.ScreenshotPath = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir + "截图");
+            window.m_imageSavePathInfo.ScreenshotFileName = fileName;
             window.m_imageSavePathInfo.ScreenshotFileFormat = saveParam.ScreenshotSaveParamer.ImageFormat;
             window.m_imageSavePathInfo.IsHighDefinitionCapture = saveParam.ScreenshotSaveParamer.IsHighDefinitionCapture;
             window.m_imageSavePathInfo.IsScreenshot = SaveImageTool.GetIsSave(saveParam.ScreenshotSaveParamer.SaveMode, window.m_bIsNG);
@@ -453,30 +471,30 @@ namespace Mef_VisionFrame
                 switch (Data.M_SimRunCommand)
                 {
                     case SimRunCommand.SimPrev:
-                        仿真逐路取图(SimControl.LoadPrevImage_Sim);
+                        SimGrabByCam(SimControl.LoadPrevImage_Sim);
                         Data.M_SimRunCommand = SimRunCommand.Stop;
-                        仿真执行一轮();
+                        SimRunOnce();
                         break;
 
                     case SimRunCommand.SimNext:
-                        仿真逐路取图(SimControl.LoadNextImage_Sim);
+                        SimGrabByCam(SimControl.LoadNextImage_Sim);
                         Data.M_SimRunCommand = SimRunCommand.Stop;
-                        仿真执行一轮();
+                        SimRunOnce();
                         break;
 
                     case SimRunCommand.SimRun:
-                        if (!尺寸工位空闲) return;
-                        仿真逐路取图(SimControl.LoadNextImage_Sim);
+                        if (!IsSizeStationIdle) return;
+                        SimGrabByCam(SimControl.LoadNextImage_Sim);
                         break;
                 }
             });
         }
 
         /// <summary>仿真取图函数的签名（带 ref，所以不能用 Func 委托）。</summary>
-        private delegate bool 仿真取图委托(ImageSimManage manage, ref QueuePackage<ImageInfo> queue, string source);
+        private delegate bool SimGrabDelegate(ImageSimManage manage, ref QueuePackage<ImageInfo> queue, string source);
 
         /// <summary>五路并行取图：取到就交给该路的仿真参数，进 alreadyDealGrabImage。</summary>
-        private void 仿真逐路取图(仿真取图委托 取图)
+        private void SimGrabByCam(SimGrabDelegate grab)
         {
             Parallel.ForEach(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, item =>
             {
@@ -485,9 +503,9 @@ namespace Mef_VisionFrame
 
                 try
                 {
-                    bool 取到 = 取图(Service_Camera.Get_CameraRelevancy(camIndex).m_ImageSimManage,
+                    bool got = grab(Service_Camera.Get_CameraRelevancy(camIndex).m_ImageSimManage,
                                      ref item.Value.QueueGrabImage, camName + "仿真加载图片");
-                    if (!取到) return;   // 该路没有可取的图：不唤醒流程，避免空转
+                    if (!got) return;   // 该路没有可取的图：不唤醒流程，避免空转
 
                     item.Value.CallBackImgDataDeal();
                 }
@@ -498,8 +516,8 @@ namespace Mef_VisionFrame
             });
         }
 
-        /// <summary>单步：让每条流程各跑一次（冲模流程在内，它自己只做 PLC 交互占位）。</summary>
-        private void 仿真执行一轮()
+        /// <summary>单步：让每条流程各跑一次。</summary>
+        private void SimRunOnce()
         {
             foreach (ProcessServices item in Project.Instance.m_ProcessList)
             {
@@ -548,13 +566,13 @@ namespace Mef_VisionFrame
                 // 一个节拍里最多合 5 片，与激光模切一致；剩下的留到下个节拍
                 for (int i = 0; i < 5; i++)
                 {
-                    if (!合片一次()) break;
+                    if (!MergeOnce()) break;
                 }
             });
         }
 
         /// <summary>返回 true 表示这一轮有进展（合片成功或丢了一片），可以继续下一轮。</summary>
-        private bool 合片一次()
+        private bool MergeOnce()
         {
             if (Data.Craft == null) return false;
 
@@ -582,22 +600,14 @@ namespace Mef_VisionFrame
                 MessageNotify.AddCommLog($"缺陷工位——合片完成，产品ID{AProductID}");
 
                 // 统计按“一片”计：A/B 任一面 NG 即这一片 NG
-                Server_DieCuttingCut.DataStatistical(Data.Station1_StatisticalData, AProductID, product.IsNG);
+                DieCutJudge.DataStatistical(Data.Station1_StatisticalData, AProductID, product.IsNG);
 
                 // 分布同样按“一片”计：取 A/B 两面中优先级最高的那一个 NG 项，
                 // 不逐缺陷累加——否则一片上有 3 个缺陷就记 3 次，占比会超过 100%。
-                计缺陷片分布(product);
+                CountDefectDistribution(product);
 
                 Data.DefectStation_BindingDatasSave.Enqueue(
                     Model_五金模切.Snapshot(Data.DefectCounts, Data.Station1_StatisticalData), 1);
-
-                // 仿真没有 PLC 请求：合片完成就发这一片，保证与实机一样一片一次
-                if (Project.Instance.Is_simulation)
-                {
-                    // 仿真没有帧开始回调，这里补齐"当前帧号"，让发送日志与实机同义
-                    Data.DefectStation_CurrentFrame = AProductID + (int)(Data.Craft.Get_GlobalVariableItem("BackSideCount")?.Value.ToInt() ?? 0);
-                    发送缺陷结果(AProductID, 1);
-                }
 
                 return true;
             }
@@ -617,8 +627,9 @@ namespace Mef_VisionFrame
         {
             // 五金没有裁切工位；这里清的是缺陷/尺寸两个工位的结果与队列
             Data.Reset_DefectStation();
-            尺寸连续NG计数 = 0;
-            lock (尺寸同步锁) 尺寸待判组.Clear();
+            ClearConsecutiveCounts();
+            ResetAllResults();
+            ClearSizeGroups();
         }
 
         public override void AlarmReset()
@@ -643,7 +654,7 @@ namespace Mef_VisionFrame
 
         /// <summary>
         /// 底部状态栏。内容与激光模切一致（用户、相机、光源、控制卡、内存、CPU、磁盘），
-        /// 去掉的只有裁切设备 PLC——五金没有那台 PLC。
+        /// 区别是 PLC 显示的是五金自己的 CIP 实例，不是激光那台 D 寄存器 PLC。
         /// </summary>
         public override List<StatusLabelItem> GetStatusBarInfo()
         {
@@ -674,6 +685,13 @@ namespace Mef_VisionFrame
                 {
                     Text = "控制卡",
                     Status = ServiceCardManage.Instance.GetIControlCard()?.IsConnnected() != 0 ? StatusLevel.Normal : StatusLevel.Alarm
+                });
+
+                // 五金自己的 PLC。取错实例（取到激光那台）会导致状态永远是红的或永远绿，现场极难发现。
+                statusLabelItems.Add(new StatusLabelItem()
+                {
+                    Text = "PLC",
+                    Status = Project.Instance.server_五金模切PLC?.InitState == true ? StatusLevel.Normal : StatusLevel.Alarm
                 });
 
                 MyMetrics.GetPrivateWorkingSetMB();

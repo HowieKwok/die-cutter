@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -35,9 +35,20 @@ namespace DevMgmt.Cameras.SDK
         public delegateCallBack CamCallbackEndEvent;
 
         /// <summary>
-        /// 相机回调开始事件
+        /// 相机回调开始事件（取到图、开始解码时触发）。
+        /// 声明成真正的 event：它由多个使用方分别 +=，
+        /// 若保持委托字段，后注册的会静默覆盖前一个。
         /// </summary>
-        public delegateDeviceEventGrabed CamCallbackStartEvent;
+        public event delegateDeviceEventGrabed CamCallbackStartEvent;
+
+        /// <summary>
+        /// 子类取到图时调用，触发全部订阅者。
+        /// event 只能在声明类内部 raise，子类统一走这个方法。
+        /// </summary>
+        protected void RaiseCamCallbackStart(long currentFrame)
+        {
+            CamCallbackStartEvent?.Invoke(currentFrame);
+        }
 
         /// <summary>
         /// 帧开始回调事件

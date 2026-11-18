@@ -1,4 +1,4 @@
-﻿using DevMgmt.Cameras.Models;
+using DevMgmt.Cameras.Models;
 using FrameCommunity;
 using FrameCommunity.Data;
 using HalconDotNet;
@@ -422,7 +422,7 @@ namespace DevMgmt.Cameras.SDK
                 Log4netRecord.CamLog.Info($"{cameraSerialNumber}第{GrabCount + 1}帧:两次回调间隔时间: {sw.Elapsed.TotalMilliseconds}ms,队列长度:{Queue_GrabImage.Count}");
                 sw.Restart();
                 Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + GrabCount + 1.ToString());
-                CamCallbackStartEvent?.Invoke(GrabCount + 1);
+                RaiseCamCallbackStart(GrabCount + 1);
 
                 IntPtr hDev = (IntPtr)pParam;
                 IntPtr pUserBuffer = IntPtr.Zero;

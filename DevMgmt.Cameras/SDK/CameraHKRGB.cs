@@ -1,4 +1,4 @@
-﻿using DevMgmt.Cameras.Models;
+using DevMgmt.Cameras.Models;
 using FrameCommunity;
 using FrameCommunity.Data;
 using HalconDotNet;
@@ -174,7 +174,7 @@ namespace DevMgmt.Cameras.SDK
                 {
                     GrabCount++;
                     Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + GrabCount.ToString());
-                    CamCallbackStartEvent?.Invoke(GrabCount );
+                    RaiseCamCallbackStart(GrabCount );
                     HOperatorSet.GenImageInterleaved(out image, pData, "rgb", pFrameInfo.nWidth, pFrameInfo.nHeight, -1, "byte", pFrameInfo.nWidth, pFrameInfo.nHeight, 0, 0, -1, 0);
                     Queue_GrabImage.Enqueue(new ImageInfo() { ho_image = Image, image_ID = GrabCount, imageWidth = pFrameInfo.nWidth, imageHeight = pFrameInfo.nHeight });//图像进队
 

@@ -25,21 +25,21 @@ namespace Mef_VisionFrame
         private readonly List<CamDisplayUnit> displayUnits = new List<CamDisplayUnit>();
 
         // 控件必须留引用：NewDisplayWindowClass 只持有它们的 HWindow，窗体一旦被回收画面就黑掉。
-        private UC_HalconWindow win主大图;
-        private UC_HalconWindow win主EA图;
-        private UC_HalconWindow win从大图;
-        private UC_HalconWindow win从EA图;
-        private UC_HalconWindow win尺寸1;
-        private UC_HalconWindow win尺寸2;
-        private UC_HalconWindow win尺寸3;
+        private UC_HalconWindow winUpMain;
+        private UC_HalconWindow winUpEa;
+        private UC_HalconWindow winDownMain;
+        private UC_HalconWindow winDownEa;
+        private UC_HalconWindow winSize1;
+        private UC_HalconWindow winSize2;
+        private UC_HalconWindow winSize3;
 
         // 右侧过程数据面板：EA 缺陷（主/从）、缺陷发送、尺寸结果、尺寸缺陷、尺寸发送
-        private DynamicDataPanel dp_主EA缺陷;
-        private DynamicDataPanel dp_从EA缺陷;
-        private DynamicDataPanel dp_缺陷发送;
-        private DynamicDataPanel dp_尺寸结果;
-        private DynamicDataPanel dp_尺寸缺陷;
-        private DynamicDataPanel dp_尺寸发送;
+        private DynamicDataPanel dpUpEaDefect;
+        private DynamicDataPanel dpDownEaDefect;
+        private DynamicDataPanel dpDefectSend;
+        private DynamicDataPanel dpSizeResult;
+        private DynamicDataPanel dpSizeDefect;
+        private DynamicDataPanel dpSizeSend;
 
         /// <summary>日志页：与激光模切共用 UC_Message（自带上限与颜色，自己消费队列）。</summary>
         private UC_Message logView;
@@ -130,15 +130,15 @@ namespace Mef_VisionFrame
             diePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             diePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-            win主大图 = NewWindow(0, "大图");
-            win主EA图 = NewWindow(0, "EA图");
-            win从大图 = NewWindow(1, "大图");
-            win从EA图 = NewWindow(1, "EA图");
+            winUpMain = NewWindow(0, "大图");
+            winUpEa = NewWindow(0, "EA图");
+            winDownMain = NewWindow(1, "大图");
+            winDownEa = NewWindow(1, "EA图");
 
-            diePanel.Controls.Add(win主大图, 0, 0);
-            diePanel.Controls.Add(win主EA图, 1, 0);
-            diePanel.Controls.Add(win从大图, 0, 1);
-            diePanel.Controls.Add(win从EA图, 1, 1);
+            diePanel.Controls.Add(winUpMain, 0, 0);
+            diePanel.Controls.Add(winUpEa, 1, 0);
+            diePanel.Controls.Add(winDownMain, 0, 1);
+            diePanel.Controls.Add(winDownEa, 1, 1);
 
             TableLayoutPanel sizePanel = new TableLayoutPanel
             {
@@ -152,13 +152,13 @@ namespace Mef_VisionFrame
                 sizePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / 3));
             }
 
-            win尺寸1 = NewWindow(2, null);
-            win尺寸2 = NewWindow(3, null);
-            win尺寸3 = NewWindow(4, null);
+            winSize1 = NewWindow(2, null);
+            winSize2 = NewWindow(3, null);
+            winSize3 = NewWindow(4, null);
 
-            sizePanel.Controls.Add(win尺寸1, 0, 0);
-            sizePanel.Controls.Add(win尺寸2, 1, 0);
-            sizePanel.Controls.Add(win尺寸3, 2, 0);
+            sizePanel.Controls.Add(winSize1, 0, 0);
+            sizePanel.Controls.Add(winSize2, 1, 0);
+            sizePanel.Controls.Add(winSize3, 2, 0);
 
             panel.Controls.Add(diePanel, 0, 0);
             panel.Controls.Add(sizePanel, 0, 1);
@@ -276,24 +276,24 @@ namespace Mef_VisionFrame
             Panel chartScroll = new Panel { Dock = DockStyle.Fill };
             chartScroll.Controls.Add(chartTabs);
 
-            dp_主EA缺陷 = new DynamicDataPanel { Dock = DockStyle.Fill };
-            dp_从EA缺陷 = new DynamicDataPanel { Dock = DockStyle.Fill };
-            dp_缺陷发送 = new DynamicDataPanel { Dock = DockStyle.Fill };
-            dp_尺寸结果 = new DynamicDataPanel { Dock = DockStyle.Fill };
-            dp_尺寸缺陷 = new DynamicDataPanel { Dock = DockStyle.Fill };
-            dp_尺寸发送 = new DynamicDataPanel { Dock = DockStyle.Fill };
+            dpUpEaDefect = new DynamicDataPanel { Dock = DockStyle.Fill };
+            dpDownEaDefect = new DynamicDataPanel { Dock = DockStyle.Fill };
+            dpDefectSend = new DynamicDataPanel { Dock = DockStyle.Fill };
+            dpSizeResult = new DynamicDataPanel { Dock = DockStyle.Fill };
+            dpSizeDefect = new DynamicDataPanel { Dock = DockStyle.Fill };
+            dpSizeSend = new DynamicDataPanel { Dock = DockStyle.Fill };
 
             tabs.Pages.Add(NewTabPage("良率统计", BuildYieldPage()));
 
             // 顺序与激光模切一致：A 面 → B 面 → 发送（激光 tableLayoutPanel6）
             tabs.Pages.Add(NewTabPage("缺陷过程数据", BuildSectionStack(
                 new[] { "A线扫缺陷过程数据", "B线扫缺陷过程数据", "缺陷工位通讯数据" },
-                new Control[] { dp_主EA缺陷, dp_从EA缺陷, dp_缺陷发送 })));
+                new Control[] { dpUpEaDefect, dpDownEaDefect, dpDefectSend })));
 
             // 顺序与激光模切一致：尺寸结果 → 尺寸缺陷 → 发送（激光 tableLayoutPanel9）
             tabs.Pages.Add(NewTabPage("极片过程数据", BuildSectionStack(
                 new[] { "极片尺寸过程数据", "极片缺陷过程数据", "极片尺寸工位通讯数据" },
-                new Control[] { dp_尺寸结果, dp_尺寸缺陷, dp_尺寸发送 })));
+                new Control[] { dpSizeResult, dpSizeDefect, dpSizeSend })));
 
             tabs.Pages.Add(NewTabPage("曲线图", chartScroll));
             tabs.Pages.Add(NewTabPage("缺陷图片", BuildNgPanel()));
@@ -466,8 +466,8 @@ namespace Mef_VisionFrame
             int index = 0;
             for (int cam = 0; cam < 5; cam++)
             {
-                int 格数 = NgSlotCount(cam);
-                for (int slot = 0; slot < 格数; slot++)
+                int slotCount = NgSlotCount(cam);
+                for (int slot = 0; slot < slotCount; slot++)
                 {
                     UC_HalconWindow window = NewWindow(cam, "NG" + (slot + 1));
                     ngWindows[cam, slot] = window;
@@ -539,16 +539,16 @@ namespace Mef_VisionFrame
                 return;
             }
 
-            Dictionary<string, int> 组内序号 = new Dictionary<string, int>();
+            Dictionary<string, int> groupIndex = new Dictionary<string, int>();
 
             foreach (SizeCraftStation_DieCuttingCut item in VM.Data.Craft.Get_Station3_SizeCrafts())
             {
-                string group = 曲线分组名(item.Name);
+                string group = GetCurveGroupName(item.Name);
                 TableLayoutPanel panel = chartPanels[group];
 
                 int index;
-                组内序号.TryGetValue(group, out index);
-                组内序号[group] = index + 1;
+                groupIndex.TryGetValue(group, out index);
+                groupIndex[group] = index + 1;
 
                 FormsPlot plot = new FormsPlot { Dock = DockStyle.Fill, Margin = new Padding(0) };
                 // 6/8 与激光模切一致：上下各留 6/8 个像素的观察余量，曲线不会贴边
@@ -575,7 +575,7 @@ namespace Mef_VisionFrame
         /// 曲线项 → 页签。极耳相关（极耳宽度/高度/左肩宽、带料高）归"极耳数据"，
         /// V角按上下两面分两页，其余整片类尺寸（单片长度/宽度/角度）归"极片数据"。
         /// </summary>
-        private static string 曲线分组名(string name)
+        private static string GetCurveGroupName(string name)
         {
             if (string.IsNullOrEmpty(name)) return "极片数据";
             if (name.StartsWith("下左") || name.StartsWith("下右")) return "V角数据(下)";
@@ -587,12 +587,12 @@ namespace Mef_VisionFrame
         /// <summary>按路取一格 NG 显示窗口，每显示一次推进一格（轮播）。</summary>
         private Func<NewDisplayWindowClass> NewNgPool(int camIndex)
         {
-            int 格数 = NgSlotCount(camIndex);
-            int 序号 = 0;
+            int slotCount = NgSlotCount(camIndex);
+            int slotIndex = 0;
             return () =>
             {
-                NewDisplayWindowClass window = ngDisplayWindows[camIndex, 序号 % 格数];
-                序号++;
+                NewDisplayWindowClass window = ngDisplayWindows[camIndex, slotIndex % slotCount];
+                slotIndex++;
                 return window;
             };
         }
@@ -665,11 +665,11 @@ namespace Mef_VisionFrame
             CamImageQueues[] cams = VM.Data.Cams;
             if (cams == null || cams.Length < 5) return;
 
-            AddUnit(0, "线扫", cams[0], win主大图, win主EA图);
-            AddUnit(1, "线扫", cams[1], win从大图, win从EA图);
-            AddUnit(2, "面阵", cams[2], win尺寸1, null);
-            AddUnit(3, "面阵", cams[3], win尺寸2, null);
-            AddUnit(4, "面阵", cams[4], win尺寸3, null);
+            AddUnit(0, "线扫", cams[0], winUpMain, winUpEa);
+            AddUnit(1, "线扫", cams[1], winDownMain, winDownEa);
+            AddUnit(2, "面阵", cams[2], winSize1, null);
+            AddUnit(3, "面阵", cams[3], winSize2, null);
+            AddUnit(4, "面阵", cams[4], winSize3, null);
         }
 
         /// <summary>
@@ -739,34 +739,34 @@ namespace Mef_VisionFrame
         private void InitDetailPanels()
         {
             // 参数与激光模切一致：80ms 数据间隔、最多 15 行
-            NDataPanelViewModel.Init(dp_主EA缺陷, VM.Data.Station1_DefectTitle.ToArray(), 80, 15);
-            NDataPanelViewModel.Init(dp_从EA缺陷, VM.Data.Station1_DefectTitle.ToArray(), 80, 15);
-            NDataPanelViewModel.Init(dp_缺陷发送, VM.Data.Station1_CamSendTitle.ToArray(), 80, 15);
-            NDataPanelViewModel.Init(dp_尺寸结果, VM.Data.Station3_Title_Size.ToArray(), 80, 15);
-            NDataPanelViewModel.Init(dp_尺寸缺陷, VM.Data.Station3_DefectTitle.ToArray(), 80, 15);
-            NDataPanelViewModel.Init(dp_尺寸发送, VM.Data.Station3_CamSendTitle.ToArray(), 80, 15);
+            NDataPanelViewModel.Init(dpUpEaDefect, VM.Data.Station1_DefectTitle.ToArray(), 80, 15);
+            NDataPanelViewModel.Init(dpDownEaDefect, VM.Data.Station1_DefectTitle.ToArray(), 80, 15);
+            NDataPanelViewModel.Init(dpDefectSend, VM.Data.Station1_CamSendTitle.ToArray(), 80, 15);
+            NDataPanelViewModel.Init(dpSizeResult, VM.Data.Station3_Title_Size.ToArray(), 80, 15);
+            NDataPanelViewModel.Init(dpSizeDefect, VM.Data.Station3_DefectTitle.ToArray(), 80, 15);
+            NDataPanelViewModel.Init(dpSizeSend, VM.Data.Station3_CamSendTitle.ToArray(), 80, 15);
 
             // 双击缺陷明细行打开缺陷小图。与激光模切一致：只对"缺陷明细"面板生效，
             // 尺寸结果/发送日志面板没有图片路径列。
-            绑定双击打开缺陷图(dp_主EA缺陷);
-            绑定双击打开缺陷图(dp_从EA缺陷);
-            绑定双击打开缺陷图(dp_尺寸缺陷);
+            BindDefectRowDoubleClick(dpUpEaDefect);
+            BindDefectRowDoubleClick(dpDownEaDefect);
+            BindDefectRowDoubleClick(dpSizeDefect);
         }
 
         /// <summary>先减后加，保证换配方（InitView 会重复调用）不会重复订阅。</summary>
-        private void 绑定双击打开缺陷图(DynamicDataPanel panel)
+        private void BindDefectRowDoubleClick(DynamicDataPanel panel)
         {
             if (panel?.DataListView == null) return;
 
-            panel.DataListView.MouseDoubleClick -= 缺陷明细行_DoubleClick;
-            panel.DataListView.MouseDoubleClick += 缺陷明细行_DoubleClick;
+            panel.DataListView.MouseDoubleClick -= DefectRowDoubleClick;
+            panel.DataListView.MouseDoubleClick += DefectRowDoubleClick;
         }
 
         /// <summary>
         /// 缺陷明细行双击：倒数第二列是"是否保存"，最后一列是缺陷小图的完整路径。
         /// 只有真的存了盘才打开，否则弹提示——存图未开启时路径是规划路径，文件不存在。
         /// </summary>
-        private void 缺陷明细行_DoubleClick(object sender, EventArgs e)
+        private void DefectRowDoubleClick(object sender, EventArgs e)
         {
             ListView view = sender as ListView;
             if (view == null || view.SelectedIndices.Count == 0) return;
@@ -774,19 +774,19 @@ namespace Mef_VisionFrame
             ListViewItem row = view.Items[view.SelectedIndices[0]];
             if (row.SubItems.Count < 2) return;
 
-            string 是否保存 = row.SubItems[row.SubItems.Count - 2].Text;
-            string 路径 = row.SubItems[row.SubItems.Count - 1].Text;
+            string savedFlag = row.SubItems[row.SubItems.Count - 2].Text;
+            string filePath = row.SubItems[row.SubItems.Count - 1].Text;
 
-            if (!是否保存.Equals("True", StringComparison.OrdinalIgnoreCase)) return;
+            if (!savedFlag.Equals("True", StringComparison.OrdinalIgnoreCase)) return;
 
-            if (!File.Exists(路径))
+            if (!File.Exists(filePath))
             {
                 MessageBox.Show("图片文件不存在！");
                 return;
             }
 
             System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo(路径) { UseShellExecute = true });
+                new System.Diagnostics.ProcessStartInfo(filePath) { UseShellExecute = true });
         }
 
         public override void RefreshView()
@@ -803,12 +803,12 @@ namespace Mef_VisionFrame
         /// </summary>
         private void FlushDetailPanels()
         {
-            FlushPanel(dp_主EA缺陷, VM.Data.主相机_DefectShowQueue, VM.Data.Station1_DefectTitle);
-            FlushPanel(dp_从EA缺陷, VM.Data.从相机_DefectShowQueue, VM.Data.Station1_DefectTitle);
-            FlushPanel(dp_缺陷发送, VM.Data.Station1_SendShowQueue, VM.Data.Station1_CamSendTitle);
-            FlushPanel(dp_尺寸结果, VM.Data.Station3_SizeShowQueue, VM.Data.Station3_Title_Size);
-            FlushPanel(dp_尺寸缺陷, VM.Data.Station3_DefectShowQueue, VM.Data.Station3_DefectTitle);
-            FlushPanel(dp_尺寸发送, VM.Data.Station3_SendShowQueue, VM.Data.Station3_CamSendTitle);
+            FlushPanel(dpUpEaDefect, VM.Data.UpCamDefectShowQueue, VM.Data.Station1_DefectTitle);
+            FlushPanel(dpDownEaDefect, VM.Data.DownCamDefectShowQueue, VM.Data.Station1_DefectTitle);
+            FlushPanel(dpDefectSend, VM.Data.Station1_SendShowQueue, VM.Data.Station1_CamSendTitle);
+            FlushPanel(dpSizeResult, VM.Data.Station3_SizeShowQueue, VM.Data.Station3_Title_Size);
+            FlushPanel(dpSizeDefect, VM.Data.Station3_DefectShowQueue, VM.Data.Station3_DefectTitle);
+            FlushPanel(dpSizeSend, VM.Data.Station3_SendShowQueue, VM.Data.Station3_CamSendTitle);
         }
 
         private static void FlushPanel(DynamicDataPanel panel, QueuePackage<List<RowData>> queue, List<string> titles)

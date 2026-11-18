@@ -22,13 +22,19 @@ namespace Frame_Core
 
         public override int ProcessCount
         {
-            get { return 8; }
+            get { return 7; }
         }
 
+        /// <summary>
+        /// 五金的结果与心跳全部走 PLC（CIP 符号地址），不再使用控制卡 IO 点位。
+        /// 这里返回空表，任何按点位表创建脉冲输出的代码都会自然拿不到点位。
+        /// </summary>
         public override IReadOnlyList<IoPoint> IoPoints
         {
-            get { return DieCuttingCutIoPoints.All; }
+            get { return EmptyIoPoints; }
         }
+
+        private static readonly IoPoint[] EmptyIoPoints = new IoPoint[0];
 
         public override BaseProDevice CreateProDevice()
         {
@@ -55,10 +61,10 @@ namespace Frame_Core
         }
 
         /// <summary>
-        /// 8 条流程：2 条裁图 + 2 条极片EA + 1 条冲模 + 3 条尺寸。
+        /// 7 条流程：2 条裁图 + 2 条极片EA + 3 条尺寸。
         ///
-        /// 与激光模切的差异只有一处：激光的「裁切定位」换成「冲模」——冲模没有相机，
-        /// CameraIndex 传 -1，流程体只有 PLC 信号交互（点位待定）。
+        /// 没有任何不取图的流程：冲模由 PLC 自己完成，视觉侧不需要交互，
+        /// 因此五金只有相机驱动的处理流程——PLC 触发相机出图，帧回调进对应流程。
         ///
         /// 尺寸三路沿用激光的「带极耳」二选一规则：极耳在左侧时中间那路做带极耳检测，
         /// 否则最后一路做。上机确认后可改成按配方逐路指定。
@@ -89,16 +95,11 @@ namespace Frame_Core
                 new ProcessSpec(1, ProcessName(1), ProcessKind.相机裁图),
                 new ProcessSpec(0, ProcessName(0) + "_极片EA", ProcessKind.极片EA),
                 new ProcessSpec(1, ProcessName(1) + "_极片EA", ProcessKind.极片EA),
-                // 冲模：取代激光的裁切定位，不取图
-                new ProcessSpec(NoCamera, "冲模", ProcessKind.冲模),
                 size1,
                 size2,
                 size3,
             };
         }
-
-        /// <summary>不挂相机的流程（如冲模）使用的 CameraIndex。</summary>
-        private const int NoCamera = -1;
 
         /// <summary>流程名取配置里的相机名，与激光模切保持同一套约定。</summary>
         private static string ProcessName(int cameraIndex)

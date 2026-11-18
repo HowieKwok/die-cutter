@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -265,7 +265,7 @@ namespace DevMgmt.Cameras.SDK
                 {
                     GrabCount++;
                     Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + GrabCount.ToString());
-                    CamCallbackStartEvent?.Invoke(GrabCount );
+                    RaiseCamCallbackStart(GrabCount );
                     HOperatorSet.GenImage1(out image, "byte", pFrameInfo.nWidth, pFrameInfo.nHeight, pData);
                     Queue_GrabImage.Enqueue(new ImageInfo() { ho_image = Image, image_ID = GrabCount, imageWidth = pFrameInfo.nWidth, imageHeight = pFrameInfo.nHeight });//图像进队
 

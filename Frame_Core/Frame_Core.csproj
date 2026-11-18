@@ -309,6 +309,9 @@
     <Compile Include="tools\自定义控件\ControlButton.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="模块\外设部分\五金模切\Model\PLCAddress_五金模切.cs" />
+    <Compile Include="模块\外设部分\五金模切\Model\PLCDevParam_五金.cs" />
+    <Compile Include="模块\外设部分\五金模切\Server\Server_五金模切PLC.cs" />
     <Compile Include="模块\外设部分\模切一体机\Model\PLCAddress_DieCuttingCut.cs" />
     <Compile Include="模块\外设部分\模切一体机\Model\PLCDevParam.cs" />
     <Compile Include="模块\外设部分\模切一体机\Server\Server_DiecuttingCutPLC.cs" />

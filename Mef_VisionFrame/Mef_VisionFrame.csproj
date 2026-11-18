@@ -448,10 +448,12 @@
     <Compile Include="项目五金模切\Server\Server_五金模切.工位信号.cs" />
     <Compile Include="项目五金模切\Server\Server_五金模切.缺陷工位.cs" />
     <Compile Include="项目五金模切\Server\Server_五金模切.PLC结果.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.连续NG.cs" />
     <Compile Include="项目五金模切\ViewModel\VM_五金模切.cs" />
     <Compile Include="项目五金模切\View\UC_五金模切.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="项目模切裁切机\Logic\DieCutJudge.cs" />
     <Compile Include="项目模切裁切机\Server\Server_DieCuttingCut.cs" />
     <Compile Include="项目模切裁切机\Server\SizeComputationalFormula.cs" />
     <Compile Include="项目模切裁切机\ViewModel\VM_DieCuttingCut.cs" />

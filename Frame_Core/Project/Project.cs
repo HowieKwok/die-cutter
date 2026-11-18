@@ -139,11 +139,26 @@ namespace Frame_Core
         //光源参数
         public LightControllerParam M_LightControllerParam = new LightControllerParam();
 
-        //PLC参数
+        //PLC参数（激光模切：Fins + D 寄存器）
         public PLCDevParam M_PLCDevParam = new PLCDevParam();
 
-        //PLC服务类
+        //PLC参数（五金模切：CIP + 符号地址，独立文件与独立实例）
+        public PLCDevParam_五金 M_PLCDevParam_五金 = new PLCDevParam_五金();
+
+        //PLC服务类（激光模切：D 寄存器地址表）
         public Server_DiecuttingCutPLC server_DiecuttingCutPLC = null;
+
+        //PLC服务类（五金模切：CIP 符号地址表）
+        public Server_五金模切PLC server_五金模切PLC = null;
+
+        /// <summary>
+        /// 当前机型是否五金模切。两种机型的 PLC 地址表和点位完全不同，
+        /// 连接时只能二选一，不能同时连（连不上的那个会持续报"主设备连接失败"）。
+        /// </summary>
+        public bool Is五金模切
+        {
+            get { return systemInfo != null && systemInfo.CraftType == MaterialCrafEnum.五金模切; }
+        }
 
         //控制卡参数
         public ParamControlCord M_ParamControlCord = new ParamControlCord();
@@ -188,7 +203,17 @@ namespace Frame_Core
                 M_LightControllerParam.l_LightControllerDevs.OpenAllLight();
                 LightOnOff = M_LightControllerParam.l_LightControllerDevs.GetAllLightOpenState();
 
-                server_DiecuttingCutPLC.Connect(M_PLCDevParam.IsConnect, M_PLCDevParam.GetPLCType(), (CommunicationProtocolEnum)M_PLCDevParam.ComType, M_PLCDevParam.PLC_IP, M_PLCDevParam.DevPort, (emDataFormat)M_PLCDevParam.nByteTrans);
+                // 两种机型的 PLC 地址表不同：五金只连自己的 CIP 符号表，激光只连 D 寄存器表。
+                // 同时连会让没接 PLC 的那一路持续触发"主设备连接失败"停机报警。
+                // 参数也各用各的实例：协议/地址/端口不能互相污染。
+                if (Is五金模切)
+                {
+                    server_五金模切PLC?.Connect(M_PLCDevParam_五金.IsConnect, M_PLCDevParam_五金.GetPLCType(), (CommunicationProtocolEnum)M_PLCDevParam_五金.ComType, M_PLCDevParam_五金.PLC_IP, M_PLCDevParam_五金.DevPort, (emDataFormat)M_PLCDevParam_五金.nByteTrans);
+                }
+                else
+                {
+                    server_DiecuttingCutPLC.Connect(M_PLCDevParam.IsConnect, M_PLCDevParam.GetPLCType(), (CommunicationProtocolEnum)M_PLCDevParam.ComType, M_PLCDevParam.PLC_IP, M_PLCDevParam.DevPort, (emDataFormat)M_PLCDevParam.nByteTrans);
+                }
 
                 ServiceCardManage.Instance.InitServiceCard(M_ParamControlCord);
             }
@@ -206,6 +231,7 @@ namespace Frame_Core
                 M_LightControllerParam.l_LightControllerDevs.CloseAllDev();
 
                 server_DiecuttingCutPLC?.Disconnect();
+                server_五金模切PLC?.Disconnect();
 
                 ServiceCardManage.Instance.GetIControlCard()?.Board_Close();
                 //if (cutOverlayPLCManage != null)
@@ -291,9 +317,12 @@ namespace Frame_Core
                 //【4】加载图像保存参数
                 M_NewImageSaveParamer = M_NewImageSaveParamer.ReadExtension<NewImageSaveParamer>(paramPathSet.SystemPath, $"ImageSaveParamer", M_CamParam.l_CameraDevs.Count);
 
-                //【5】加载PLC参数
+                //【5】加载PLC参数：两种机型的协议、地址形式、IP 都可能不同，必须是两份实例 + 两个文件。
+                //     共用一份时，在现场改五金 IP/协议会把激光的参数一起改掉。
                 M_PLCDevParam = M_PLCDevParam.ReadExtension<PLCDevParam>(paramPathSet.SystemPath, $"PLCDevParamr");
+                M_PLCDevParam_五金 = M_PLCDevParam_五金.ReadExtension<PLCDevParam_五金>(paramPathSet.SystemPath, $"PLCDevParamr_五金");
                 server_DiecuttingCutPLC = new Server_DiecuttingCutPLC(M_PLCDevParam);
+                server_五金模切PLC = new Server_五金模切PLC(M_PLCDevParam_五金);
 
                 //【6】加载点检参数
                 M_param_PointInspection = M_param_PointInspection.ReadExtension<Param_PointInspection>(paramPathSet.SystemPath, $"PointInspectionParamer");
@@ -535,6 +564,7 @@ namespace Frame_Core
                     paramPathSet.UpdateParamPath(_currentProduct, _currentMojuanhao, _materialCrafEnum, m_ProcessList, systemInfo.IsHostMachine);
 
                     server_DiecuttingCutPLC?.SetLogPath(paramPathSet.ProductMojuanPath);
+                    server_五金模切PLC?.SetLogPath(paramPathSet.ProductMojuanPath);
                     cutOverlayPLCManage?.SetLogPath(paramPathSet.ProductMojuanPath);
 
                     string strPath = paramPathSet.ProductMojuanPath;

@@ -1,4 +1,4 @@
-﻿
+
 using DevMgmt.Cameras.Models;
 using FrameCommunity;
 using FrameCommunity.Data;
@@ -280,7 +280,7 @@ namespace DevMgmt.Cameras.SDK
             {
               
                 Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + (GrabCount + 1).ToString());
-                CamCallbackStartEvent?.Invoke(GrabCount + 1);
+                RaiseCamCallbackStart(GrabCount + 1);
                 if (!pFrameInfo.enPixelType.ToString().Contains("Packed"))
                 {
                     if (pFrameInfo.enPixelType.ToString().Contains("Mono8") || pFrameInfo.enPixelType.ToString().Contains("Mono10") || pFrameInfo.enPixelType.ToString().Contains("Mono12"))
@@ -356,7 +356,7 @@ namespace DevMgmt.Cameras.SDK
 
 
                 Log4netRecord.CamLog.Debug($"相机{CamID}回调开始" + "-" + (GrabCount + 1).ToString());
-                CamCallbackStartEvent?.Invoke(GrabCount + 1);
+                RaiseCamCallbackStart(GrabCount + 1);
 
                 if (pFrameInfo.enPixelType.ToString().Contains("RGB") || pFrameInfo.enPixelType.ToString().Contains("BGR"))
                 {

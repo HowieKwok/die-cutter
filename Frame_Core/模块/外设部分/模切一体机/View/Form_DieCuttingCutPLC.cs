@@ -12,15 +12,21 @@ namespace Frame_Core
 {
     public partial class Form_DieCuttingCutPLC : Form
     {
-        Server_DiecuttingCutPLC Server;
-        public Form_DieCuttingCutPLC(Server_DiecuttingCutPLC server_DiecuttingCutPLC)
+        /// <summary>
+        /// 直接持有基类：两种机型各有一个 PLC 服务实例、各有一份参数，
+        /// 界面不该只认激光那一个（否则在五金机上点"连接"连的是激光的连接对象）。
+        /// </summary>
+        PLCCommunicationBase Server;
+
+        public Form_DieCuttingCutPLC(PLCCommunicationBase server)
         {
             InitializeComponent();
-            Server = server_DiecuttingCutPLC;
+            Server = server;
         }
 
         private void Form_DieCuttingCutPLC_Load(object sender, EventArgs e)
         {
+            Text = $"PLC 通讯设置（{Project.Instance.systemInfo?.CraftType}）";
             ParamToView();
         }
 

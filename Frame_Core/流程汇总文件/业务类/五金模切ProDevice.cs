@@ -6,13 +6,13 @@ using System;
 namespace Frame_Core.业务类
 {
     /// <summary>
-    /// 五金模切的设备业务对象：5 路相机、8 条流程。
+    /// 五金模切的设备业务对象：5 路相机、7 条流程。
     ///
     /// 流程内容（模块装配、运行处理）在 五金模切ProDevice.流程内容.cs，是从激光模切复制过来的独立一份：
     /// 两边互不影响，改一边不会动另一边。
     ///
-    /// 8 条流程 = 2 裁图 + 2 极片EA + 1 冲模 + 3 尺寸，其中冲模没有相机、没有算法模块，
-    /// 只有 PLC 信号交互（点位未定，先留空）。
+    /// 7 条流程 = 2 裁图 + 2 极片EA + 3 尺寸。没有不取图的流程：
+    /// 冲模由 PLC 自己完成，视觉侧不参与，因此每条流程都由相机出图驱动。
     /// </summary>
     partial class 五金模切ProDevice : DieCutFlowAlgorithmBase
     {
@@ -127,63 +127,29 @@ namespace Frame_Core.业务类
             {
                 // 线扫主/从：裁拼大图 + 产出极片 EA
                 case ProcessKind.相机裁图:
-                    onInit = Init相机裁图流程;
-                    onRun = ProProcess新相机裁图流程;
+                    onInit = InitCropProcess;
+                    onRun = RunCropProcess;
                     return;
 
                 // 极片 EA：吃裁图流程产出的 EA 图
                 case ProcessKind.极片EA:
-                    onInit = Init极片EA流程;
-                    onRun = ProProcess极片EA流程;
+                    onInit = InitEaProcess;
+                    onRun = RunEaProcess;
                     return;
 
                 // 尺寸 1~3
                 case ProcessKind.极片尺寸检测:
-                    onInit = Init极片尺寸检测流程;
-                    onRun = ProProcess极片尺寸检测流程;
+                    onInit = InitSizeProcess;
+                    onRun = RunSizeProcess;
                     return;
                 case ProcessKind.极片尺寸带极耳检测:
-                    onInit = Init极片尺寸带极耳检测流程;
-                    onRun = ProProcess极片尺寸带极耳检测流程;
-                    return;
-
-                // 冲模：取代激光模切的裁切定位，不取图、不建模块
-                case ProcessKind.冲模:
-                    onRun = ProProcess冲模流程;
+                    onInit = InitSizeTabProcess;
+                    onRun = RunSizeTabProcess;
                     return;
 
                 default:
                     throw new NotSupportedException("五金模切未实现该流程种类：" + kind);
             }
-        }
-
-        /// <summary>
-        /// 冲模流程。没有相机、没有算法模块，只做 PLC 信号交互。
-        ///
-        /// PLC 点位未定，这里只保留骨架：确定点位后在 <see cref="冲模信号交互"/> 里补读写，
-        /// 不要在这里加取图或算法逻辑——冲模流程不产图像。
-        /// </summary>
-        public void ProProcess冲模流程(Process process)
-        {
-            try
-            {
-                // 流程线程在 RunCycle 模式下是 5ms 空转，没有点位时没必要占满一个核
-                System.Threading.Thread.Sleep(20);
-                冲模信号交互(process);
-            }
-            catch (Exception ex)
-            {
-                Log4netRecord.ErrorLog.Error("五金模切冲模流程异常:" + ex);
-            }
-        }
-
-        /// <summary>
-        /// 冲模 PLC 信号交互占位。
-        /// 待补：读「冲模到位/上死点」等输入点，写「允许冲模/冲模完成」等输出点，
-        /// 点位表确定后再实现，不要沿用激光模切的裁切定位点位。
-        /// </summary>
-        private void 冲模信号交互(Process process)
-        {
         }
     }
 }

@@ -218,8 +218,6 @@ namespace Frame_Core
 
             target.AddVariableByOrder(loaded, "极耳在左侧", "左侧为1右侧为0", DataTypeEnum.Int, "1");
             target.AddVariableByOrder(loaded, "带AT", "带AT（true）", DataTypeEnum.Bool, "false");
-            target.AddVariableByOrder(loaded, "HeartbeatPollingTime", "心跳轮询时间(ms)", DataTypeEnum.Int, "500");
-            target.AddVariableByOrder(loaded, "HeartbeatPulseWidth", "心跳脉冲宽度(ms)", DataTypeEnum.Int, "100");
             target.AddVariableByOrder(loaded, "防抖时间", "防抖时间(ms)", DataTypeEnum.Int, "10");
             target.AddVariableByOrder(loaded, "PulseWidth", "脉冲宽度(ms)", DataTypeEnum.Int, "10");
 
@@ -233,8 +231,6 @@ namespace Frame_Core
             target.AddVariableByOrder(loaded, "CropCenterOffset", "居中裁图偏移距离(px)", DataTypeEnum.Double, "0");
             target.AddVariableByOrder(loaded, "CropHeightScale", "裁图高度比例系数", DataTypeEnum.Double, "0");
             target.AddVariableByOrder(loaded, "AtWidth", "(缺陷相机)AT宽度(mm)", DataTypeEnum.Double, "0");
-            target.AddVariableByOrder(loaded, "DefectStation_ContinuousCount", "外观工位连续数量", DataTypeEnum.Int, "0");
-            target.AddVariableByOrder(loaded, "SizeStation_ContinuousCount", "尺寸工位连续数量", DataTypeEnum.Int, "0");
 
             M_GlobalVariable.l_GlobalVariableItems = target;
             Reindex(M_GlobalVariable.l_GlobalVariableItems);

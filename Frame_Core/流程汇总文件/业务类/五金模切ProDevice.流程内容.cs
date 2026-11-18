@@ -26,11 +26,11 @@ namespace Frame_Core.业务类
     /// 反之亦然。与激光的差异只允许出现在下面三处，改的时候请只改这三处：
     ///   1. 相机号一律取 process.processInfo.CameraID（激光的裁图流程用 ProcessID 推相机号）；
     ///   2. 配方类型是 CraftParam_DieCutBase（激光写的是 CraftParam_DieCuttingCut）；
-    ///   3. 没有纠偏流程，多一条冲模流程（见 五金模切ProDevice.cs）。
+    ///   3. 没有纠偏流程。
     /// </summary>
     partial class 五金模切ProDevice
     {
-        public void Init相机裁图流程(Process process)
+        public void InitCropProcess(Process process)
         {
             process.m_ModuleObjList.Clear();
             int ProcessID = process.processInfo.ProcessID;
@@ -109,7 +109,7 @@ namespace Frame_Core.业务类
         /// </summary>
         /// <param name="process"></param>
 
-        public void Init极片EA流程(Process process)
+        public void InitEaProcess(Process process)
         {
 
             //接工艺，判断阴阳机型，0，阴极（带AT），1，阳极（不带AT）,统一右侧为极耳侧
@@ -196,7 +196,7 @@ namespace Frame_Core.业务类
         /// </summary>
         /// <param name="process"></param>
 
-        public void Init极片尺寸检测流程(Process process)
+        public void InitSizeProcess(Process process)
         {
             process.m_ModuleObjList.Clear();
             int ProcessID = process.processInfo.ProcessID;
@@ -263,7 +263,7 @@ namespace Frame_Core.业务类
 
         //带极耳侧
 
-        public void Init极片尺寸带极耳检测流程(Process process)
+        public void InitSizeTabProcess(Process process)
         {
             //接工艺，判断阴阳机型，0，阴极（带AT），1，阳极（不带AT）,统一右侧为极耳侧
             int PoleMode = 0;
@@ -450,7 +450,7 @@ namespace Frame_Core.业务类
         /// </summary>
         /// <param name="process"></param>
 
-        public void ProProcess新相机裁图流程(Process process)
+        public void RunCropProcess(Process process)
         {
             try
             {
@@ -852,7 +852,7 @@ namespace Frame_Core.业务类
         /// </summary>
         /// <param name="process"></param>
 
-        public void ProProcess极片EA流程(Process process)
+        public void RunEaProcess(Process process)
         {
             int ProcessID = process.processInfo.ProcessID;
             try
@@ -1282,7 +1282,7 @@ namespace Frame_Core.业务类
         /// </summary>
         /// <param name="process"></param>
 
-        public void ProProcess极片尺寸带极耳检测流程(Process process)
+        public void RunSizeTabProcess(Process process)
         {
             int ProcessID = process.processInfo.ProcessID;
             int camID = process.processInfo.CameraID;
@@ -2267,7 +2267,7 @@ namespace Frame_Core.业务类
         /// </summary>
         /// <param name="process"></param>
 
-        public void ProProcess极片尺寸检测流程(Process process)
+        public void RunSizeProcess(Process process)
         {
             int ProcessID = process.processInfo.ProcessID;
             int camID = process.processInfo.CameraID;
