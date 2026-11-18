@@ -199,12 +199,13 @@
     <Compile Include="BusinessCore\ParamBasePath.cs" />
     <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\ConditionItem.cs" />
     <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\CraftBase.cs" />
+    <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\CraftParam_DieCutBase.cs" />
+    <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\CraftParam_DieCutBaseExtension.cs" />
     <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\CraftRow.cs" />
     <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\DataSourceEnum.cs" />
     <Compile Include="BusinessParams\Model_Craft\Model_CraftBase\GlobalVariableItem.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\CraftParam_DieCuttingCut.cs" />
     <Compile Include="BusinessParams\Model_Craft\五金模切\CraftParam_五金模切.cs" />
-    <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\CraftParam_DieCuttingCutExtension.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\DefectCraft_DieCuttingCut.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\SizeCraftStation_DieCuttingCut.cs" />
     <Compile Include="BusinessParams\Model_Craft\模切裁片一体机\SizeCraft_DieCuttingCut.cs" />
@@ -773,6 +774,7 @@
     <Compile Include="流程汇总文件\业务类\DieCutProDevice.cs" />
     <Compile Include="流程汇总文件\业务类\DieCutProDeviceMethod.cs" />
     <Compile Include="流程汇总文件\业务类\五金模切ProDevice.cs" />
+    <Compile Include="流程汇总文件\业务类\五金模切ProDevice.流程内容.cs" />
     <Compile Include="流程汇总文件\业务类\PFTCleanProDevice.cs" />
     <Compile Include="流程汇总文件\产品类\DieCutProduct.cs" />
     <Compile Include="流程汇总文件\产品类\PFTImageProduct.cs" />

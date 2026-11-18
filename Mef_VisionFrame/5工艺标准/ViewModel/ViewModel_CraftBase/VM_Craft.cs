@@ -164,7 +164,8 @@ namespace Mef_VisionFrame
                         CraftType = craftType,
                         RecipeName = recipeName
                     };
-                    craftBaseHW.Init();
+                    // 必须传相机数：无参 Init() 是空实现，新配方会是空壳
+                    craftBaseHW.Init(DeviceProfileRegistry.Resolve(craftType).CameraCount);
                     craftBaseHW.SaveCraft(CraftBasePath, craftType, recipeName);
                     break;
                 case MaterialCrafEnum.激光模切一体机:
@@ -173,7 +174,7 @@ namespace Mef_VisionFrame
                         CraftType = craftType,
                         RecipeName = recipeName
                     };
-                    craftBaseTemp.Init();
+                    craftBaseTemp.Init(DeviceProfileRegistry.Resolve(craftType).CameraCount);
                     // 自动保存生成json文件（假设CraftBase内部实现Save）                  
                     craftBaseTemp.SaveCraft(CraftBasePath, craftType, recipeName);
                     break;

@@ -1,39 +1,16 @@
-using Frame_Core;
-using System.Drawing;
-using System.Windows.Forms;
-
 namespace Mef_VisionFrame
 {
     /// <summary>
-    /// 五金模切的工艺参数界面。参数字段待工艺确定后补充，
-    /// 先给一个占位窗体，保证配方管理窗口能正常打开、配方能正常切换。
+    /// 五金模切的工艺参数界面。
+    ///
+    /// 界面内容与激光模切完全一致（相机全局变量 / 工位缺陷 / 工位尺寸 / 机台变量），
+    /// 差异只有"几路相机、哪一路是什么角色"，而角色由配方（CraftParam_五金模切）和
+    /// 设备画像（五金模切Profile）决定，界面不感知。
+    ///
+    /// 页签数量取配方里的相机项数（5 路），工位页签的下标由它推导，
+    /// 所以不再有"第 3 个页签是纠偏"这类激光下标假设。
     /// </summary>
-    public class Form_五金模切 : FormCraftBase
+    public class Form_五金模切 : Form_DieCutBase
     {
-        private CraftParam_五金模切 Craft;
-
-        public Form_五金模切()
-        {
-            Controls.Add(new Label
-            {
-                Text = "五金模切工艺参数界面待实现",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter
-            });
-        }
-
-        public override void Init(CraftBase craftBase)
-        {
-            Craft = craftBase as CraftParam_五金模切;
-            ParamToView();
-        }
-
-        public override void ParamToView()
-        {
-        }
-
-        public override void ViewToParam()
-        {
-        }
     }
 }

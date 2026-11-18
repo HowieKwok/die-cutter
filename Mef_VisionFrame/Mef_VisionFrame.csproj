@@ -305,12 +305,18 @@
     <Compile Include="3主界面\实时数据统计\曲线图\EHGraph.cs" />
     <Compile Include="5工艺标准\Service\Craft_ViewService.cs" />
     <Compile Include="5工艺标准\ViewModel\ViewModel_CraftBase\VM_Craft.cs" />
-    <Compile Include="5工艺标准\ViewModel\模切裁片一体机\VM_CraftDieCuttingCut.cs" />
+    <Compile Include="5工艺标准\ViewModel\ViewModel_CraftBase\VM_Craft_DieCut.cs" />
     <Compile Include="5工艺标准\View\View_CraftBase\FormCraftBase.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="5工艺标准\View\View_CraftBase\FormCraftBase.Designer.cs">
       <DependentUpon>FormCraftBase.cs</DependentUpon>
+    </Compile>
+    <Compile Include="5工艺标准\View\View_CraftBase\Form_DieCutBase.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="5工艺标准\View\View_CraftBase\Form_DieCutBase.Designer.cs">
+      <DependentUpon>Form_DieCutBase.cs</DependentUpon>
     </Compile>
     <Compile Include="5工艺标准\View\View_CraftBase\Form_CraftFrame.cs">
       <SubType>Form</SubType>
@@ -329,9 +335,6 @@
     </Compile>
     <Compile Include="5工艺标准\View\五金模切\Form_五金模切.cs">
       <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="5工艺标准\View\模切裁片一体机\Form_DieCuttingCut.Designer.cs">
-      <DependentUpon>Form_DieCuttingCut.cs</DependentUpon>
     </Compile>
     <Compile Include="5工艺标准\View\模切裁片一体机\Form_SizeEdit.cs">
       <SubType>Form</SubType>
@@ -441,15 +444,21 @@
     <Compile Include="项目模切裁切机\Model\Model_DieCuttingCut.cs" />
     <Compile Include="项目五金模切\Model\Model_五金模切.cs" />
     <Compile Include="项目五金模切\Server\Server_五金模切.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.尺寸工位.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.工位信号.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.缺陷工位.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.PLC结果.cs" />
     <Compile Include="项目五金模切\ViewModel\VM_五金模切.cs" />
-    <Compile Include="项目五金模切\View\UC_五金模切.cs" />
+    <Compile Include="项目五金模切\View\UC_五金模切.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="项目模切裁切机\Server\Server_DieCuttingCut.cs" />
     <Compile Include="项目模切裁切机\Server\SizeComputationalFormula.cs" />
     <Compile Include="项目模切裁切机\ViewModel\VM_DieCuttingCut.cs" />
     <Compile Include="项目模切裁切机\View\UC_DieCuttingCut.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="项目模切裁切机\View\CamDisplayUnit.cs" />
+    <Compile Include="项目工厂\View\CamDisplayUnit.cs" />
     <Compile Include="项目模切裁切机\View\UC_DieCuttingCut.Designer.cs">
       <DependentUpon>UC_DieCuttingCut.cs</DependentUpon>
     </Compile>
@@ -505,8 +514,8 @@
     <EmbeddedResource Include="5工艺标准\View\模切裁片一体机\Form_DefectRules.resx">
       <DependentUpon>Form_DefectRules.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="5工艺标准\View\模切裁片一体机\Form_DieCuttingCut.resx">
-      <DependentUpon>Form_DieCuttingCut.cs</DependentUpon>
+    <EmbeddedResource Include="5工艺标准\View\View_CraftBase\Form_DieCutBase.resx">
+      <DependentUpon>Form_DieCutBase.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="5工艺标准\View\模切裁片一体机\Form_SizeEdit.resx">
       <DependentUpon>Form_SizeEdit.cs</DependentUpon>
@@ -713,6 +722,32 @@
     </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+  <!--
+    原生依赖：Halcon 运行库（halcon/halconxl/halconc/hcanvas）与控制卡驱动 IOC0640。
+    managed 的 halcondotnetxl.dll 由 Reference copy-local 负责，这里只补 native 部分——
+    它们放在 DLL\ 下、不进版本管理的 bin\，靠这个 target 在每次 Build 后复制到 $(OutDir)。
+
+    用 AfterTargets + $(OutDir)：Debug 出 bin\Debug、Release 出 bin\Release，一份配置两边通用；
+    SkipUnchangedFiles 避免本机的加密客户端反复重写同一批 dll。
+    缺文件只警告不报错：换一台没有该驱动的机器也能编译，日志里能看到缺了什么。
+  -->
+  <Target Name="CopyNativeDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <_NativeDependency Include="..\DLL\HalconDLL\halcon.dll" />
+      <_NativeDependency Include="..\DLL\HalconDLL\halconxl.dll" />
+      <_NativeDependency Include="..\DLL\HalconDLL\halconc.dll" />
+      <_NativeDependency Include="..\DLL\HalconDLL\hcanvas.dll" />
+      <_NativeDependency Include="..\DLL\BoardDLL\IOC0640.dll" />
+    </ItemGroup>
+
+    <Warning Condition="'@(_NativeDependency->Exists())' != '@(_NativeDependency)'"
+             Text="DLL\ 下缺少原生依赖，运行期可能启动失败。已存在的会被复制，缺失的请补进 DLL\HalconDLL 或 DLL\BoardDLL。" />
+
+    <Copy SourceFiles="@(_NativeDependency->Exists())"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
   <Import Project="..\packages\SkiaSharp.NativeAssets.macOS.2.88.6\build\net462\SkiaSharp.NativeAssets.macOS.targets" Condition="Exists('..\packages\SkiaSharp.NativeAssets.macOS.2.88.6\build\net462\SkiaSharp.NativeAssets.macOS.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

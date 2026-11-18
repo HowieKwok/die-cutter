@@ -37,7 +37,7 @@ namespace Frame_Core.业务类
             }
         }
     }
-    partial class DieCutProDevice : BaseProDevice
+    partial class DieCutProDevice : DieCutFlowAlgorithmBase
     {
         private CraftParam_DieCuttingCut m_craft => Project.Instance.craftBase as CraftParam_DieCuttingCut;
         public DieCutProDevice()

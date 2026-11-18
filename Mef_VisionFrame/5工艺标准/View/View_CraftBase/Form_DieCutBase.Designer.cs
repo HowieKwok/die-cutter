@@ -1,6 +1,6 @@
-﻿namespace Mef_VisionFrame
+namespace Mef_VisionFrame
 {
-    partial class Form_DieCuttingCut
+    partial class Form_DieCutBase
     {
         /// <summary>
         /// Required designer variable.
@@ -1171,7 +1171,7 @@
             this.ClientSize = new System.Drawing.Size(1217, 894);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Margin = new System.Windows.Forms.Padding(5);
-            this.Name = "Form_DieCuttingCut";
+            this.Name = "Form_DieCutBase";
             this.Text = "FormDieCuttingCut";
             this.tab_CraftTitle.ResumeLayout(false);
             this.tabPage1.ResumeLayout(false);

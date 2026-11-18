@@ -1,4 +1,4 @@
-﻿using Eholly.ZChart;
+using Eholly.ZChart;
 using Frame_Core;
 using System;
 using System.Collections.Generic;
@@ -8,12 +8,16 @@ using System.Threading.Tasks;
 
 namespace Mef_VisionFrame
 {
-    public class VM_CraftDieCuttingCut
+    /// <summary>
+    /// 模切类参数窗体的视图模型：只做列表编辑（增删、排序、重排 Id），
+    /// 与相机角色无关，因此对激光/五金共用同一套类型。
+    /// </summary>
+    public class VM_Craft_DieCut
     {
-        public CraftParam_DieCuttingCut M_CraftParam = new CraftParam_DieCuttingCut();
+        public CraftParam_DieCutBase M_CraftParam = null;
 
 
-        public void Init(CraftParam_DieCuttingCut craftParam)
+        public void Init(CraftParam_DieCutBase craftParam)
         {
             M_CraftParam = craftParam;
         }

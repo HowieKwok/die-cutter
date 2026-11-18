@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using FrameCommunity.DataOperation;
 using System;
 using System.Collections.Generic;
@@ -10,95 +10,66 @@ using System.Windows.Forms;
 namespace Frame_Core
 {
     [Serializable]
-    public class CraftParam_DieCuttingCut : CraftBase
+    public class CraftParam_DieCuttingCut : CraftParam_DieCutBase
     {
-        /// <summary>
-        /// 工艺（所属相机）
-        /// </summary>
-        private List<CamCraft> _Crafts = new List<CamCraft>();
-        public List<CamCraft> Crafts
-        {
-            get => _Crafts;
-            set { _Crafts = value; }
-        }
+        // 相机工艺、各工位检测项集合都由 CraftParam_DieCutBase 提供（Crafts / l_DefectCraftStation_1 / l_SizeCraftStation_3 / l_DefectCraftStation_3）。
+        // 本机型只负责按"画像里的相机角色"装配：标准 6 路是 0/1 模切、2 纠偏、3~5 尺寸；
+        // 少一路纠偏的机器由 LaserDieCuttingProfile 自动裁成 0/1 模切 + 2~4 尺寸。
 
         /// <summary>
-        /// 工位1缺陷检测
-        /// </summary>
-        private List<DefectCraft_DieCuttingCut> _l_DefectCraftStation_1 = new List<DefectCraft_DieCuttingCut>();
-        public List<DefectCraft_DieCuttingCut> l_DefectCraftStation_1
-        {
-            get => _l_DefectCraftStation_1;
-            set { _l_DefectCraftStation_1 = value; }
-        }
-
-
-        /// <summary>
-        /// 工位3尺寸检测
-        /// </summary>
-        private List<SizeCraftStation_DieCuttingCut> _l_SizeCraftStation_3 = new List<SizeCraftStation_DieCuttingCut>();
-        public List<SizeCraftStation_DieCuttingCut> l_SizeCraftStation_3
-        {
-            get => _l_SizeCraftStation_3;
-            set { _l_SizeCraftStation_3 = value; }
-        }
-
-        /// <summary>
-        /// 工位3缺陷检测
-        /// </summary>
-        private List<DefectCraft_DieCuttingCut> _l_DefectCraftStation_3 = new List<DefectCraft_DieCuttingCut>();
-        public List<DefectCraft_DieCuttingCut> l_DefectCraftStation_3
-        {
-            get => _l_DefectCraftStation_3;
-            set { _l_DefectCraftStation_3 = value; }
-        }
-
-        /// <summary>
-        /// 读取此参数会执行
+        /// 读取此参数会执行。
+        ///
+        /// 装配按"画像里的相机角色"而不是"下标"：激光 6 路是 0/1 模切、2 纠偏、3~5 尺寸，
+        /// 但同一份代码也可能跑在少一路纠偏的机器上。按下标 switch 会把纠偏的 17 项变量
+        /// 装到实际是尺寸相机的那个页签里——界面上名字对、内容错，而且不会报错。
         /// </summary>
         public override void Init(int length)
         {
-            if (Crafts == null) Crafts = new List<CamCraft>();
-            while (Crafts.Count < length)
-            {
-                Crafts.Add(new CamCraft());
-            }
+            IDeviceProfile profile = DeviceProfileRegistry.Resolve(CraftType);
+            IReadOnlyList<CamSlotDef> slots = profile.CamSlots;
 
+            // 相机数取"配置相机数"与"画像槽位数"的较小值：
+            // 槽位比配置多时，多出来的槽位没有物理相机，装了只会在参数界面上多一个空页签。
+            int camCount = Math.Min(length, slots.Count);
+            if (camCount <= 0) camCount = slots.Count;
+
+            EnsureCamCraftCount(camCount);
+            if (Crafts.Count > camCount) Crafts.RemoveRange(camCount, Crafts.Count - camCount);
 
             //【】工艺参数初始化
             #region  
-            for (int i = 0; i < Crafts.Count; i++)
+            int sizeOccurrence = 0;
+            for (int i = 0; i < camCount; i++)
             {
-                List<SizeCraft_DieCuttingCut> targetSizeList = new List<SizeCraft_DieCuttingCut>();
-                List<DefectCraft_DieCuttingCut> targetDefectList = new List<DefectCraft_DieCuttingCut>();
                 List<GlobalVariableItem> targetGlobalVariableList = new List<GlobalVariableItem>();
+
                 //============================================================================
-                //相机全局变量
-
-                CameraEnum camera = (CameraEnum)(i);
-                switch (camera)
+                //相机全局变量：角色决定用哪一组变量
+                switch (slots[i].Role)
                 {
-                    case CameraEnum.Cam1:
-                        Cam1VariableSet(targetGlobalVariableList, (int)camera);
-                        break;
-                    case CameraEnum.Cam2:
-                        Cam2VariableSet(targetGlobalVariableList, (int)camera);
-                        break;
-                    case CameraEnum.Cam3:
-                        Cam3VariableSet(targetGlobalVariableList, (int)camera);
-                        break;
-                    case CameraEnum.Cam4:
-                        Cam4VariableSet(targetGlobalVariableList, (int)camera);
-                        break;
-                    case CameraEnum.Cam5:
-                        Cam5VariableSet(targetGlobalVariableList, (int)camera);
-                        break;
-                    case CameraEnum.Cam6:
-                        Cam6VariableSet(targetGlobalVariableList, (int)camera);
+                    case CamRole.模切主相机:
+                        Cam1VariableSet(targetGlobalVariableList, i);
                         break;
 
+                    case CamRole.模切从相机:
+                        Cam2VariableSet(targetGlobalVariableList, i);
+                        break;
+
+                    case CamRole.裁切纠偏:
+                        Cam3VariableSet(targetGlobalVariableList, i);
+                        break;
+
+                    case CamRole.尺寸检测:
+                        // 第 1 路尺寸相机是"带极耳"位置的那一路，2/3 路是左右两侧，
+                        // 与原来的 Cam4/Cam5/Cam6 一一对应；多出来的路按序号通用命名。
+                        switch (++sizeOccurrence)
+                        {
+                            case 1: Cam4VariableSet(targetGlobalVariableList, i); break;
+                            case 2: Cam5VariableSet(targetGlobalVariableList, i); break;
+                            default: Cam6VariableSet(targetGlobalVariableList, i); break;
+                        }
+                        break;
                 }
-
 
                 Crafts[i].M_GlobalVariable.l_GlobalVariableItems = targetGlobalVariableList;
                 for (int j = 0; j < Crafts[i].M_GlobalVariable.l_GlobalVariableItems.Count; j++)
@@ -107,33 +78,17 @@ namespace Frame_Core
                 }
 
                 //============================================================================
-                //相机1、相机2工艺初始化
-                if (i == 0 || i == 1)
+                //相机工艺初始化：只有承担该工位的相机才重建容器，纠偏相机保持原样
+                if (slots[i].Role == CamRole.模切主相机 || slots[i].Role == CamRole.模切从相机)
                 {
-
-                    Crafts[i].l_DefectCraft = targetDefectList;
-                    for (int j = 0; j < Crafts[i].l_DefectCraft.Count; j++)
-                    {
-                        Crafts[i].l_DefectCraft[j].Id = j + 1;
-                    }
+                    Crafts[i].l_DefectCraft = new List<DefectCraft_DieCuttingCut>();
                 }
 
-                if (i == 3 || i == 4 || i == 5)
+                if (slots[i].Role == CamRole.尺寸检测)
                 {
-
-                    Crafts[i].l_SizeCraft = targetSizeList;
-                    Crafts[i].l_DefectCraft = targetDefectList;
-
-                    for (int j = 0; j < Crafts[i].l_SizeCraft.Count; j++)
-                    {
-                        Crafts[i].l_SizeCraft[j].Id = j + 1;
-                    }
-                    for (int j = 0; j < Crafts[i].l_DefectCraft.Count; j++)
-                    {
-                        Crafts[i].l_DefectCraft[j].Id = j + 1;
-                    }
+                    Crafts[i].l_SizeCraft = new List<SizeCraft_DieCuttingCut>();
+                    Crafts[i].l_DefectCraft = new List<DefectCraft_DieCuttingCut>();
                 }
-
             }
             #endregion
 
@@ -151,18 +106,24 @@ namespace Frame_Core
             l_DefectCraftStation_1.AppVariableByOrder("亮缺陷");
             l_DefectCraftStation_1.AppVariableByOrder("暗缺陷");
             l_DefectCraftStation_1.AppVariableByOrder("涂布不良");
+            // 流程里硬编码 emit 的另外两个类名（边缘破损检测模块、AT 抓边），
+            // 不补这两项它们一律会走"未找到工艺类型 → 重度 NG"。
+            l_DefectCraftStation_1.AppVariableByOrder("边缘破损");
+            l_DefectCraftStation_1.AppVariableByOrder("AT漏金属");
 
-            for (int j = 0; j < _l_DefectCraftStation_1.Count; j++)
+            for (int j = 0; j < l_DefectCraftStation_1.Count; j++)
             {
-                _l_DefectCraftStation_1[j].Id = j + 1;
+                l_DefectCraftStation_1[j].Id = j + 1;
             }
 
             #endregion
             //【】极片尺寸工位3
             #region  
-            int camIndex4 = 3;
-            int camIndex5 = 4;
-            int camIndex6 = 5;
+            // 尺寸项引用的相机下标必须按画像取：激光 6 路是 3/4/5，少一路纠偏时是 2/3/4。
+            // 取不到的（本机尺寸相机不足两路）退回第一路，避免把项指向不存在的相机。
+            List<int> sizeCamIndexes = SizeCamIndexes(DeviceProfileRegistry.Resolve(CraftType).CamSlots);
+            int camIndex4 = sizeCamIndexes.Count > 0 ? sizeCamIndexes[0] : 0;
+            int camIndex5 = sizeCamIndexes.Count > 1 ? sizeCamIndexes[1] : camIndex4;
 
             l_SizeCraftStation_3.AppVariableByOrder("下左V宽X", CalcFormulaEnum.点线, camIndex4, "左侧V角凸点2", camIndex4, "粗定位工具.抓边1");
             l_SizeCraftStation_3.AppVariableByOrder("下左V深Y", CalcFormulaEnum.点线, camIndex4, "左侧V角凸点1", camIndex4, "粗定位工具.抓边2");
@@ -193,15 +154,15 @@ namespace Frame_Core
 
 
 
-            _l_DefectCraftStation_3.AppVariableByOrder("V角检测有无");
-            _l_DefectCraftStation_3.AppVariableByOrder("极片有无");
-            _l_DefectCraftStation_3.AppVariableByOrder("极耳翻折检测");
-            _l_DefectCraftStation_3.AppVariableByOrder("极耳余料检测");
-            _l_DefectCraftStation_3.AppVariableByOrder("极耳涂布内翻检测");
+            l_DefectCraftStation_3.AppVariableByOrder("V角检测有无");
+            l_DefectCraftStation_3.AppVariableByOrder("极片有无");
+            l_DefectCraftStation_3.AppVariableByOrder("极耳翻折检测");
+            l_DefectCraftStation_3.AppVariableByOrder("极耳余料检测");
+            l_DefectCraftStation_3.AppVariableByOrder("极耳涂布内翻检测");
 
-            for (int j = 0; j < _l_DefectCraftStation_3.Count; j++)
+            for (int j = 0; j < l_DefectCraftStation_3.Count; j++)
             {
-                _l_DefectCraftStation_3[j].Id = j + 1;
+                l_DefectCraftStation_3[j].Id = j + 1;
             }
             #endregion
 
@@ -260,9 +221,9 @@ namespace Frame_Core
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatLftCol1", "涂层区域左偏移Col1(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatRgtCol2", "涂层区域右偏移Col2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatTopRow1", "涂层区域上偏移Row1(mm)", DataTypeEnum.Double, "0");
-            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatBotRow2", "涂层区域下偏移Row2(mm)", DataTypeEnum.Double, "0");
+            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatTopRow2", "涂层区域下偏移Row2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtLftCol1", "AT区域左偏移Col1(mm)", DataTypeEnum.Double, "0");
-            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtRgtCol2", "AT区域右偏移Col2(mm)", DataTypeEnum.Double, "0");
+            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtLftCol2", "AT区域右偏移Col2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtTopRow1", "AT区域上偏移Row1(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtBotRow2", "AT区域下偏移Row2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "BreakLftCol1", "破损区域左偏移Col1(mm)", DataTypeEnum.Double, "0");
@@ -284,9 +245,9 @@ namespace Frame_Core
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatLftCol1", "涂层区域左偏移Col1(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatRgtCol2", "涂层区域右偏移Col2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatTopRow1", "涂层区域上偏移Row1(mm)", DataTypeEnum.Double, "0");
-            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatBotRow2", "涂层区域下偏移Row2(mm)", DataTypeEnum.Double, "0");
+            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CoatTopRow2", "涂层区域下偏移Row2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtLftCol1", "AT区域左偏移Col1(mm)", DataTypeEnum.Double, "0");
-            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtRgtCol2", "AT区域右偏移Col2(mm)", DataTypeEnum.Double, "0");
+            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtLftCol2", "AT区域右偏移Col2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtTopRow1", "AT区域上偏移Row1(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "AtBotRow2", "AT区域下偏移Row2(mm)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "BreakLftCol1", "破损区域左偏移Col1(mm)", DataTypeEnum.Double, "0");

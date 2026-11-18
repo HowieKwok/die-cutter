@@ -1,4 +1,4 @@
-﻿using FrameCommunity;
+using FrameCommunity;
 using FrameCommunity.Data;
 using LogTool;
 using NPOI.OpenXmlFormats.Dml.Diagram;
@@ -260,12 +260,21 @@ namespace Frame_Core
 
         public static void ImageShowCallback(NewDisplayWindowClass newDisplayWindowClass, ShowHalconWindow showHalconWindow)
         {
-            newDisplayWindowClass.RepaintCam(showHalconWindow);        
+            // 显示失败以前被静默丢弃：图照常入保存队列，界面上却永远是黑的，没有任何线索。
+            ExecuteResult result = newDisplayWindowClass.RepaintCam(showHalconWindow);
+            if (result != null && !result.IsSuccess)
+            {
+                MessageNotify.AddErrorLog($"【{showHalconWindow.m_strCamName}】-【显示】失败：{result.Message}");
+            }
         }
 
         public static void ImageShowCallback(NewDisplayWindowClass newDisplayWindowClass, ShowHalconWindow showHalconWindow, ImageQueueData target_SaveScreenshotQueue, ImageQueueData target_HighScreenshotQueue)
         {
-            newDisplayWindowClass.RepaintCam(showHalconWindow);
+            ExecuteResult result = newDisplayWindowClass.RepaintCam(showHalconWindow);
+            if (result != null && !result.IsSuccess)
+            {
+                MessageNotify.AddErrorLog($"【{showHalconWindow.m_strCamName}】-【显示】失败：{result.Message}");
+            }
             if (showHalconWindow.m_imageSavePathInfo.IsScreenshot)
             {
                 if (showHalconWindow.m_imageSavePathInfo.IsHighDefinitionCapture)

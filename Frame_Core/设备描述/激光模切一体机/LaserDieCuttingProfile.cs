@@ -39,18 +39,54 @@ namespace Frame_Core
 
         protected override CamSlotDef[] BuildCamSlots()
         {
-            return new[]
+            int 配置数 = 配置相机数();
+
+            // 6 路是激光模切的标准配置：0/1 模切、2 裁切纠偏、3~5 尺寸
+            if (配置数 >= 6)
             {
-                // 下标 0/1：模切主、从相机（大图 + 极片 EA）
-                new CamSlotDef(CamRole.模切主相机, CamName(0), name => new DieCutParam(name)),
-                new CamSlotDef(CamRole.模切从相机, CamName(1), name => new DieCutParam(name)),
-                // 下标 2：裁切定位/纠偏（五金模切没有这一路）
-                new CamSlotDef(CamRole.裁切纠偏, CamName(2), name => new CutCorrectParam(name)),
-                // 下标 3~5：尺寸检测
-                new CamSlotDef(CamRole.尺寸检测, CamName(3), name => new SizeDetectParam(name)),
-                new CamSlotDef(CamRole.尺寸检测, CamName(4), name => new SizeDetectParam(name)),
-                new CamSlotDef(CamRole.尺寸检测, CamName(5), name => new SizeDetectParam(name)),
-            };
+                return new[]
+                {
+                    // 下标 0/1：模切主、从相机（大图 + 极片 EA）
+                    new CamSlotDef(CamRole.模切主相机, CamName(0), name => new DieCutParam(name)),
+                    new CamSlotDef(CamRole.模切从相机, CamName(1), name => new DieCutParam(name)),
+                    // 下标 2：裁切定位/纠偏（五金模切没有这一路）
+                    new CamSlotDef(CamRole.裁切纠偏, CamName(2), name => new CutCorrectParam(name)),
+                    // 下标 3~5：尺寸检测
+                    new CamSlotDef(CamRole.尺寸检测, CamName(3), name => new SizeDetectParam(name)),
+                    new CamSlotDef(CamRole.尺寸检测, CamName(4), name => new SizeDetectParam(name)),
+                    new CamSlotDef(CamRole.尺寸检测, CamName(5), name => new SizeDetectParam(name)),
+                };
+            }
+
+            // 少于 6 路：这台机器没有裁切纠偏相机，2 号起全部按尺寸相机排。
+            // 不这样裁齐的话，配方装配会把纠偏的十几项变量装进一个实际是尺寸相机的页签，
+            // 界面上名字对、内容错，而且不会报错。
+            CamSlotDef[] slots = new CamSlotDef[配置数];
+            slots[0] = new CamSlotDef(CamRole.模切主相机, CamName(0), name => new DieCutParam(name));
+            slots[1] = new CamSlotDef(CamRole.模切从相机, CamName(1), name => new DieCutParam(name));
+            for (int i = 2; i < 配置数; i++)
+            {
+                slots[i] = new CamSlotDef(CamRole.尺寸检测, CamName(i), name => new SizeDetectParam(name));
+            }
+            return slots;
+        }
+
+        /// <summary>
+        /// 当前机器实际配置的相机路数。
+        /// 配置还没加载（或异常）时退回标准的 6 路，避免把画像裁成 0 路。
+        /// </summary>
+        private static int 配置相机数()
+        {
+            try
+            {
+                int count = Service_Camera.GetCam_Names().Length;
+                if (count >= 2) return count;
+            }
+            catch (Exception)
+            {
+                // 配置读不到就按标准 6 路，不在这里吞掉业务异常
+            }
+            return 6;
         }
 
         /// <summary>
@@ -61,6 +97,15 @@ namespace Frame_Core
         /// </summary>
         public override IReadOnlyList<ProcessSpec> BuildProcessList()
         {
+            // 5 条流程（2 裁图 + 2 EA + 1 纠偏）之外的三条尺寸流程按下标 3/4/5 建，
+            // 少一路纠偏时整张清单都会错位。这里显式报错，不要让它悄悄起一半流程。
+            if (CameraCount < 6)
+            {
+                throw new InvalidOperationException(string.Format(
+                    "激光模切一体机运行需要 6 路相机（含裁切纠偏），当前只配置了 {0} 路。请先补齐 AllCamParam 的相机配置。",
+                    CameraCount));
+            }
+
             CraftParam_DieCuttingCut craft = Project.Instance.craftBase as CraftParam_DieCuttingCut;
             if (craft == null)
             {

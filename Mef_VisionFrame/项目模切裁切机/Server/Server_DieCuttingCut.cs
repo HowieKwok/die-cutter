@@ -1002,11 +1002,45 @@ namespace Mef_VisionFrame
         }
 
 
+        /// <summary>
+        /// 三路尺寸合并算一项。按 (相机下标 → 该路产品) 查数据源，不再把 3/4/5 写死在公式里，
+        /// 这样激光（3/4/5）和五金（2/3/4）能共用同一套合并逻辑。
+        /// </summary>
+        public static ExecuteResult<double> Station3_SizeComputationalLogic(SizeCraftStation_DieCuttingCut sizeCraftStation,
+                                                                            IReadOnlyDictionary<int, SizeDectectProduct> sizeProducts)
+        {
+            SizeDectectProduct product1 = null;
+            SizeDectectProduct product2 = null;
+            if (sizeProducts != null)
+            {
+                sizeProducts.TryGetValue(sizeCraftStation.CameraId1, out product1);
+                sizeProducts.TryGetValue(sizeCraftStation.CameraId2, out product2);
+            }
+            return Station3_SizeComputationalLogic(sizeCraftStation, product1, product2);
+        }
+
+        /// <summary>激光模切的旧入口：3/4/5 固定对应 Cam4/5/6 三路产品。</summary>
         public static ExecuteResult<double> Station3_SizeComputationalLogic(SizeCraftStation_DieCuttingCut sizeCraftStation, SizeDectectProduct sizeDectectProduct4, SizeDectectProduct sizeDectectProduct5, SizeDectectProduct sizeDectectProduct6)
+        {
+            return Station3_SizeComputationalLogic(sizeCraftStation,
+                sizeCraftStation.CameraId1 == 3 ? sizeDectectProduct4 : sizeCraftStation.CameraId1 == 4 ? sizeDectectProduct5 : sizeDectectProduct6,
+                sizeCraftStation.CameraId2 == 3 ? sizeDectectProduct4 : sizeCraftStation.CameraId2 == 4 ? sizeDectectProduct5 : sizeDectectProduct6);
+        }
+
+        /// <summary>核心：两个数据源已按相机下标解析好，这里只看 p1/p2，与机型无关。</summary>
+        public static ExecuteResult<double> Station3_SizeComputationalLogic(SizeCraftStation_DieCuttingCut sizeCraftStation,
+                                                                            SizeDectectProduct sizeDectectProduct1, SizeDectectProduct sizeDectectProduct2)
         {
             ExecuteResult<double> executeResult = new ExecuteResult<double>();
             executeResult.IsSuccess = false;
             executeResult.Value = -999;
+
+            if (sizeDectectProduct1 == null || sizeDectectProduct2 == null)
+            {
+                executeResult.Message = "数据源相机未到齐；";
+                return executeResult;
+            }
+
             return ExecuteMethodClass.ExecuteMethod(() =>
              {
                  //double calibValueX = Service_Camera.GetCam_CalibrationValue_X((int)camIndex);
@@ -1017,16 +1051,11 @@ namespace Mef_VisionFrame
                  string[] DataSource1 = sizeCraftStation.DataSource1.Split('.');
                  string[] DataSource2 = sizeCraftStation.DataSource2.Split('.');
                  CalcFormulaEnum CalcFormula = (CalcFormulaEnum)sizeCraftStation.CalcFormula;
-                 int camId1 = sizeCraftStation.CameraId1;
-                 int camId2 = sizeCraftStation.CameraId2;
 
                  string dataSource1_ModelName = DataSource1?.Count() > 0 ? DataSource1[0] : "";
                  string dataSource1_ModeOutName = DataSource1?.Count() > 1 ? DataSource1[1] : "";
                  string dataSource2_ModelName = DataSource2?.Count() > 0 ? DataSource2[0] : "";
                  string dataSource2_ModeOutName = DataSource2?.Count() > 1 ? DataSource2[1] : "";
-
-                 SizeDectectProduct sizeDectectProduct1 = camId1 == 3 ? sizeDectectProduct4 : camId1 == 4 ? sizeDectectProduct5 : camId1 == 5 ? sizeDectectProduct6 : null;
-                 SizeDectectProduct sizeDectectProduct2 = camId2 == 3 ? sizeDectectProduct4 : camId2 == 4 ? sizeDectectProduct5 : camId2 == 5 ? sizeDectectProduct6 : null;
 
                  if (CalcFormula == CalcFormulaEnum.点线)
                  {
@@ -2155,7 +2184,11 @@ namespace Mef_VisionFrame
 
         }
 
-        private static ShowHalconWindow NgDefectResultToShowHalconWindow(NgDefectResult ngDefectResult, string camName)
+        /// <summary>
+        /// 把一个缺陷结果转成用于轮播的显示对象（取缺陷小图，并释放该结果占用的其它图）。
+        /// 公开给其他机型复用。
+        /// </summary>
+        public static ShowHalconWindow NgDefectResultToShowHalconWindow(NgDefectResult ngDefectResult, string camName)
         {
             ShowHalconWindow showHalconWindow = new ShowHalconWindow();
             showHalconWindow.m_strCamName = camName;
@@ -2165,7 +2198,7 @@ namespace Mef_VisionFrame
         }
 
 
-        private static bool TotalDefectResultJudgment(DefectSummary defectSummary, DefectCraft_DieCuttingCut defectCraft_DieCuttingCut)
+        public static bool TotalDefectResultJudgment(DefectSummary defectSummary, DefectCraft_DieCuttingCut defectCraft_DieCuttingCut)
         {
             if (defectCraft_DieCuttingCut.Condition1_En)
             {
@@ -2189,7 +2222,8 @@ namespace Mef_VisionFrame
         /// <param name="ngDefectResult"></param>
         /// <param name="defectCraft"></param>
         /// <returns>是否NG</returns>
-        private static bool DefectResultJudgment(NgDefectResult ngDefectResult, DefectCraft_DieCuttingCut defectCraft)
+        /// <summary>缺陷结果判断。公开给其他机型复用：规则本身与机型无关，只和工艺有关。</summary>
+        public static bool DefectResultJudgment(NgDefectResult ngDefectResult, DefectCraft_DieCuttingCut defectCraft)
         {
             var conditionGroups = GetConditionFormat(defectCraft);
             bool totalResult = true;//默认缺陷NG
@@ -2352,7 +2386,8 @@ namespace Mef_VisionFrame
             return ResultType.OK;
         }
 
-        private static HalconColor GetHalconColor(bool IsOverspecification, bool IsNG)
+        /// <summary>超规格/NG 对应的显示颜色。公开给其他机型复用。</summary>
+        public static HalconColor GetHalconColor(bool IsOverspecification, bool IsNG)
         {
             if (IsNG)
             {

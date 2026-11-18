@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Frame_Core.pluginParams;
 using FrameCommunity.Data;
 using HalconDotNet;
@@ -11,7 +11,13 @@ using System.Threading.Tasks;
 
 namespace Frame_Core.业务类
 {
-    partial class DieCutProDevice : BaseProDevice
+    /// <summary>
+    /// 模切类流程共用的算法工具（粗定位、标定板执行等）。
+    ///
+    /// 这些方法只依赖入参，不碰设备状态和配方，因此激光与五金共用同一份：
+    /// 流程（取图、模块装配、结果投递）按机型各写一份，算法工具只有一份。
+    /// </summary>
+    public abstract class DieCutFlowAlgorithmBase : BaseProDevice
     {
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,9 +6,13 @@ using System.Threading.Tasks;
 
 namespace Frame_Core
 {
-    public static class CraftParam_DieCuttingCutExtension
+    /// <summary>
+    /// 模切类配方（CraftParam_DieCutBase）的只读查询与格式转换。
+    /// 接收基类类型，激光模切与五金模切共用同一套查询方法，机型差异只体现在 Init 的装配上。
+    /// </summary>
+    public static class CraftParam_DieCutBaseExtension
     {
-        public static List<string> Get_Cam_SizeNames(this CraftParam_DieCuttingCut Crafts, int camIndex)
+        public static List<string> Get_Cam_SizeNames(this CraftParam_DieCutBase Crafts, int camIndex)
         {
             if (Crafts == null)
             {
@@ -20,7 +24,7 @@ namespace Frame_Core
             }
             return Crafts.Crafts[camIndex].l_SizeCraft?.Select(p => p.Name).ToList() ?? new List<string>();
         }
-        public static List<string> Get_Cam_DefectNames(this CraftParam_DieCuttingCut Crafts, int camIndex)
+        public static List<string> Get_Cam_DefectNames(this CraftParam_DieCutBase Crafts, int camIndex)
         {
             if (Crafts == null)
             {
@@ -33,7 +37,7 @@ namespace Frame_Core
             return Crafts.Crafts[camIndex].l_DefectCraft?.Select(p => p.Name).ToList() ?? new List<string>();
         }
 
-        public static List<string> Get_Station3_SizeNames(this CraftParam_DieCuttingCut Crafts)
+        public static List<string> Get_Station3_SizeNames(this CraftParam_DieCutBase Crafts)
         {
             if (Crafts == null)
             {
@@ -45,7 +49,7 @@ namespace Frame_Core
             }
             return Crafts.l_SizeCraftStation_3?.Select(p => p.Name).ToList() ?? new List<string>();
         }
-        public static List<string> Get_Station1_DefectNames(this CraftParam_DieCuttingCut Crafts)
+        public static List<string> Get_Station1_DefectNames(this CraftParam_DieCutBase Crafts)
         {
             if (Crafts == null)
             {
@@ -58,7 +62,7 @@ namespace Frame_Core
             return Crafts.l_DefectCraftStation_1?.Select(p => p.Name).ToList() ?? new List<string>();
         }
 
-        public static List<string> Get_Station3_DefectNames(this CraftParam_DieCuttingCut Crafts)
+        public static List<string> Get_Station3_DefectNames(this CraftParam_DieCutBase Crafts)
         {
             if (Crafts == null)
             {
@@ -106,7 +110,7 @@ namespace Frame_Core
 
 
 
-        public static List<SizeInfo> Get_Cam_SizeDefaultInfo(this CraftParam_DieCuttingCut Crafts, int camIndex)
+        public static List<SizeInfo> Get_Cam_SizeDefaultInfo(this CraftParam_DieCutBase Crafts, int camIndex)
         {
             if (Crafts == null)
             {
@@ -147,7 +151,7 @@ namespace Frame_Core
             return sizeInfo;
         }
 
-        public static List<SizeInfo> Get_Cam_SizeDefaultInfo(this CraftParam_DieCuttingCut Crafts)
+        public static List<SizeInfo> Get_Cam_SizeDefaultInfo(this CraftParam_DieCutBase Crafts)
         {
             if (Crafts == null)
             {
@@ -166,7 +170,7 @@ namespace Frame_Core
 
 
 
-        public static List<SizeCraft_DieCuttingCut> Get_Cam_SizeCrafts(this CraftParam_DieCuttingCut Crafts, int camIndex)
+        public static List<SizeCraft_DieCuttingCut> Get_Cam_SizeCrafts(this CraftParam_DieCutBase Crafts, int camIndex)
         {
             if (Crafts == null)
             {
@@ -181,7 +185,7 @@ namespace Frame_Core
 
 
 
-        public static List<DefectCraft_DieCuttingCut> Get_Cam_DefectCrafts(this CraftParam_DieCuttingCut Crafts, int camIndex)
+        public static List<DefectCraft_DieCuttingCut> Get_Cam_DefectCrafts(this CraftParam_DieCutBase Crafts, int camIndex)
         {
             if (Crafts == null)
             {
@@ -194,7 +198,7 @@ namespace Frame_Core
             return Crafts.Crafts[camIndex].l_DefectCraft;
         }
 
-        public static SizeCraft_DieCuttingCut Get_Cam_SizeCraft(this CraftParam_DieCuttingCut Crafts, int camIndex, string name)
+        public static SizeCraft_DieCuttingCut Get_Cam_SizeCraft(this CraftParam_DieCutBase Crafts, int camIndex, string name)
         {
             if (Crafts == null)
             {
@@ -207,7 +211,7 @@ namespace Frame_Core
             return Crafts.Crafts[camIndex].l_SizeCraft?.Find(p => p.Name == name);
         }
 
-        public static DefectCraft_DieCuttingCut Get_Cam_DefectCraft(this CraftParam_DieCuttingCut Crafts, int camIndex, string name)
+        public static DefectCraft_DieCuttingCut Get_Cam_DefectCraft(this CraftParam_DieCutBase Crafts, int camIndex, string name)
         {
             if (Crafts == null)
             {
@@ -220,7 +224,7 @@ namespace Frame_Core
             return Crafts.Crafts[camIndex].l_DefectCraft?.Find(p => p.Name == name);
         }
 
-        public static DefectCraft_DieCuttingCut Get_Station1_DefectCrafts(this CraftParam_DieCuttingCut Crafts, string name)
+        public static DefectCraft_DieCuttingCut Get_Station1_DefectCrafts(this CraftParam_DieCutBase Crafts, string name)
         {
             if (Crafts == null)
             {
@@ -234,7 +238,7 @@ namespace Frame_Core
         }
 
 
-        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts(this CraftParam_DieCuttingCut Crafts)
+        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts(this CraftParam_DieCutBase Crafts)
         {
             if (Crafts == null)
             {
@@ -247,7 +251,7 @@ namespace Frame_Core
             return Crafts.l_SizeCraftStation_3;
         }
 
-        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts(this CraftParam_DieCuttingCut Crafts, int camIndex)
+        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts(this CraftParam_DieCutBase Crafts, int camIndex)
         {
             if (Crafts == null)
             {
@@ -260,7 +264,7 @@ namespace Frame_Core
             return Crafts.l_SizeCraftStation_3.FindAll(p => p.CameraId1 == camIndex && p.CameraId2 == camIndex);
         }
 
-        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts_CamDifferent(this CraftParam_DieCuttingCut Crafts)
+        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts_CamDifferent(this CraftParam_DieCutBase Crafts)
         {
             if (Crafts == null)
             {
@@ -273,7 +277,7 @@ namespace Frame_Core
             return Crafts.l_SizeCraftStation_3.FindAll(p => p.CameraId1 != p.CameraId2);
         }
 
-        public static SizeCraftStation_DieCuttingCut Get_Station3_SizeCraft(this CraftParam_DieCuttingCut Crafts, string name)
+        public static SizeCraftStation_DieCuttingCut Get_Station3_SizeCraft(this CraftParam_DieCutBase Crafts, string name)
         {
             if (Crafts == null)
             {
@@ -286,7 +290,7 @@ namespace Frame_Core
             return Crafts.l_SizeCraftStation_3?.Find(p => p.Name == name);
         }
 
-        public static List<DefectCraft_DieCuttingCut> Get_Station3_DefectCrafts(this CraftParam_DieCuttingCut Crafts)
+        public static List<DefectCraft_DieCuttingCut> Get_Station3_DefectCrafts(this CraftParam_DieCutBase Crafts)
         {
             if (Crafts == null)
             {
@@ -299,7 +303,7 @@ namespace Frame_Core
             return Crafts.l_DefectCraftStation_3;
         }
 
-        public static DefectCraft_DieCuttingCut Get_Station3_DefectCrafts(this CraftParam_DieCuttingCut Crafts, string name)
+        public static DefectCraft_DieCuttingCut Get_Station3_DefectCrafts(this CraftParam_DieCutBase Crafts, string name)
         {
             if (Crafts == null)
             {
@@ -314,7 +318,7 @@ namespace Frame_Core
 
 
 
-        public static GlobalVariableItem Get_GlobalVariableItem(this CraftParam_DieCuttingCut Crafts, int camIndex, string name)
+        public static GlobalVariableItem Get_GlobalVariableItem(this CraftParam_DieCutBase Crafts, int camIndex, string name)
         {
             if (Crafts == null)
             {
@@ -327,7 +331,7 @@ namespace Frame_Core
             return Crafts.Crafts[camIndex].M_GlobalVariable?.l_GlobalVariableItems?.Find(p => p.Name == name);
         }
 
-        public static GlobalVariableItem Get_GlobalVariableItem(this CraftParam_DieCuttingCut Crafts, string name)
+        public static GlobalVariableItem Get_GlobalVariableItem(this CraftParam_DieCutBase Crafts, string name)
         {
             if (Crafts == null)
             {

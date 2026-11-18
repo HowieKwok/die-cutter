@@ -22,7 +22,7 @@ namespace Frame_Core
 
         public override int ProcessCount
         {
-            get { return 7; }
+            get { return 8; }
         }
 
         public override IReadOnlyList<IoPoint> IoPoints
@@ -55,22 +55,50 @@ namespace Frame_Core
         }
 
         /// <summary>
-        /// 7 条流程：2 条裁图 + 2 条极片EA + 3 条尺寸（暂无裁切纠偏）。
-        /// 流程内容（模块装配/运行处理）尚未实现，见 五金模切ProDevice。
+        /// 8 条流程：2 条裁图 + 2 条极片EA + 1 条冲模 + 3 条尺寸。
+        ///
+        /// 与激光模切的差异只有一处：激光的「裁切定位」换成「冲模」——冲模没有相机，
+        /// CameraIndex 传 -1，流程体只有 PLC 信号交互（点位待定）。
+        ///
+        /// 尺寸三路沿用激光的「带极耳」二选一规则：极耳在左侧时中间那路做带极耳检测，
+        /// 否则最后一路做。上机确认后可改成按配方逐路指定。
         /// </summary>
         public override IReadOnlyList<ProcessSpec> BuildProcessList()
         {
+            CraftParam_DieCutBase craft = Project.Instance.craftBase as CraftParam_DieCutBase;
+            if (craft == null)
+            {
+                throw new InvalidOperationException(
+                    "五金模切的配方参数未就绪，无法构建流程清单。");
+            }
+
+            GlobalVariableItem tabItem = craft.Get_GlobalVariableItem("极耳在左侧");
+            bool tabIsLeft = tabItem != null && tabItem.Value.ToInt() == 1;
+
+            ProcessSpec size1 = new ProcessSpec(2, ProcessName(2), ProcessKind.极片尺寸检测);
+            ProcessSpec size2 = tabIsLeft
+                ? new ProcessSpec(3, ProcessName(3), ProcessKind.极片尺寸带极耳检测)
+                : new ProcessSpec(3, ProcessName(3), ProcessKind.极片尺寸检测);
+            ProcessSpec size3 = tabIsLeft
+                ? new ProcessSpec(4, ProcessName(4), ProcessKind.极片尺寸检测)
+                : new ProcessSpec(4, ProcessName(4), ProcessKind.极片尺寸带极耳检测);
+
             return new[]
             {
                 new ProcessSpec(0, ProcessName(0), ProcessKind.相机裁图),
                 new ProcessSpec(1, ProcessName(1), ProcessKind.相机裁图),
                 new ProcessSpec(0, ProcessName(0) + "_极片EA", ProcessKind.极片EA),
                 new ProcessSpec(1, ProcessName(1) + "_极片EA", ProcessKind.极片EA),
-                new ProcessSpec(2, ProcessName(2), ProcessKind.极片尺寸检测),
-                new ProcessSpec(3, ProcessName(3), ProcessKind.极片尺寸检测),
-                new ProcessSpec(4, ProcessName(4), ProcessKind.极片尺寸检测),
+                // 冲模：取代激光的裁切定位，不取图
+                new ProcessSpec(NoCamera, "冲模", ProcessKind.冲模),
+                size1,
+                size2,
+                size3,
             };
         }
+
+        /// <summary>不挂相机的流程（如冲模）使用的 CameraIndex。</summary>
+        private const int NoCamera = -1;
 
         /// <summary>流程名取配置里的相机名，与激光模切保持同一套约定。</summary>
         private static string ProcessName(int cameraIndex)

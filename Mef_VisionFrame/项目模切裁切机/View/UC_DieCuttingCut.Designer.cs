@@ -1,4 +1,4 @@
-﻿namespace Mef_VisionFrame
+namespace Mef_VisionFrame
 {
     partial class UC_DieCuttingCut
     {
@@ -140,7 +140,6 @@
             this.hWindowControl6 = new HalconDotNet.HWindowControl();
             this.tabPage10 = new AntdUI.TabPage();
             this.uC_Message1 = new Frame_Core.UC_Message();
-            this.tabPage8 = new AntdUI.TabPage();
             this.timer_Viewrefresh = new System.Windows.Forms.Timer(this.components);
             this.divider10 = new AntdUI.Divider();
             this.DP_SizeSendData = new EHolly.FormControl.DynamicDataPanel();
@@ -1548,14 +1547,6 @@
             this.uC_Message1.Size = new System.Drawing.Size(527, 732);
             this.uC_Message1.TabIndex = 0;
             // 
-            // tabPage8
-            // 
-            this.tabPage8.Location = new System.Drawing.Point(0, 24);
-            this.tabPage8.Name = "tabPage8";
-            this.tabPage8.Size = new System.Drawing.Size(452, 732);
-            this.tabPage8.TabIndex = 0;
-            this.tabPage8.Text = "日志";
-            // 
             // timer_Viewrefresh
             // 
             this.timer_Viewrefresh.Enabled = true;
@@ -1693,7 +1684,6 @@
         public HalconDotNet.HWindowControl hWindowControl4;
         public HalconDotNet.HWindowControl hWindowControl5;
         public HalconDotNet.HWindowControl hWindowControl6;
-        private AntdUI.TabPage tabPage8;
         private AntdUI.TabPage tabPage10;
         private Frame_Core.UC_Message uC_Message1;
         private System.Windows.Forms.Label lb_ng1;
