@@ -12,6 +12,7 @@ namespace Frame_Core
         {
             purviewParam = _purviewParam;
             InitializeComponent();
+            FormStylingHook.Style(this);
         }
         private void Purview_Load(object sender, EventArgs e)
         {

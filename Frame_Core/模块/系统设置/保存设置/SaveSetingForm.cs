@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using HalconDotNet;
 using LogTool;
 using System;
@@ -21,6 +21,7 @@ namespace Frame_Core
         public SaveSetingForm()
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
          
         }
 

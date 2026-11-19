@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -37,6 +37,7 @@ namespace Frame_Core
         public FrmCsvViewer(string rootPath)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             _rootPath = rootPath;
             Text = $"CSV 浏览器 – {Path.GetFileName(rootPath)}";
             Load += FrmCsvViewer_Load;

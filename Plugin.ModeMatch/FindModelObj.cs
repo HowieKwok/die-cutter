@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Frame_Core.pluginParams;
 using HalconDotNet;
 using LogTool;
@@ -320,7 +320,7 @@ namespace Plugin.FindModel
         {
             ParamsFindModel IParamsFindModel = (ParamsFindModel)PluginParams;
             //默认路径
-            string filePath = Project.Instance.paramPathSet.ProcessPath;
+            string filePath = PluginHost.Context.ProcessPath;
             filePath=filePath.Replace("Process", "");
             filePath = filePath + moduleInfo.ProcessName;
             filePath = filePath + "\\NgMark";

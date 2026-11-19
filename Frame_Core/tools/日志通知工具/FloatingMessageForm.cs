@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -61,6 +61,7 @@ namespace Frame_Core
         public FloatingMessageForm(UC_Message mainUC)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             Text = "日志监视器";
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(800, 600);

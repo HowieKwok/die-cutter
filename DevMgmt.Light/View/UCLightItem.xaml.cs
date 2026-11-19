@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,7 +19,7 @@ namespace DevMgmt.Light.View
     /// <summary>
     /// LightItemPanel.xaml 的交互逻辑
     /// </summary>
-    public partial class UCLightItem : UserControl
+    public partial class UCLightItem : Frame_UI.Wpf.ThemedUserControl
     {
         public UCLightItem()
         {

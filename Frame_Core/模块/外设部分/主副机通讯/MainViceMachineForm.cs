@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -17,6 +17,7 @@ namespace Frame_Core
         public MainSlaveMachineForm()
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             //mainSlaveMachineParame = Project.Instance.m_SlaveMachine.mainSlaveMachineParame;
         }
 

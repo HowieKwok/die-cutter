@@ -41,7 +41,8 @@ namespace Frame_Core
 
         public Form_MsaCircle()
         {
-            InitializeComponent();
+            InitializeComponent();
+            FormStylingHook.Style(this);
 
         
 

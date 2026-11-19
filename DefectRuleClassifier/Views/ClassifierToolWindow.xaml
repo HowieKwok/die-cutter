@@ -3,52 +3,32 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ONNX 分类器工具（设置 / 推理 / 训练 / 测试）"
         Width="1240" Height="800" MinWidth="1080" MinHeight="680"
-        WindowStartupLocation="CenterOwner" Background="#05080D" Foreground="#EAFBFF" FontFamily="Microsoft YaHei UI">
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource Surface.Canvas}" Foreground="{DynamicResource Text.Primary}" FontFamily="{DynamicResource Font.Family}">
     <Window.Resources>
-        <SolidColorBrush x:Key="PanelBg" Color="#081018"/>
-        <SolidColorBrush x:Key="LineCyan" Color="#23D9FF"/>
-        <SolidColorBrush x:Key="LinePink" Color="#FF3FB4"/>
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Height" Value="30"/>
-            <Setter Property="Margin" Value="4"/>
-            <Setter Property="MinWidth" Value="80"/>
-            <Setter Property="Background" Value="#0E9FE8"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="{StaticResource LineCyan}"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-        </Style>
+        <SolidColorBrush x:Key="PanelBg" Color="{DynamicResource Surface.Panel.Color}"/>
+        <SolidColorBrush x:Key="LineCyan" Color="{DynamicResource Accent.Primary.Color}"/>
+        <SolidColorBrush x:Key="LinePink" Color="{DynamicResource Accent.Secondary.Color}"/>
+        <!-- 表格/输入框原本是“浅底深字”，令牌为深色主题，统一翻转为深底浅字。 -->
         <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="#F7FBFF"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="RowBackground" Value="#FFFFFF"/>
-            <Setter Property="AlternatingRowBackground" Value="#EEF6FB"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="RowBackground" Value="{DynamicResource Surface.Panel}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource Surface.PanelDeep}"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
             <Setter Property="GridLinesVisibility" Value="All"/>
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="3"/>
-            <Setter Property="Background" Value="#0A1620"/>
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="BorderBrush" Value="{StaticResource LineCyan}"/>
         </Style>
     </Window.Resources>
     <Border Margin="10" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="6" Padding="10">
         <DockPanel>
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="ONNX 分类器工具" FontSize="20" FontWeight="Bold"/>
-                <TextBlock Text="  设置模型 → 推理看图 → 批量测试 → 续接训练" Foreground="#8DFF64" Margin="12,0,0,0"/>
+                <TextBlock Text="ONNX 分类器工具" FontWeight="Bold"/>
+                <TextBlock Text="  设置模型 → 推理看图 → 批量测试 → 续接训练" Foreground="{DynamicResource State.Ok}" Margin="12,0,0,0"/>
             </StackPanel>
 
             <!-- 左：设置 + 序号绑定表 -->
-            <Border DockPanel.Dock="Left" Width="430" Background="#0A1620" BorderBrush="{StaticResource LinePink}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,10,0">
+            <Border DockPanel.Dock="Left" Width="430" Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{StaticResource LinePink}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,10,0">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="设置与序号绑定表" FontSize="14" FontWeight="Bold" Foreground="{StaticResource LinePink}" Margin="0,0,0,6"/>
+                    <TextBlock DockPanel.Dock="Top" Text="设置与序号绑定表" FontWeight="Bold" Foreground="{StaticResource LinePink}" Margin="0,0,0,6"/>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="ONNX 模型路径"/>
                         <DockPanel>
@@ -67,15 +47,15 @@
                             <TextBox x:Name="FeatureRulePathTextBox" IsReadOnly="True"/>
                         </DockPanel>
                         <Button Content="加载模型 / 刷新" Click="LoadModelButton_Click" Margin="0,6,0,0"/>
-                        <TextBlock x:Name="ModelStatusTextBlock" TextWrapping="Wrap" Foreground="#8DFF64" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="ModelStatusTextBlock" TextWrapping="Wrap" Foreground="{DynamicResource State.Ok}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <TextBlock DockPanel.Dock="Top" Text="序号绑定表（序号 → 类别名 → 映射特征标签；未绑定统一输出超限类别）" Margin="0,10,0,4"/>
                     <DockPanel DockPanel.Dock="Bottom">
-                        <Button DockPanel.Dock="Right" Content="保存绑定" Click="SaveBindingButton_Click" Background="#0B8F55"/>
+                        <Button DockPanel.Dock="Right" Content="保存绑定" Click="SaveBindingButton_Click" Background="{DynamicResource State.Ok}"/>
                         <Button DockPanel.Dock="Right" Content="导出txt" Click="ExportIndexTableButton_Click"/>
                         <Button DockPanel.Dock="Right" Content="按同名自动绑定" Click="AutoBindSameNameButton_Click"/>
                     </DockPanel>
-                    <TextBlock DockPanel.Dock="Bottom" Text="提示：序号未绑定 → 输出 涂布不良；可先加载特征值分类规则文件后点“按同名自动绑定”快速填写。" Foreground="#8DFF64" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    <TextBlock DockPanel.Dock="Bottom" Text="提示：序号未绑定 → 输出 涂布不良；可先加载特征值分类规则文件后点“按同名自动绑定”快速填写。" Foreground="{DynamicResource State.Ok}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                     <DataGrid x:Name="IndexTableGrid" AutoGenerateColumns="False" CanUserAddRows="True" IsReadOnly="False" Height="300"
                               CellEditEnding="IndexTableGrid_CellEditEnding">
                         <DataGrid.Columns>
@@ -111,7 +91,7 @@
                         </Grid.RowDefinitions>
                         <DockPanel Grid.Row="0">
                             <Button DockPanel.Dock="Right" Content="选择图片" Click="BrowseImageButton_Click"/>
-                            <Button DockPanel.Dock="Right" Content="推理" Click="InferButton_Click" Background="#0B8F55"/>
+                            <Button DockPanel.Dock="Right" Content="推理" Click="InferButton_Click" Background="{DynamicResource State.Ok}"/>
                             <TextBox x:Name="ImagePathTextBox" IsReadOnly="True"/>
                         </DockPanel>
                         <Grid Grid.Row="1" Margin="0,8,0,0">
@@ -120,20 +100,20 @@
                                 <ColumnDefinition Width="10"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Background="#060D13" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="6">
+                            <Border Grid.Column="0" Background="{DynamicResource Surface.Canvas}" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="6">
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Top" Text="原图" FontWeight="Bold" Foreground="{StaticResource LineCyan}"/>
                                     <Image x:Name="SourcePreviewImage" Stretch="Uniform"/>
                                 </DockPanel>
                             </Border>
-                            <Border Grid.Column="2" Background="#060D13" BorderBrush="{StaticResource LinePink}" BorderThickness="1" CornerRadius="4" Padding="6">
+                            <Border Grid.Column="2" Background="{DynamicResource Surface.Canvas}" BorderBrush="{StaticResource LinePink}" BorderThickness="1" CornerRadius="4" Padding="6">
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Top" Text="推理效果（标注图）" FontWeight="Bold" Foreground="{StaticResource LinePink}"/>
                                     <Image x:Name="ResultPreviewImage" Stretch="Uniform"/>
                                 </DockPanel>
                             </Border>
                         </Grid>
-                        <Border Grid.Row="2" Background="#0A1620" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                        <Border Grid.Row="2" Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,8,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -142,20 +122,20 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="输出标签（绑定后）" Foreground="#8DFF64"/>
-                                    <TextBlock x:Name="ResultClassTextBlock" FontSize="20" FontWeight="Bold" Text="--"/>
+                                    <TextBlock Text="输出标签（绑定后）" Foreground="{DynamicResource State.Ok}"/>
+                                    <TextBlock x:Name="ResultClassTextBlock" FontWeight="Bold" Text="--"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock Text="标签序号" Foreground="#8DFF64"/>
-                                    <TextBlock x:Name="ResultIndexTextBlock" FontSize="20" FontWeight="Bold" Text="--"/>
+                                    <TextBlock Text="标签序号" Foreground="{DynamicResource State.Ok}"/>
+                                    <TextBlock x:Name="ResultIndexTextBlock" FontWeight="Bold" Text="--"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="置信度" Foreground="#8DFF64"/>
-                                    <TextBlock x:Name="ResultConfidenceTextBlock" FontSize="20" FontWeight="Bold" Text="--"/>
+                                    <TextBlock Text="置信度" Foreground="{DynamicResource State.Ok}"/>
+                                    <TextBlock x:Name="ResultConfidenceTextBlock" FontWeight="Bold" Text="--"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="3">
-                                    <TextBlock Text="全部类别得分" Foreground="#8DFF64"/>
-                                    <ListBox x:Name="TopKListBox" Height="86" FontFamily="Microsoft YaHei UI" FontSize="11"/>
+                                    <TextBlock Text="全部类别得分" Foreground="{DynamicResource State.Ok}"/>
+                                    <ListBox x:Name="TopKListBox" Height="86"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -172,12 +152,12 @@
                         </Grid.RowDefinitions>
                         <DockPanel Grid.Row="0">
                             <Button DockPanel.Dock="Right" Content="选择测试目录" Click="BrowseTestRootButton_Click"/>
-                            <Button x:Name="TestButton" DockPanel.Dock="Right" Content="开始测试" Click="TestButton_Click" Background="#0B8F55"/>
+                            <Button x:Name="TestButton" DockPanel.Dock="Right" Content="开始测试" Click="TestButton_Click" Background="{DynamicResource State.Ok}"/>
                             <TextBox x:Name="TestRootTextBox" IsReadOnly="True"/>
                             <TextBlock Text="  并行数：" Margin="8,0,0,0"/>
                             <TextBox x:Name="TestWorkersTextBox" Width="46" Text="4"/>
                         </DockPanel>
-                        <TextBlock Grid.Row="1" x:Name="TestSummaryTextBlock" TextWrapping="Wrap" Foreground="#8DFF64" Margin="3,8,3,6"/>
+                        <TextBlock Grid.Row="1" x:Name="TestSummaryTextBlock" TextWrapping="Wrap" Foreground="{DynamicResource State.Ok}" Margin="3,8,3,6"/>
                         <DataGrid Grid.Row="2" x:Name="TestResultGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="图片" Binding="{Binding ImageName}" Width="*"/>
@@ -202,16 +182,16 @@
                         </Grid.RowDefinitions>
                         <DockPanel Grid.Row="0">
                             <Button DockPanel.Dock="Right" Content="选择数据集目录" Click="BrowseTrainDataButton_Click"/>
-                            <Button x:Name="TrainButton" DockPanel.Dock="Right" Content="开始续接训练" Click="TrainButton_Click" Background="#0B8F55"/>
+                            <Button x:Name="TrainButton" DockPanel.Dock="Right" Content="开始续接训练" Click="TrainButton_Click" Background="{DynamicResource State.Ok}"/>
                             <TextBox x:Name="TrainDataRootTextBox" IsReadOnly="True"/>
                             <TextBlock Text="  轮数：" Margin="8,0,0,0"/>
                             <TextBox x:Name="TrainEpochsTextBox" Width="52" Text="30"/>
                             <CheckBox x:Name="TrainResumeCheckBox" Content="续接上次训练" IsChecked="True" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </DockPanel>
-                        <TextBlock Grid.Row="1" Text="数据集结构：数据集根目录\类别名\图片；训练后台隐藏进程执行，不打开 Python 界面。" Foreground="#8DFF64" Margin="3,8,3,6" TextWrapping="Wrap"/>
-                        <TextBox Grid.Row="2" x:Name="TrainLogTextBox" IsReadOnly="True" FontFamily="Consolas" FontSize="10"
+                        <TextBlock Grid.Row="1" Text="数据集结构：数据集根目录\类别名\图片；训练后台隐藏进程执行，不打开 Python 界面。" Foreground="{DynamicResource State.Ok}" Margin="3,8,3,6" TextWrapping="Wrap"/>
+                        <TextBox Grid.Row="2" x:Name="TrainLogTextBox" IsReadOnly="True" FontFamily="Consolas"
                                  TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                 Background="#060D13" Foreground="#A9E5A9"/>
+                                 Background="{DynamicResource Surface.Canvas}" Foreground="{DynamicResource State.Ok}"/>
                     </Grid>
                 </TabItem>
             </TabControl>

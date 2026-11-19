@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -18,6 +18,7 @@ namespace Mef_VisionFrame
         public Form_SizeEdit(List<SizeCraft_DieCuttingCut> _Crafts, int index)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             Init();
             Crafts = _Crafts;
             if (_Crafts != null)

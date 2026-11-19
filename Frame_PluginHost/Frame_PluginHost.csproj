@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <!--
+    插件宿主层：插件窗体基类的唯一归属地。
+
+    为什么需要独立程序集：
+      - 插件（Plugin.*.dll）必须能编译继承 FormPluginBase；
+      - 基类又要继承 Frame_UI.WinForms.PluginFormHost；
+      - 同时 Frame_Core 被门禁禁止引用 UI 层。
+    放在 Frame_Core 会破坏分层，放在 Mef_VisionFrame(exe) 会让 20 个插件反向引用 exe。
+    依赖方向：插件 → Frame_PluginHost → (Frame_Core + Frame_UI.WinForms)，无环。
+  -->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{A1B2C3D4-0004-4E00-9000-000000000004}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Frame_Core</RootNamespace>
+    <AssemblyName>Frame_PluginHost</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
+      <Project>{01127398-2CC7-4124-B966-FBFF69A7A0E5}</Project>
+      <Name>Frame_Core</Name>
+    </ProjectReference>
+    <!--
+      Project.Instance.logParam 的静态类型 LogParam 定义在 LogTool 里，
+      契约的 LogSavePath 要绑定它，编译期必须能看到该程序集。
+    -->
+    <ProjectReference Include="..\LogTool\LogTool.csproj">
+      <Project>{EE6D8F10-4CB8-4312-8847-5D7568BE4FA0}</Project>
+      <Name>LogTool</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_UI\Frame_UI.csproj">
+      <Project>{A1B2C3D4-0001-4E00-9000-000000000001}</Project>
+      <Name>Frame_UI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_UI.WinForms\Frame_UI.WinForms.csproj">
+      <Project>{A1B2C3D4-0003-4E00-9000-000000000003}</Project>
+      <Name>Frame_UI.WinForms</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="FormPluginBase.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PluginHost.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

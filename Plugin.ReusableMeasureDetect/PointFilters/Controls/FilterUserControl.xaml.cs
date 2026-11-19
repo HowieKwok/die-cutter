@@ -1,4 +1,4 @@
-﻿using System.Windows.Controls;
+using System.Windows.Controls;
 
 namespace Plugin.ReusableMeasureDetect.PointFilters.Controls
 {
@@ -13,6 +13,8 @@ namespace Plugin.ReusableMeasureDetect.PointFilters.Controls
         /// </summary>
         public FilterUserControl()
         {
+            // 令牌字典必须挂在控件自身：本应用没有 WPF Application 对象，缺这一步 DynamicResource 会静默回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
         }
     }

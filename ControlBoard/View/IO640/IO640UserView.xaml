@@ -7,41 +7,32 @@
         xmlns:conv="clr-namespace:ControlBoard.转换"
         mc:Ignorable="d"
         Height="800" Width="900"
-        Background="#05080D"
-        Foreground="#EAFBFF"
-        FontFamily="Microsoft YaHei UI"
-        FontSize="13">
+        Background="{DynamicResource Surface.Canvas}"
+        Foreground="{DynamicResource Text.Primary}">
     <UserControl.Resources>
         <conv:BoolToLedBrushConverter x:Key="BoolToLedBrushConverter"/>
         <conv:BoolToTextConverter x:Key="BoolToTextConverter"/>
 
-        <SolidColorBrush x:Key="PanelBg" Color="#081018"/>
-        <SolidColorBrush x:Key="PanelBg2" Color="#0B141E"/>
-        <SolidColorBrush x:Key="PanelBg3" Color="#101D28"/>
-        <SolidColorBrush x:Key="LineCyan" Color="#23D9FF"/>
-        <SolidColorBrush x:Key="LinePink" Color="#FF3FB4"/>
-        <SolidColorBrush x:Key="LineGreen" Color="#8DFF64"/>
-        <SolidColorBrush x:Key="LineOrange" Color="#FFB84D"/>
-        <SolidColorBrush x:Key="TextPrimary" Color="#EAFBFF"/>
-        <SolidColorBrush x:Key="TextMuted" Color="#8CA8B8"/>
-        <SolidColorBrush x:Key="InputBg" Color="#F7FBFF"/>
+        <SolidColorBrush x:Key="PanelBg" Color="{DynamicResource Surface.Panel.Color}"/>
+        <SolidColorBrush x:Key="PanelBg2" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="PanelBg3" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="LineCyan" Color="{DynamicResource Accent.Primary.Color}"/>
+        <SolidColorBrush x:Key="LinePink" Color="{DynamicResource Accent.Secondary.Color}"/>
+        <SolidColorBrush x:Key="LineGreen" Color="{DynamicResource State.Ok.Color}"/>
+        <SolidColorBrush x:Key="LineOrange" Color="{DynamicResource State.Warn.Color}"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="{DynamicResource Text.Primary.Color}"/>
+        <SolidColorBrush x:Key="TextMuted" Color="{DynamicResource Text.Secondary.Color}"/>
+        <SolidColorBrush x:Key="InputBg" Color="{DynamicResource Surface.PanelDeep.Color}"/>
 
-        <DropShadowEffect x:Key="CardShadow" Color="#23D9FF" BlurRadius="14" ShadowDepth="0" Opacity="0.12"/>
-
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
+        <DropShadowEffect x:Key="CardShadow" Color="{DynamicResource Accent.Primary.Color}" BlurRadius="14" ShadowDepth="0" Opacity="0.12"/>
 
         <Style x:Key="FormLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,5"/>
         </Style>
 
         <Style x:Key="SectionTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
@@ -49,41 +40,12 @@
 
         <Style x:Key="PanelCaption" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
-            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
-
-        <Style TargetType="TextBox">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="0,5"/>
-            <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="Background" Value="{StaticResource InputBg}"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="BorderBrush" Value="#BFD3E0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CaretBrush" Value="#111820"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <Style TargetType="ComboBox">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="0,5"/>
-            <Setter Property="Padding" Value="6,2"/>
-            <Setter Property="Background" Value="{StaticResource InputBg}"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="BorderBrush" Value="#BFD3E0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <Style TargetType="RadioButton">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="Margin" Value="8,0,0,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
         <Style x:Key="CardBorder" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource PanelBg}"/>
-            <Setter Property="BorderBrush" Value="#21485A"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Line.Normal}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="14"/>
@@ -94,10 +56,9 @@
         <Style x:Key="BaseBtn" TargetType="Button">
             <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Padding" Value="12,5"/>
-            <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#F7FEFF"/>
-            <Setter Property="Background" Value="#102638"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
             <Setter Property="BorderBrush" Value="{StaticResource LineCyan}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -131,49 +92,48 @@
         </Style>
 
         <Style x:Key="PrimaryBtn" BasedOn="{StaticResource BaseBtn}" TargetType="Button">
-            <Setter Property="Background" Value="#0E5A78"/>
+            <Setter Property="Background" Value="{DynamicResource Accent.Primary}"/>
             <Setter Property="BorderBrush" Value="{StaticResource LineCyan}"/>
         </Style>
 
         <Style x:Key="SuccessBtn" BasedOn="{StaticResource BaseBtn}" TargetType="Button">
-            <Setter Property="Background" Value="#1D5F3A"/>
+            <Setter Property="Background" Value="{DynamicResource State.Ok}"/>
             <Setter Property="BorderBrush" Value="{StaticResource LineGreen}"/>
         </Style>
 
         <Style x:Key="DangerBtn" BasedOn="{StaticResource BaseBtn}" TargetType="Button">
-            <Setter Property="Background" Value="#68213A"/>
+            <Setter Property="Background" Value="{DynamicResource Accent.Secondary}"/>
             <Setter Property="BorderBrush" Value="{StaticResource LinePink}"/>
         </Style>
 
         <Style x:Key="WarningBtn" BasedOn="{StaticResource BaseBtn}" TargetType="Button">
-            <Setter Property="Background" Value="#7A4A12"/>
+            <Setter Property="Background" Value="{DynamicResource State.Warn}"/>
             <Setter Property="BorderBrush" Value="{StaticResource LineOrange}"/>
         </Style>
 
         <Style x:Key="LedEllipseStyle" TargetType="Ellipse">
             <Setter Property="Width" Value="18"/>
             <Setter Property="Height" Value="18"/>
-            <Setter Property="Stroke" Value="#BFD3E0"/>
+            <Setter Property="Stroke" Value="{DynamicResource Line.Normal}"/>
             <Setter Property="StrokeThickness" Value="1"/>
-            <Setter Property="Fill" Value="#27323B"/>
+            <Setter Property="Fill" Value="{DynamicResource Surface.Panel}"/>
         </Style>
 
         <DataTemplate x:Key="IoPointItemTemplate">
             <Border Margin="4"
                     Padding="6,4"
                     Background="{StaticResource PanelBg2}"
-                    BorderBrush="#1A3C4E"
+                    BorderBrush="{DynamicResource Line.Normal}"
                     BorderThickness="1"
                     CornerRadius="4">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse Style="{StaticResource LedEllipseStyle}"
                              Fill="{Binding IsOn, Converter={StaticResource BoolToLedBrushConverter}}">
                         <Ellipse.Effect>
-                            <DropShadowEffect Color="#23D9FF" BlurRadius="9" ShadowDepth="0" Opacity="0.35"/>
+                            <DropShadowEffect Color="{DynamicResource Accent.Primary.Color}" BlurRadius="9" ShadowDepth="0" Opacity="0.35"/>
                         </Ellipse.Effect>
                     </Ellipse>
                     <TextBlock Text="{Binding Index, StringFormat={}{0:00}}"
-                               FontSize="11"
                                Foreground="{StaticResource TextMuted}"
                                Margin="6,0,0,0"/>
                 </StackPanel>
@@ -191,9 +151,9 @@
                                  GradientOrigin="0.1,0.05"
                                  RadiusX="1.1"
                                  RadiusY="1.1">
-                <GradientStop Color="#102638" Offset="0"/>
-                <GradientStop Color="#05080D" Offset="0.62"/>
-                <GradientStop Color="#03060A" Offset="1"/>
+                <GradientStop Color="{DynamicResource Surface.PanelDeep.Color}" Offset="0"/>
+                <GradientStop Color="{DynamicResource Surface.Canvas.Color}" Offset="0.62"/>
+                <GradientStop Color="{DynamicResource Surface.Canvas.Color}" Offset="1"/>
             </RadialGradientBrush>
         </Grid.Background>
 
@@ -212,11 +172,9 @@
             <DockPanel LastChildFill="False">
                 <StackPanel DockPanel.Dock="Left">
                     <TextBlock Text="雷赛 IO 控制卡"
-                               FontSize="22"
                                FontWeight="Bold"/>
                     <TextBlock Text="IO640 · 32 路 DI / 32 路 DO 状态监控与单点调试"
                                Foreground="{StaticResource TextMuted}"
-                               FontSize="12"
                                Margin="0,3,0,0"/>
                 </StackPanel>
 
@@ -441,7 +399,6 @@
                                        Text="INPUT"
                                        Foreground="{StaticResource TextMuted}"
                                        FontWeight="SemiBold"
-                                       FontSize="12"
                                        Margin="0,0,0,12"/>
                         </DockPanel>
                         <TextBlock Grid.Row="1"
@@ -473,7 +430,6 @@
                                        Text="OUTPUT"
                                        Foreground="{StaticResource TextMuted}"
                                        FontWeight="SemiBold"
-                                       FontSize="12"
                                        Margin="0,0,0,12"/>
                         </DockPanel>
                         <TextBlock Grid.Row="1"

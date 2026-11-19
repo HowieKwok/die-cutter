@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -53,7 +53,7 @@ namespace Plugin.CropImage
 
         public void GetResultParams(string varName, object obj)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             proc.AddOutPutParam(moduleInfo.ModuleName, varName, obj);
         }
 

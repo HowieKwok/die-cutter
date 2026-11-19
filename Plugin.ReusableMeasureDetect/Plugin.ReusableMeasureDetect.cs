@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Frame_Core.pluginParams;
 using HalconDotNet;
 using Plugin.ReusableMeasureDetect.Core;
@@ -196,7 +196,7 @@ namespace Plugin.ReusableMeasureDetect
         {
             try
             {
-                Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+                Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
                 proc.AddOutPutParam(moduleInfo.ModuleName, varName, obj);
             }
             catch
@@ -241,7 +241,7 @@ namespace Plugin.ReusableMeasureDetect
             try
             {
                 ParamsReusableMeasureDetect p = EnsureParams();
-                Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+                Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
                 object value = proc.GetOutPutParamByName(module, valueName);
                 HObject image = value as HObject;
                 if (image != null) p.ho_Image = image;

@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Frame_Core.pluginParams;
 using HalconAlgorithm;
 using HalconDotNet;
@@ -48,7 +48,7 @@ namespace Plugin.DetectDefect
         {
             pluginsObj = (DetectDefectObj)pluginsObjBase;
             PluginParams = (ParamsDetectDefect)pluginsObj.PluginParams;
-            proc = Project.Instance.GetProcessByName(pluginsObj.moduleInfo.ProcessName);
+            proc = PluginHost.Context.GetProcessByName(pluginsObj.moduleInfo.ProcessName);
             this.Text = pluginsObjBase.moduleInfo.ModuleName;
             HOperatorSet.GenEmptyObj(out ho_Rectangle2);
             HOperatorSet.GenEmptyObj(out ho_SmallRectangle2);
@@ -794,7 +794,7 @@ namespace Plugin.DetectDefect
         {
             try
             {        //默认路径
-                string filePath = Project.Instance.paramPathSet.ProcessPath;
+                string filePath = PluginHost.Context.ProcessPath;
                 filePath = filePath.Replace("Process", "");
                 filePath = filePath + pluginsObj.moduleInfo.ProcessName;
                 if (!Directory.Exists(filePath))

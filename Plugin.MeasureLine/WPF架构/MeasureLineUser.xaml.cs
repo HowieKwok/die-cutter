@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using Frame_Core;
@@ -15,6 +15,8 @@ namespace Plugin.MeasureLine.WPF架构
 
         public MeasureLineUser()
         {
+            // 令牌字典必须挂在控件自身：本应用没有 WPF Application 对象，缺这一步 DynamicResource 会静默回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             vm = new MeasurelineViewModel();
             DataContext = vm;

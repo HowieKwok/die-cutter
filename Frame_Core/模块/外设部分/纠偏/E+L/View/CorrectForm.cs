@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -19,6 +19,7 @@ namespace Frame_Core
         {
             correctManage = _correctManage;
             InitializeComponent();
+            FormStylingHook.Style(this);
         }
 
         private void CorrectForm_Load(object sender, EventArgs e)

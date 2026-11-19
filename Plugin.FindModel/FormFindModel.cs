@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Frame_Core.pluginParams;
 
 using HalconDotNet;
@@ -725,7 +725,7 @@ namespace Plugin.FindModel
             //视觉设置
             PluginParams.backup(PluginParams);
             RefreshParamsFromView(PluginParams, cob_MatchInfo.Text);
-            PluginParams.FilePath = Project.Instance.logParam.LogSavePath + "\\ParamsChangeLog\\";
+            PluginParams.FilePath = PluginHost.Context.LogSavePath + "\\ParamsChangeLog\\";
             error = YControlAutobind.Saveing<PluginParamsBase, IYCustomAttribute>(this, PluginParams);
             // 调用父窗体
             base.Btn_Save_Click(sender, e);

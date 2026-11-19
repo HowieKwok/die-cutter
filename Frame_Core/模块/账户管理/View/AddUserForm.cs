@@ -29,6 +29,7 @@ namespace Frame_Core
         {
             userManage = _UserManage;
             InitializeComponent();
+            FormStylingHook.Style(this);
         }
 
         private void button1_Click(object sender, EventArgs e)

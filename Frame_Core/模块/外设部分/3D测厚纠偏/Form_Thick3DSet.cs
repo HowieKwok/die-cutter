@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -19,6 +19,7 @@ namespace Frame_Core
         public Form_Thick3DSet(Thick3DManage[] thick3DManages)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             this.thick3DManages = thick3DManages;
             cob_SelectCorrect.Items.Clear();
             for (int i = 0; i < thick3DManages.Count(); i++)

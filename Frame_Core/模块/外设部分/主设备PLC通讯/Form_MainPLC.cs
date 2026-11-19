@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -16,6 +16,7 @@ namespace Frame_Core
         public Form_MainPLC(MainPLCManage _mDevPLCManage)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             mDevPLCManage = _mDevPLCManage;
         }
 

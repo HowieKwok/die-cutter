@@ -18,6 +18,8 @@ namespace Plugin.CropPart.WPF架构
 
         public FormCropWindow()
         {
+            // 令牌字典必须挂在窗口自身：本应用没有 WPF Application 对象，缺这一步 DynamicResource 会静默回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
 
             vm = new CropPartViewModel();

@@ -19,6 +19,7 @@ namespace Mef_VisionFrame
         {
             _deal = deal;
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             Text = string.IsNullOrWhiteSpace(windowName)
                 ? "极片裁切 · 纠偏监控台"
                 : windowName + " - 极片裁切 · 纠偏监控台";

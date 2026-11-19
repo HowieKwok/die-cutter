@@ -1,4 +1,4 @@
-﻿using BatteryLugClassLibrary;
+using BatteryLugClassLibrary;
 using Frame_Core;
 using HalconDotNet;
 using Plugin.DetectDefect;
@@ -101,7 +101,7 @@ namespace Plugin.HandEyeCalibration
             {
                 ParamsHandEyeCalibration paramsHandEyeCalibration = (ParamsHandEyeCalibration)PluginParams;
                 paramsHandEyeCalibration.HomMat2D = new HTuple();
-                string directoryPath = Path.GetDirectoryName(Project.Instance.paramPathSet.ProcessPath);
+                string directoryPath = Path.GetDirectoryName(PluginHost.Context.ProcessPath);
                 string ProcessPath = Path.Combine(directoryPath + "\\HomMat\\", moduleInfo.ProcessName);
                 string modelFilePath = Path.Combine(ProcessPath, moduleInfo.ModuleName);
                 modelFilePath += ".txt";

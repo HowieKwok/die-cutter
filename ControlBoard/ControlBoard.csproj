@@ -16,6 +16,10 @@
   <ItemGroup>
     <ProjectReference Include="..\FrameCommunity\FrameCommunity.csproj" />
     <ProjectReference Include="..\LogTool\LogTool.csproj" />
+    <!-- 视图承载令牌字典（ThemeScope）；渲染适配器属于宿主，不随本工程发布。 -->
+    <ProjectReference Include="..\Frame_UI.Wpf\Frame_UI.Wpf.csproj">
+      <Private>False</Private>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

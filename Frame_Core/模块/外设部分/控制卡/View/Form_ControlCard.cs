@@ -1,4 +1,4 @@
-﻿using Extensions;
+using Extensions;
 using Frame_Core;
 using LogTool;
 using System;
@@ -21,6 +21,7 @@ namespace Frame_Core
         public Form_ControlCard(BIZ_ControlCard _bIZ_ControlCard)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             bIZ_ControlCard = _bIZ_ControlCard;
         }
 

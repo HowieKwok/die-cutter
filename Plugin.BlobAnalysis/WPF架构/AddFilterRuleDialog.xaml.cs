@@ -1,4 +1,4 @@
-﻿using Plugin.BlobAnalysis.Models;
+using Plugin.BlobAnalysis.Models;
 using System.Collections.Generic;
 using System.Windows;
 
@@ -39,6 +39,9 @@ namespace Plugin.BlobAnalysis.WPFArchitecture
 
         public AddFilterRuleDialog()
         {
+            // 令牌字典必须挂在元素自身：本应用没有 WPF Application 对象，
+            // 缺这一步，XAML 里的 DynamicResource 会静默回退成默认值（透明底、黑字）。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             DataContext = this;
         }

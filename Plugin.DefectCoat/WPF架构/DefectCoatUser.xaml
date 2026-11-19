@@ -7,79 +7,32 @@
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         MinWidth="1200" MinHeight="720"
         HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-        Background="#05080D" Foreground="#EAFBFF" FontFamily="Microsoft YaHei UI" FontSize="13"
-        >
+        Background="{DynamicResource Surface.Canvas}" Foreground="{DynamicResource Text.Primary}">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="PanelBg" Color="#081018"/>
-        <SolidColorBrush x:Key="PanelBg2" Color="#0B141E"/>
-        <SolidColorBrush x:Key="LineCyan" Color="#23D9FF"/>
-        <SolidColorBrush x:Key="LinePink" Color="#FF3FB4"/>
-        <SolidColorBrush x:Key="InputBg" Color="#F7FBFF"/>
+        <SolidColorBrush x:Key="PanelBg" Color="{DynamicResource Surface.Panel.Color}"/>
+        <SolidColorBrush x:Key="PanelBg2" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="LineCyan" Color="{DynamicResource Accent.Primary.Color}"/>
+        <SolidColorBrush x:Key="LinePink" Color="{DynamicResource Accent.Secondary.Color}"/>
+        <SolidColorBrush x:Key="InputBg" Color="{DynamicResource Surface.PanelDeep.Color}"/>
 
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="MinHeight" Value="30"/>
-            <Setter Property="Margin" Value="4,0"/>
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Background" Value="#0E9FE8"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="{StaticResource LineCyan}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Margin" Value="0,3,8,3"/>
-            <Setter Property="Padding" Value="6,2"/>
-            <Setter Property="Background" Value="{StaticResource InputBg}"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="BorderBrush" Value="#BFD3E0"/>
-        </Style>
-        <Style TargetType="ComboBox">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="0,3,8,3"/>
-            <Setter Property="Padding" Value="4,1"/>
-            <Setter Property="Background" Value="{StaticResource InputBg}"/>
-            <Setter Property="Foreground" Value="#111820"/>
-        </Style>
-        <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="Margin" Value="0,5,14,5"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
         <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="#F7FBFF"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="RowBackground" Value="#FFFFFF"/>
-            <Setter Property="AlternatingRowBackground" Value="#EEF6FB"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="RowBackground" Value="{DynamicResource Surface.Panel}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource Surface.PanelDeep}"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
             <Setter Property="CanUserAddRows" Value="False"/>
             <Setter Property="GridLinesVisibility" Value="All"/>
         </Style>
-        <Style TargetType="TabControl">
-            <Setter Property="Background" Value="{StaticResource PanelBg}"/>
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="BorderBrush" Value="#355A6E"/>
-        </Style>
-        <Style TargetType="TabItem">
-            <Setter Property="MinWidth" Value="82"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
         <Style x:Key="PanelBorder" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource PanelBg}"/>
-            <Setter Property="BorderBrush" Value="#21485A"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Line.Normal}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="4"/>
         </Style>
         <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="BorderBrush" Value="#21485A"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Line.Normal}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
@@ -100,7 +53,7 @@
 
         <Border Grid.ColumnSpan="3" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="6" Padding="12,8">
             <DockPanel LastChildFill="False">
-                <TextBlock DockPanel.Dock="Left" Text="缺陷检测工具" FontSize="21" FontWeight="Bold"/>
+                <TextBlock DockPanel.Dock="Left" Text="缺陷检测工具" FontWeight="Bold"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Content="加载图像" Command="{Binding LoadImageCommand}"/>
                     <Button Content="图像适应" Click="OnFitImageClick"/>
@@ -138,7 +91,7 @@
                         <DockPanel LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left" Text="主运行图 / ViewROI检测区域" FontWeight="Bold" Foreground="{StaticResource LineCyan}"/>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <TextBlock Text="{Binding MouseInfo}" Foreground="#8DFF64" Margin="0,0,18,0"/>
+                                <TextBlock Text="{Binding MouseInfo}" Foreground="{DynamicResource State.Ok}" Margin="0,0,18,0"/>
                                 <TextBlock Text="{Binding ImageInfo}"/>
                             </StackPanel>
                         </DockPanel>
@@ -185,7 +138,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="2" Grid.Row="4" Background="{StaticResource PanelBg}" BorderBrush="#8DFF64" BorderThickness="1" CornerRadius="4">
+            <Border Grid.Column="2" Grid.Row="4" Background="{StaticResource PanelBg}" BorderBrush="{DynamicResource State.Ok}" BorderThickness="1" CornerRadius="4">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="34"/>
@@ -194,14 +147,14 @@
                     </Grid.RowDefinitions>
                     <Border Grid.Row="0" Background="{StaticResource PanelBg}" Padding="10,0">
                         <DockPanel LastChildFill="False">
-                            <TextBlock DockPanel.Dock="Left" Text="{Binding PreprocessPreviewTitle}" FontWeight="Bold" Foreground="#8DFF64"/>
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding PreprocessPreviewTitle}" FontWeight="Bold" Foreground="{DynamicResource State.Ok}"/>
                             <Button DockPanel.Dock="Right" Content="适应" Width="58" Height="28" Click="OnFitPreprocessClick"/>
                         </DockPanel>
                     </Border>
                     <Border Grid.Row="1" Margin="6,0,6,4" Background="Black">
                         <wfi:WindowsFormsHost x:Name="PreprocessHost"/>
                     </Border>
-                    <TextBlock Grid.Row="2" Text="{Binding PreprocessMouseInfo}" Foreground="#8DFF64" Margin="8,0,8,4"/>
+                    <TextBlock Grid.Row="2" Text="{Binding PreprocessMouseInfo}" Foreground="{DynamicResource State.Ok}" Margin="8,0,8,4"/>
                 </Grid>
             </Border>
         </Grid>
@@ -232,7 +185,7 @@
             </Border>
             <Border Grid.Column="4" Style="{StaticResource PanelBorder}" Padding="12">
                 <StackPanel>
-                    <TextBlock Text="状态" Foreground="#8DFF64" FontWeight="Bold"/>
+                    <TextBlock Text="状态" Foreground="{DynamicResource State.Ok}" FontWeight="Bold"/>
                     <TextBlock Text="{Binding StatusText}" Margin="0,10,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
@@ -244,7 +197,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="缺陷检测参数与输出" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+                <TextBlock Text="缺陷检测参数与输出" FontWeight="Bold" Margin="0,0,0,10"/>
                 <TabControl Grid.Row="1">
                     <TabItem Header="基础参数">
                         <Border Background="{StaticResource PanelBg2}" Padding="10">
@@ -372,7 +325,7 @@
                                             </DataGrid>
                                         </DockPanel>
                                     </GroupBox>
-                                    <TextBlock Text="{Binding RoiInfo}" Foreground="#8DFF64" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding RoiInfo}" Foreground="{DynamicResource State.Ok}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </ScrollViewer>
                         </Border>
@@ -425,9 +378,9 @@
                                                 <ComboBoxItem Content="实际尺寸(mm)" Tag="{x:Static localModelsComm:PartitionLengthUnit.Millimeter}"/>
                                             </ComboBox>
                                             <TextBlock Text="总分段长度"/>
-                                            <TextBlock Text="{Binding PartitionTotalLengthText}" Foreground="#8DFF64"/>
+                                            <TextBlock Text="{Binding PartitionTotalLengthText}" Foreground="{DynamicResource State.Ok}"/>
                                             <TextBlock Text="固定宽度"/>
-                                            <TextBlock Text="{Binding PartitionFixedWidthText}" Foreground="#8DFF64"/>
+                                            <TextBlock Text="{Binding PartitionFixedWidthText}" Foreground="{DynamicResource State.Ok}"/>
                                             <TextBlock Text="横向单量(mm/pixel)"/>
                                             <ctrl:NumericBox Value="{Binding Params.PixelToMmH, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.000001" Increment="0.001" DecimalPlaces="6"/>
                                             <TextBlock Text="纵向单量(mm/pixel)"/>
@@ -509,9 +462,9 @@
                                     <RowDefinition Height="6"/>
                                     <RowDefinition Height="0.95*"/>
                                 </Grid.RowDefinitions>
-                                <Border Grid.Row="0" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="8,4" Background="#07131C">
+                                <Border Grid.Row="0" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="8,4" Background="{DynamicResource Surface.PanelDeep}">
                                     <DockPanel LastChildFill="True">
-                                        <Button DockPanel.Dock="Left" Content="获取全部特征用于分类" Command="{Binding GetAllFeaturesCommand}" MinWidth="190" Height="30" Background="#FF3FB4" Margin="0,0,10,0"/>
+                                        <Button DockPanel.Dock="Left" Content="获取全部特征用于分类" Command="{Binding GetAllFeaturesCommand}" MinWidth="190" Height="30" Background="{DynamicResource Accent.Secondary}" Margin="0,0,10,0"/>
                                         <WrapPanel VerticalAlignment="Center">
                                             <TextBlock Text="当前缺陷：" Foreground="{StaticResource LineCyan}" FontWeight="Bold"/>
                                             <TextBlock Text="{Binding SelectedResult.Index}" Width="44"/>
@@ -549,7 +502,7 @@
                                         <DataGridTextColumn Header="暗区面积" Binding="{Binding DarkArea, StringFormat=F4}" Width="78"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
-                                <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" Background="#21485A"/>
+                                <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" Background="{DynamicResource Line.Normal}"/>
                                 <GroupBox Grid.Row="3" Header="当前缺陷全部特征" Style="{StaticResource GroupBoxStyle}">
                                     <Grid>
                                         <Grid.RowDefinitions>
@@ -570,7 +523,7 @@
 
                     <TabItem Header="算法调试">
                         <Border Background="{StaticResource PanelBg2}" Padding="10">
-                            <ListBox ItemsSource="{Binding DebugLogs}" FontFamily="Consolas" FontSize="12" Background="WhiteSmoke" Foreground="#FF919797"/>
+                            <ListBox ItemsSource="{Binding DebugLogs}" FontFamily="Consolas" Background="WhiteSmoke" Foreground="{DynamicResource Text.Secondary}"/>
                         </Border>
                     </TabItem>
                 </TabControl>

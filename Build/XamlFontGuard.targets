@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!--
+    局部字体属性门禁。
+
+    为什么需要：WPF 的属性优先级是"元素上的局部值 > 样式 Setter"。
+    视图里写 <TextBlock FontSize="12"/> 时，ThemeResources.xaml 里的
+    <Setter Property="FontSize" Value="{DynamicResource Font.Size.Body}"/> 对它是无效的。
+    结果是"改了主题、这些控件不跟着变"，主题化看起来只做了一半。
+
+    只管两类，刻意不管第三类：
+      - FontSize="数字"           禁止（尺寸必须来自令牌）
+      - FontFamily="UI 字体名"     禁止（字体必须来自令牌）
+      - FontWeight="Bold"        允许——它是语义强调，令牌层没有对应维度
+      - FontFamily="Consolas" / "Segoe MDL2 Assets" 允许——等宽与图标字体是语义选择，
+        删掉会让日志列错位、图标变成方块，属于功能性破坏而非样式漂移
+
+    基线只减不增：清完一个文件从基线删一行。
+  -->
+
+  <UsingTask TaskName="XamlLocalFontGuard" TaskFactory="CodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <RootPath ParameterType="System.String" Required="true" />
+      <Baseline ParameterType="System.String[]" Required="false" />
+      <ExcludedDirectories ParameterType="System.String[]" Required="false" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var baseline = new HashSet<string>(
+            Baseline ?? new string[0], StringComparer.OrdinalIgnoreCase);
+        var excluded = ExcludedDirectories ?? new string[0];
+        if (!Directory.Exists(RootPath))
+        {
+            Log.LogError("XAMLFONT: 扫描根目录不存在：" + RootPath);
+            return false;
+        }
+
+        // FontSize="12" / FontSize="12.5"
+        var fontSize = new Regex(@"FontSize\s*=\s*""\s*[0-9]");
+        // FontFamily="微软雅黑" 等；负向排除：语义字体（等宽/图标）与已是令牌引用的 {DynamicResource ...}
+        var fontFamily = new Regex(
+            @"FontFamily\s*=\s*""(?!(Consolas|Segoe\s+MDL2\s+Assets)\b)(?!\{)[^""]+""",
+            RegexOptions.IgnoreCase);
+
+        int violations = 0;
+
+        foreach (var file in Directory.GetFiles(RootPath, "*.xaml", SearchOption.AllDirectories))
+        {
+            bool skip = false;
+            foreach (var dir in excluded)
+            {
+                if (dir.Length > 0 && file.IndexOf(dir, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    skip = true;
+                    break;
+                }
+            }
+            if (skip) continue;
+
+            string relative = file.Substring(RootPath.Length)
+                                  .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (baseline.Contains(relative)) continue;
+
+            string text = File.ReadAllText(file);
+            int count = fontSize.Matches(text).Count + fontFamily.Matches(text).Count;
+            if (count == 0) continue;
+
+            Log.LogError(
+                null, "XAMLFONT", null, file, 0, 0, 0, 0,
+                "视图出现 " + count + " 处局部字体属性（FontSize / FontFamily）。" +
+                "局部值优先级高于样式，会让主题设置对该控件失效。" +
+                "请删除它们，让字体由 ThemeResources.xaml 的隐式样式统一提供。" +
+                "（FontWeight 与 Consolas / Segoe MDL2 Assets 不受此限制。）");
+            violations++;
+        }
+
+        return violations == 0;
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="XamlFontGuard" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Mef_VisionFrame'">
+    <XamlLocalFontGuard
+        RootPath="$(MSBuildThisFileDirectory)..\"
+        ExcludedDirectories="\Frame_UI\;Frame_UI.Wpf\;Frame_UI.WinForms\;"
+        Baseline="@(XamlFontBaseline)" />
+  </Target>
+
+  <!-- 局部字体属性基线：只减不增。清完一个文件删一行。 -->
+  <ItemGroup>
+    <!--
+      已知例外：本视图位于 Frame_Core，拿不到 ThemeScope 注入的隐式样式，
+      删掉局部字体只会让它回落到 WPF 默认字体。要治理需先把视图移出核心层。
+    -->
+    <XamlFontBaseline Include="Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
+  </ItemGroup>
+</Project>

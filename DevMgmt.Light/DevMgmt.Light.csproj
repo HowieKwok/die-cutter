@@ -142,6 +142,12 @@
       <Project>{ee6d8f10-4cb8-4312-8847-5d7568be4fa0}</Project>
       <Name>LogTool</Name>
     </ProjectReference>
+    <!-- 视图承载令牌字典（ThemedUserControl）；渲染适配器属于宿主，不随本工程发布。 -->
+    <ProjectReference Include="..\Frame_UI.Wpf\Frame_UI.Wpf.csproj">
+      <Project>{A1B2C3D4-0002-4E00-9000-000000000002}</Project>
+      <Name>Frame_UI.Wpf</Name>
+      <Private>False</Private>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,4 +1,4 @@
-﻿using ControlBoard.Interface;
+using ControlBoard.Interface;
 using ControlBoard.Model;
 using ControlBoard.ViewModels.IO640;
 using FrameCommunity.公共类;
@@ -31,6 +31,8 @@ namespace ControlBoard.View.IO640
 
         public IO640UserView(IControlCard controlCard, ParamControlCord paramControlCord)
         {
+            // 令牌字典必须挂在控件自身：本应用没有 WPF Application 对象，缺这一步 DynamicResource 会静默回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             IO640UserViewModel UserViewModel = new IO640UserViewModel(controlCard, paramControlCord);
             model = paramControlCord;

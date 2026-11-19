@@ -39,7 +39,8 @@ namespace Frame_Core
    
         public Form_CalibrationPlate()
         {
-            InitializeComponent();           
+            InitializeComponent();           
+            FormStylingHook.Style(this);
         }
      
         private void Form1_Load(object sender, EventArgs e)

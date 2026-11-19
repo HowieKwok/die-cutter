@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -354,12 +354,12 @@ namespace Plugin.MeasureLine
 
         public void GetResultParams(string varName, object obj)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             proc.AddOutPutParam(moduleInfo.ModuleName, varName, obj);
         }
         public void setInPutParams(string module, string valueName)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             measLineParams.ho_Image = (HImage)proc.GetOutPutParamByName(module, valueName);
         }
         public void IniObj()

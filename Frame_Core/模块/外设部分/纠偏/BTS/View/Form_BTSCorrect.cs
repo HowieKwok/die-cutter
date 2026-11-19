@@ -1,4 +1,4 @@
-﻿using LogTool;
+using LogTool;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -19,6 +19,7 @@ namespace Frame_Core
         {
             correctBTS_Control = _correctBTS_Control;
             InitializeComponent();
+            FormStylingHook.Style(this);
         }
 
         private void Form_BTSCorrect_Load(object sender, EventArgs e)

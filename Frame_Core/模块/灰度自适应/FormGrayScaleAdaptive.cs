@@ -1,4 +1,4 @@
-﻿using LogTool;
+using LogTool;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -18,6 +18,7 @@ namespace Frame_Core
         public FormGrayScaleAdaptive()
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
           
         }
 

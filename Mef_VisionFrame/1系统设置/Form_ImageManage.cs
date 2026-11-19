@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -19,6 +19,7 @@ namespace Mef_VisionFrame
         public Form_ImageManage()
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             imageToolPanel1.Dock=DockStyle.Fill;  
         }
 

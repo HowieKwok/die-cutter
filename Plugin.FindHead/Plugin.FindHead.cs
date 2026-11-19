@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using FrameCommunity.Data;
 using HalconAlgorithm;
 using System;
@@ -209,7 +209,7 @@ namespace Plugin.FindHead
 
         public void GetResultParams(string varName, object obj)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             proc.AddOutPutParam(moduleInfo.ModuleName, varName, obj);
         }
 

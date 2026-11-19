@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -29,6 +29,7 @@ namespace Mef_VisionFrame
         public FMain()
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             camName.AddRange(Service_Camera.GetCam_Names());
             camNameS.AddRange(Service_Camera.GetCam_Names());
         }

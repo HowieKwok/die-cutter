@@ -21,7 +21,8 @@ namespace Frame_Core
 
         public Form_MarkSet()
         {
-            InitializeComponent();
+            InitializeComponent();
+            FormStylingHook.Style(this);
           
         }
 

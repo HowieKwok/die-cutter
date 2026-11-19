@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -23,6 +23,7 @@ namespace Frame_Core
         public FormPointInspection(Param_PointInspection _param)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
      
             param = _param;
         }

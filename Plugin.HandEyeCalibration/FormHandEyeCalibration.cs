@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using HalconAlgorithm;
 using HalconDotNet;
 using System;
@@ -551,7 +551,7 @@ namespace Plugin.HandEyeCalibration
         {
             try
             {
-                string directoryPath = Path.GetDirectoryName(Project.Instance.paramPathSet.ProcessPath);
+                string directoryPath = Path.GetDirectoryName(PluginHost.Context.ProcessPath);
                 string ProcessPath = Path.Combine(directoryPath + "\\HomMat\\", pluginsObjBase.moduleInfo.ProcessName);
 
                 string modelFilePath = Path.Combine(ProcessPath, pluginsObjBase.moduleInfo.ModuleName + ".txt");

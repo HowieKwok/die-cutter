@@ -40,6 +40,7 @@ namespace Mef_VisionFrame
         public Form_Main()
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             form_Main = this;
 
@@ -53,7 +54,6 @@ namespace Mef_VisionFrame
                 Project.Instance.INIProject();//初始化项目
                 //CraftSetting=new Form_CraftSetting();
                 //MainDetection = new UC_MainDetection();
-                //ProcessSetting = new UC_ProcessSetting();
                 //BaseSetting = new UC_BaseSetting();
                 //BIZ_Switchover.InitBizDataAndForm();
 

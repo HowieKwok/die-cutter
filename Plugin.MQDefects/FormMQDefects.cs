@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -295,7 +295,7 @@ namespace Plugin.MQDefects
                 string error = "";
                 //视觉设置
                 PluginParams.backup(PluginParams);
-                PluginParams.FilePath = Project.Instance.logParam.LogSavePath + "\\ParamsChangeLog\\"; ;
+                PluginParams.FilePath = PluginHost.Context.LogSavePath + "\\ParamsChangeLog\\"; ;
                 error = YControlAutobind.Saveing<PluginParamsBase, IYCustomAttribute>(this, PluginParams);
 
                 // 调用父窗体
@@ -796,7 +796,7 @@ namespace Plugin.MQDefects
         {
             try
             {
-                string directoryPath = Path.GetDirectoryName(Project.Instance.paramPathSet.ProcessPath);
+                string directoryPath = Path.GetDirectoryName(PluginHost.Context.ProcessPath);
                 string ProcessPath = Path.Combine(directoryPath + "\\Model\\", pluginsObjBase.moduleInfo.ProcessName);
 
                 string modelFilePath = Path.Combine(ProcessPath, pluginsObjBase.moduleInfo.ModuleName + ".sbm");

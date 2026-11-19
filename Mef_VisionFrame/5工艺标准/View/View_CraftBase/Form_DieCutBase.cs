@@ -34,6 +34,7 @@ namespace Mef_VisionFrame
         public Form_DieCutBase()
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             InitTableColumns__DefectCraft(dataGridView_Defect, this.Font);
             InitTableColumns_SizeCraftStation3();
             InitTableColumns_SizeCraft();

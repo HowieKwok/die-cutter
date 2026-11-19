@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.Composition;
@@ -174,7 +174,7 @@ namespace Plugin.MQDefects
             {
                 ParamsMQDefects paramsMQDefects = (ParamsMQDefects)PluginParams;
                 paramsMQDefects.Model = new HTuple();
-                string directoryPath = Path.GetDirectoryName(Project.Instance.paramPathSet.ProcessPath);
+                string directoryPath = Path.GetDirectoryName(PluginHost.Context.ProcessPath);
                 string ProcessPath = Path.Combine(directoryPath + "\\Model\\", moduleInfo.ProcessName);
                 string modelFilePath = Path.Combine(ProcessPath, moduleInfo.ModuleName);
                 modelFilePath += ".sbm";

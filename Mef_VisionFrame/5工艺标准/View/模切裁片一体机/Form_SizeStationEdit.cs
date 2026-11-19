@@ -1,4 +1,4 @@
-﻿using AntdUI;
+using AntdUI;
 using Frame_Core;
 using Frame_Core.pluginParams;
 using System;
@@ -21,6 +21,7 @@ namespace Mef_VisionFrame
         public Form_SizeStationEdit(List<SizeCraftStation_DieCuttingCut> _Crafts, int index)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             Init();
             Crafts = _Crafts;
             if (_Crafts != null)

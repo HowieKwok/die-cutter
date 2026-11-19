@@ -70,9 +70,6 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AntdUI">
-      <HintPath>..\DLL\UiDLL\AntdUI.dll</HintPath>
-    </Reference>
     <Reference Include="BatteryLugClassLibrary, Version=1.1.1.1, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>DLL\BatteryLugClassLibrary.dll</HintPath>
@@ -242,6 +239,7 @@
     <Compile Include="pluginParams\ParamsReusableMeasureDetect.cs" />
     <Compile Include="pluginParams\ParamsTemplateMatch.cs" />
     <Compile Include="Plugin\PluginBase\WPF\IPluginWpfView.cs" />
+    <Compile Include="Plugin\PluginBase\IPluginEditorView.cs" />
     <Compile Include="pluginParams\ParamsHandEyeCalibration.cs" />
     <Compile Include="processmanage\ProcessManager.cs" />
     <Compile Include="Process\ProcessServices.cs" />
@@ -287,6 +285,7 @@
     <Compile Include="tools\UIDelegate.cs" />
     <Compile Include="tools\UI刷新\UIService.cs" />
     <Compile Include="tools\ViewROI3\ControlValueSaver.cs" />
+    <Compile Include="UI\FormStylingHook.cs" />
     <Compile Include="tools\ViewROI3\ROIFormBase.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -398,15 +397,6 @@
     <Compile Include="设备描述\DeviceProfileBase.cs" />
     <Compile Include="设备描述\DeviceProfileRegistry.cs" />
     <Compile Include="设备描述\激光模切一体机\LaserDieCuttingProfile.cs" />
-    <Compile Include="Plugin\PluginBase\FormPluginBase.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Plugin\PluginBase\FormPluginBase.Designer.cs">
-      <DependentUpon>FormPluginBase.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Plugin\PluginBase\WPF\WPFFormPluginBase.xaml.cs">
-      <DependentUpon>WPFFormPluginBase.xaml</DependentUpon>
-    </Compile>
     <Compile Include="DataOperation\Binary1\BinarySerialization.cs" />
     <Compile Include="DataOperation\Binary1\BinarySerializationOperation.cs" />
     <Compile Include="DataOperation\XML1\XmlSerialization.cs" />
@@ -795,9 +785,6 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Chinese_Language.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="Plugin\PluginBase\FormPluginBase.resx">
-      <DependentUpon>FormPluginBase.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -985,10 +972,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Plugin\PluginBase\WPF\WPFFormPluginBase.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="模块\系统设置\保存设置\New\View\WindowImageSave.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

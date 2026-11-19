@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -16,6 +16,7 @@ namespace Frame_Core
         public TCPClientForm()
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             //tcpCientManager = new TCPCientManager();
             //tcpCientManager.tcpClientParam = new TCPClientParam();
 
@@ -28,6 +29,7 @@ namespace Frame_Core
             tcpCientManager = _tcpCientManager;
            
             InitializeComponent();
+            FormStylingHook.Style(this);
           
         }
 

@@ -1,4 +1,4 @@
-﻿using LogTool;
+using LogTool;
 using NPOI.SS.Formula.Functions;
 using System;
 using System.Collections.Generic;
@@ -23,6 +23,7 @@ namespace Frame_Core
         public Drive_Form(DriveParameter _driveParameter)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             driveParameter = _driveParameter;
            
         }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -16,6 +16,7 @@ namespace Frame_Core
         public Form_MianDevPLC(MDevPLCManage_Slice1to2 _bIZ_Param_Slice1To2)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             bIZ_Param_Slice1To2 = _bIZ_Param_Slice1To2;
         }
 

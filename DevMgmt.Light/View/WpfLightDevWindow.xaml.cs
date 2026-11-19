@@ -1,4 +1,4 @@
-﻿using DevMgmt.Light.Models;
+using DevMgmt.Light.Models;
 using DevMgmt.Light.Tool;
 using DevMgmt.Light.ViewModels;
 using FrameCommunity;
@@ -36,6 +36,8 @@ namespace DevMgmt.Light.View
         private readonly LightControllerViewModel ViewModel;
         public WpfLightDevWindow(LightControllerParam param)
         {
+            // 令牌字典必须挂在窗口自身：本应用没有 WPF Application 对象，缺这一步 DynamicResource 会静默回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen;
             ViewModel = new LightControllerViewModel(param);

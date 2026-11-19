@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Plugin.TemplateMatch.ViewModels;
 using System;
 using System.Windows;
@@ -18,6 +18,10 @@ namespace Plugin.TemplateMatch.Views
 
         public TemplateMatchUser()
         {
+            // 令牌字典必须挂在控件自身：本应用没有 WPF Application 对象。
+            // 本视图走 Application.LoadComponent 而非 InitializeComponent，
+            // 所以注入必须发生在加载 XAML 之前，否则 DynamicResource 全部回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             Application.LoadComponent(this, new Uri("/Plugin.TemplateMatch;component/WPF架构/TemplateMatchUser.xaml", UriKind.Relative));
             vm = new TemplateMatchViewModel();
             DataContext = vm;

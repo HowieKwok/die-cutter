@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using HalconDotNet;
 using System;
 using System.ComponentModel;
@@ -226,7 +226,7 @@ namespace Plugin.FindMark
 
         public void GetResultParams(string varName, object obj)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             proc.AddOutPutParam(moduleInfo.ModuleName, varName, obj);
         }
 

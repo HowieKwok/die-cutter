@@ -34,7 +34,8 @@ namespace Frame_Core
 
         public Form_Checkerboard()
         {
-            InitializeComponent();
+            InitializeComponent();
+            FormStylingHook.Style(this);
 
         }
 

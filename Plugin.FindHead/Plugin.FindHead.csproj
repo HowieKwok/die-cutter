@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -85,6 +85,7 @@
     <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2CC7-4124-B966-FBFF69A7A0E5}</Project>
       <Name>Frame_Core</Name>
+      <Private>False</Private>
     </ProjectReference>
     <ProjectReference Include="..\FrameCommunity\FrameCommunity.csproj">
       <Project>{2E0BC248-E72A-4833-A851-20069A232648}</Project>
@@ -93,6 +94,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Frame_PluginHost\Frame_PluginHost.csproj">
+      <Project>{A1B2C3D4-0004-4E00-9000-000000000004}</Project>
+      <Name>Frame_PluginHost</Name>
+      <Private>False</Private>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

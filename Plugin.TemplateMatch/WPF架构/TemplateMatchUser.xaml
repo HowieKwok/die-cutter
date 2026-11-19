@@ -6,65 +6,22 @@
              xmlns:mask="clr-namespace:FrameCommunity.MaskRoiTool;assembly=FrameCommunity"
              xmlns:vm="clr-namespace:Plugin.TemplateMatch.ViewModels"
              Unloaded="UserControl_Unloaded"
-             Background="#05080D"
-             Foreground="#EAFBFF"
-             FontFamily="Microsoft YaHei UI"
-             FontSize="13">
+             Background="{DynamicResource Surface.Canvas}"
+             Foreground="{DynamicResource Text.Primary}">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="PanelBg" Color="#081018"/>
-        <SolidColorBrush x:Key="PanelBg2" Color="#0D1721"/>
-        <SolidColorBrush x:Key="LineCyan" Color="#23D9FF"/>
-        <SolidColorBrush x:Key="LinePink" Color="#FF3FB4"/>
-        <SolidColorBrush x:Key="TextSoft" Color="#B7CCD8"/>
+        <SolidColorBrush x:Key="PanelBg" Color="{DynamicResource Surface.Panel.Color}"/>
+        <SolidColorBrush x:Key="PanelBg2" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="LineCyan" Color="{DynamicResource Accent.Primary.Color}"/>
+        <SolidColorBrush x:Key="LinePink" Color="{DynamicResource Accent.Secondary.Color}"/>
+        <SolidColorBrush x:Key="TextSoft" Color="{DynamicResource Text.Secondary.Color}"/>
 
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-        </Style>
-        <Style TargetType="Label">
-            <Setter Property="Foreground" Value="{StaticResource TextSoft}"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="0,0,8,3"/>
-        </Style>
-        <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="Margin" Value="0,3,12,3"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Margin" Value="0,0,7,7"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="MinHeight" Value="30"/>
-            <Setter Property="Background" Value="#122536"/>
-            <Setter Property="Foreground" Value="#F7FEFF"/>
-            <Setter Property="BorderBrush" Value="#23D9FF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style TargetType="GroupBox">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="BorderBrush" Value="#21485A"/>
-            <Setter Property="Background" Value="{StaticResource PanelBg}"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-            <Setter Property="Padding" Value="9"/>
-        </Style>
         <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="#F7FBFF"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="RowBackground" Value="#FFFFFF"/>
-            <Setter Property="AlternatingRowBackground" Value="#EEF6FB"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="RowBackground" Value="{DynamicResource Surface.Panel}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource Surface.PanelDeep}"/>
             <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
-        </Style>
-        <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#E8F3FA"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-        </Style>
-        <Style TargetType="DataGridCell">
-            <Setter Property="Foreground" Value="#111820"/>
-        </Style>
-        <Style TargetType="TabItem">
-            <Setter Property="MinWidth" Value="92"/>
-            <Setter Property="Padding" Value="12,5"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
     </UserControl.Resources>
 
@@ -81,11 +38,11 @@
                 <RowDefinition Height="100"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Background="#07111A" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="12,0">
+            <Border Grid.Row="0" Background="{DynamicResource Surface.Panel}" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="4" Padding="12,0">
                 <DockPanel LastChildFill="False">
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="模板匹配" FontSize="21" FontWeight="Bold"/>
-                        <TextBlock Text="运行图 / 模板图 / ROI绑定" FontSize="12" Foreground="#23D9FF" Margin="14,8,0,0"/>
+                        <TextBlock Text="模板匹配" FontWeight="Bold"/>
+                        <TextBlock Text="运行图 / 模板图 / ROI绑定" Foreground="{DynamicResource Accent.Primary}" Margin="14,8,0,0"/>
                     </StackPanel>
                     <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
                         <Button Content="加载图像" Command="{Binding LoadImageCommand}"/>
@@ -105,15 +62,15 @@
                     <ColumnDefinition Width="1.0*" MinWidth="260"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" Background="#010308" BorderBrush="#1D5164" BorderThickness="1" CornerRadius="4" Margin="0,0,10,0">
+                <Border Grid.Column="0" Background="{DynamicResource Surface.Canvas}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Margin="0,0,10,0">
                     <Grid>
-                        <Border Background="#06111B" BorderBrush="#23D9FF" BorderThickness="0,0,0,1" Height="28" VerticalAlignment="Top" Panel.ZIndex="2">
+                        <Border Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{DynamicResource Accent.Primary}" BorderThickness="0,0,0,1" Height="28" VerticalAlignment="Top" Panel.ZIndex="2">
                             <DockPanel>
                                 <TextBlock Text="运行图" FontWeight="Bold" Margin="10,5,0,0"/>
-                                <TextBlock Text="{Binding ImageSizeText}" Foreground="#9FB7C5" HorizontalAlignment="Right" Margin="0,6,12,0"/>
+                                <TextBlock Text="{Binding ImageSizeText}" Foreground="{DynamicResource Text.Secondary}" HorizontalAlignment="Right" Margin="0,6,12,0"/>
                             </DockPanel>
                         </Border>
-                        <wfi:WindowsFormsHost x:Name="MainHost" Margin="0,28,0,0" Background="#010308"/>
+                        <wfi:WindowsFormsHost x:Name="MainHost" Margin="0,28,0,0" Background="{DynamicResource Surface.Canvas}"/>
                     </Grid>
                 </Border>
 
@@ -124,27 +81,27 @@
                         <RowDefinition Height="1.05*"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0" Background="#010308" BorderBrush="#5D315B" BorderThickness="1" CornerRadius="4">
+                    <Border Grid.Row="0" Background="{DynamicResource Surface.Canvas}" BorderBrush="{DynamicResource Accent.Secondary}" BorderThickness="1" CornerRadius="4">
                         <Grid>
-                            <Border Background="#100A16" BorderBrush="#FF3FB4" BorderThickness="0,0,0,1" Height="26" VerticalAlignment="Top" Panel.ZIndex="2">
+                            <Border Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Accent.Secondary}" BorderThickness="0,0,0,1" Height="26" VerticalAlignment="Top" Panel.ZIndex="2">
                                 <DockPanel>
                                     <Button Content="适应" DockPanel.Dock="Right" Width="52" Height="22" Margin="0,2,6,2" Padding="4,0" Command="{Binding FitTemplateCommand}"/>
                                     <TextBlock Text="模板图" FontWeight="Bold" Margin="10,4,0,0"/>
                                 </DockPanel>
                             </Border>
-                            <wfi:WindowsFormsHost x:Name="TemplateHost" Margin="0,26,0,0" Background="#010308"/>
+                            <wfi:WindowsFormsHost x:Name="TemplateHost" Margin="0,26,0,0" Background="{DynamicResource Surface.Canvas}"/>
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="2" Background="#010308" BorderBrush="#23D9FF" BorderThickness="1" CornerRadius="4">
+                    <Border Grid.Row="2" Background="{DynamicResource Surface.Canvas}" BorderBrush="{DynamicResource Accent.Primary}" BorderThickness="1" CornerRadius="4">
                         <Grid>
-                            <Border Background="#06111B" BorderBrush="#23D9FF" BorderThickness="0,0,0,1" Height="26" VerticalAlignment="Top" Panel.ZIndex="2">
+                            <Border Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{DynamicResource Accent.Primary}" BorderThickness="0,0,0,1" Height="26" VerticalAlignment="Top" Panel.ZIndex="2">
                                 <DockPanel>
                                     <Button Content="适应" DockPanel.Dock="Right" Width="52" Height="22" Margin="0,2,6,2" Padding="4,0" Command="{Binding FitMatchCommand}"/>
                                     <TextBlock Text="结果图" FontWeight="Bold" Margin="10,4,0,0"/>
                                 </DockPanel>
                             </Border>
-                            <wfi:WindowsFormsHost x:Name="MatchHost" Margin="0,26,0,0" Background="#010308"/>
+                            <wfi:WindowsFormsHost x:Name="MatchHost" Margin="0,26,0,0" Background="{DynamicResource Surface.Canvas}"/>
                         </Grid>
                     </Border>
                 </Grid>
@@ -157,26 +114,26 @@
                     <ColumnDefinition Width="1.4*"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Background="{StaticResource PanelBg2}" BorderBrush="#1F4253" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,8,0">
+                <Border Background="{StaticResource PanelBg2}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,8,0">
                     <StackPanel>
-                        <TextBlock Text="鼠标 / 图像" FontWeight="Bold" Foreground="#23D9FF"/>
-                        <TextBlock Text="{Binding ImageSizeText}" FontFamily="Consolas" FontSize="14" Margin="0,7,0,0"/>
-                        <TextBlock Text="{Binding MouseInfo}" FontFamily="Consolas" FontSize="14" Margin="0,4,0,0"/>
+                        <TextBlock Text="鼠标 / 图像" FontWeight="Bold" Foreground="{DynamicResource Accent.Primary}"/>
+                        <TextBlock Text="{Binding ImageSizeText}" FontFamily="Consolas" Margin="0,7,0,0"/>
+                        <TextBlock Text="{Binding MouseInfo}" FontFamily="Consolas" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="1" Background="{StaticResource PanelBg2}" BorderBrush="#1F4253" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,8,0">
+                <Border Grid.Column="1" Background="{StaticResource PanelBg2}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,8,0">
                     <StackPanel>
-                        <TextBlock Text="运行状态" FontWeight="Bold" Foreground="#FF3FB4"/>
-                        <TextBlock Text="{Binding ElapsedText}" FontFamily="Consolas" FontSize="14" Margin="0,7,0,0"/>
-                        <TextBlock Text="{Binding SuccessText}" FontFamily="Consolas" FontSize="14" Margin="0,4,0,0"/>
+                        <TextBlock Text="运行状态" FontWeight="Bold" Foreground="{DynamicResource Accent.Secondary}"/>
+                        <TextBlock Text="{Binding ElapsedText}" FontFamily="Consolas" Margin="0,7,0,0"/>
+                        <TextBlock Text="{Binding SuccessText}" FontFamily="Consolas" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2" Background="{StaticResource PanelBg2}" BorderBrush="#1F4253" BorderThickness="1" CornerRadius="4" Padding="10">
+                <Border Grid.Column="2" Background="{StaticResource PanelBg2}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Padding="10">
                     <StackPanel>
-                        <TextBlock Text="提示" FontWeight="Bold" Foreground="#8DFF64"/>
-                        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="#D7E9F2" FontSize="13" Margin="0,7,0,0"/>
+                        <TextBlock Text="提示" FontWeight="Bold" Foreground="{DynamicResource State.Ok}"/>
+                        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary}" Margin="0,7,0,0"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -190,7 +147,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="模板与参数" FontSize="20" FontWeight="Bold" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="0" Text="模板与参数" FontWeight="Bold" Margin="0,0,0,8"/>
 
                 <GroupBox Grid.Row="1" Header="模板列表">
                     <DockPanel>
@@ -302,7 +259,7 @@
                                                                SelectedMaskRoiParam="{Binding SelectedMaskRoiParam, Mode=TwoWay}"/>
                                 </GroupBox>
 
-                                <TextBlock Text="位置跟随" Foreground="#8DFF64" FontWeight="Bold" Margin="0,12,0,6"/>
+                                <TextBlock Text="位置跟随" Foreground="{DynamicResource State.Ok}" FontWeight="Bold" Margin="0,12,0,6"/>
                                 <WrapPanel Margin="0,0,0,8">
                                     <CheckBox Content="启用位置跟随" IsChecked="{Binding UsePositionFollow, Mode=TwoWay}"/>
                                 </WrapPanel>
@@ -321,7 +278,7 @@
                     <TabItem Header="运行页">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="10">
                             <StackPanel>
-                                <TextBlock Text="创建模板参数" Foreground="#23D9FF" FontWeight="Bold" Margin="0,0,0,6"/>
+                                <TextBlock Text="创建模板参数" Foreground="{DynamicResource Accent.Primary}" FontWeight="Bold" Margin="0,0,0,6"/>
                                 <UniformGrid Columns="2">
                                     <Label Content="方式"/><ComboBox SelectedItem="{Binding SelectedTemplate.CreateOptions.MatchMode, Mode=TwoWay}" ItemsSource="{Binding MatchModes}" Height="24"/>
                                     <Label Content="建模方法"/><ctrl:NumericBox Value="{Binding SelectedTemplate.CreateOptions.ModelCreatingMethod, Mode=TwoWay}" Minimum="0" Increment="1" DecimalPlaces="0"/>
@@ -335,7 +292,7 @@
                                     <Label Content="匹配特征"/><ComboBox SelectedItem="{Binding SelectedTemplate.CreateOptions.Metric, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding MetricOptions}" Height="24"/>
                                 </UniformGrid>
 
-                                <TextBlock Text="匹配参数" Foreground="#FF3FB4" FontWeight="Bold" Margin="0,12,0,6"/>
+                                <TextBlock Text="匹配参数" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,12,0,6"/>
                                 <UniformGrid Columns="2">
                                     <Label Content="角度起点"/><ctrl:NumericBox Value="{Binding SelectedTemplate.FindOptions.AngleStartDeg, Mode=TwoWay}" Increment="1" DecimalPlaces="2"/>
                                     <Label Content="角度范围"/><ctrl:NumericBox Value="{Binding SelectedTemplate.FindOptions.AngleExtentDeg, Mode=TwoWay}" Increment="1" DecimalPlaces="2"/>
@@ -354,16 +311,16 @@
                     <TabItem Header="结果页">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="10">
                             <StackPanel>
-                                <TextBlock Text="输出概要" Foreground="#8DFF64" FontWeight="Bold" Margin="0,12,0,6"/>
-                                <Border Background="#07111A" BorderBrush="#1F4253" BorderThickness="1" CornerRadius="4" Padding="10">
+                                <TextBlock Text="输出概要" Foreground="{DynamicResource State.Ok}" FontWeight="Bold" Margin="0,12,0,6"/>
+                                <Border Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Padding="10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="1*"/>
                                             <ColumnDefinition Width="1*"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="{Binding SelectedResult.TemplateName}" FontSize="18" FontWeight="Bold"/>
-                                            <TextBlock Text="{Binding SelectedResult.StatusText}" Foreground="#23D9FF" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding SelectedResult.TemplateName}" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding SelectedResult.StatusText}" Foreground="{DynamicResource Accent.Primary}" Margin="0,4,0,0"/>
                                             <TextBlock Text="{Binding SelectedResult.MatchMode, Converter={x:Static ctrl:MatchModeTextConverter.Instance}}" Margin="0,4,0,0"/>
                                             <TextBlock Text="{Binding SelectedResult.Score, StringFormat=分数: {0:0.000}}" Margin="0,4,0,0"/>
                                             <TextBlock Text="{Binding SelectedResult.AngleDeg, StringFormat=角度: {0:0.000}}" Margin="0,4,0,0"/>
@@ -374,15 +331,15 @@
                                             <TextBlock Text="{Binding SelectedResult.OffsetRDeg, StringFormat=偏差角: {0:0.000}}" Margin="0,4,0,0"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="基准到当前矩阵" Foreground="#23D9FF"/>
+                                            <TextBlock Text="基准到当前矩阵" Foreground="{DynamicResource Accent.Primary}"/>
                                             <TextBox Text="{Binding SelectedResult.BaseToCurrentMatrixText}" IsReadOnly="True" TextWrapping="Wrap" Height="52" Margin="0,4,0,8"/>
-                                            <TextBlock Text="当前到基准矩阵" Foreground="#23D9FF"/>
+                                            <TextBlock Text="当前到基准矩阵" Foreground="{DynamicResource Accent.Primary}"/>
                                             <TextBox Text="{Binding SelectedResult.CurrentToBaseMatrixText}" IsReadOnly="True" TextWrapping="Wrap" Height="52" Margin="0,4,0,0"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
 
-                                <TextBlock Text="匹配明细" Foreground="#8DFF64" FontWeight="Bold" Margin="0,12,0,6"/>
+                                <TextBlock Text="匹配明细" Foreground="{DynamicResource State.Ok}" FontWeight="Bold" Margin="0,12,0,6"/>
                                 <DataGrid ItemsSource="{Binding Results}" SelectedItem="{Binding SelectedResult}" AutoGenerateColumns="False" CanUserAddRows="False" Height="250">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="模板" Binding="{Binding TemplateName}" Width="110"/>

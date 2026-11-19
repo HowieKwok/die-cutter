@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using FrameCommunity.Data;
 using HalconDotNet;
 using LogTool;
@@ -102,7 +102,7 @@ namespace Plugin.CropPart
 
         public void GetResultParams(string varName, object obj)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             proc.AddOutPutParam(moduleInfo.ModuleName, varName, obj);
         }
 

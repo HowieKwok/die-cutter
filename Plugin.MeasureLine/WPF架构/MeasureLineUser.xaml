@@ -10,39 +10,18 @@
              d:DesignWidth="1280"
            >
     <UserControl.Resources>
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#DCF8FF"/>
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
-        <Style TargetType="ComboBox">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="0,2,0,8"/>
-            <Setter Property="Foreground" Value="#E9FBFF"/>
-            <Setter Property="Background" Value="#102536"/>
-            <Setter Property="BorderBrush" Value="#2F7E98"/>
-        </Style>
         <Style x:Key="ToolButton" TargetType="Button">
             <Setter Property="Height" Value="32"/>
             <Setter Property="MinWidth" Value="82"/>
             <Setter Property="Margin" Value="4,0"/>
-            <Setter Property="Foreground" Value="#E9FBFF"/>
-            <Setter Property="Background" Value="#102536"/>
-            <Setter Property="BorderBrush" Value="#00A9C8"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent.Secondary}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
-        <Style TargetType="TabControl">
-            <Setter Property="Background" Value="#111923"/>
-            <Setter Property="BorderBrush" Value="#2F7E98"/>
-            <Setter Property="Foreground" Value="#DCF8FF"/>
-        </Style>
-        <Style TargetType="TabItem">
-            <Setter Property="Background" Value="#102536"/>
-            <Setter Property="Foreground" Value="#DCF8FF"/>
         </Style>
     </UserControl.Resources>
 
-    <Grid Background="#08111B">
+    <Grid Background="{DynamicResource Surface.Canvas}">
         <Grid.RowDefinitions>
             <RowDefinition Height="54"/>
             <RowDefinition Height="*"/>
@@ -53,15 +32,15 @@
             <ColumnDefinition Width="420"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="#2F7E98" BorderThickness="1" Background="#101A26" Padding="14,0">
+        <Border Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource Accent.Primary}" BorderThickness="1" Background="{DynamicResource Surface.PanelDeep}" Padding="14,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="220"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="520"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock VerticalAlignment="Center" Text="直线抓边工具" FontSize="21" FontWeight="Bold" Foreground="#00E5FF"/>
-                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding StatusText}" Foreground="#9FC7D8"/>
+                <TextBlock VerticalAlignment="Center" Text="直线抓边工具" FontWeight="Bold" Foreground="{DynamicResource Accent.Secondary}"/>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding StatusText}" Foreground="{DynamicResource Text.Secondary}"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button Style="{StaticResource ToolButton}" Content="加载图像" Command="{Binding LoadImageCommand}"/>
                     <Button Style="{StaticResource ToolButton}" Content="十字光标" Command="{Binding ToggleCrosshairCommand}"/>
@@ -77,19 +56,19 @@
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0"
-            BorderBrush="#215D73"
+            BorderBrush="{DynamicResource Line.Normal}"
             BorderThickness="1"
-            Background="#020407"
+            Background="{DynamicResource Surface.Canvas}"
             Margin="1,1,1,8">
                 <Grid>
-                    <wfi:WindowsFormsHost x:Name="HalconHost" Background="#020407"/>
+                    <wfi:WindowsFormsHost x:Name="HalconHost" Background="{DynamicResource Surface.Canvas}"/>
 
                     <Popup Placement="MousePoint"
                    StaysOpen="False"
                    AllowsTransparency="True"
                    IsOpen="{Binding IsFollowMenuOpen, Mode=TwoWay}">
-                        <Border Background="#102536"
-                        BorderBrush="#00A9C8"
+                        <Border Background="{DynamicResource Surface.PanelDeep}"
+                        BorderBrush="{DynamicResource Accent.Secondary}"
                         BorderThickness="1"
                         Padding="4">
                             <StackPanel>
@@ -110,9 +89,9 @@
             </Border>
 
             <Border Grid.Row="1"
-            BorderBrush="#215D73"
+            BorderBrush="{DynamicResource Line.Normal}"
             BorderThickness="1"
-            Background="#08111B"
+            Background="{DynamicResource Surface.Canvas}"
             Margin="1,0,1,8">
                 <Grid Margin="10">
                     <Grid.ColumnDefinitions>
@@ -120,47 +99,47 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border BorderBrush="#1B5264"
+                    <Border BorderBrush="{DynamicResource Line.Normal}"
                     BorderThickness="1"
                     Margin="0,0,6,0"
-                    Background="#050A10">
+                    Background="{DynamicResource Surface.PanelDeep}">
                         <Grid>
                             <TextBlock Text="H 灰度曲线"
-                               Foreground="#7EE6FF"
+                               Foreground="{DynamicResource Accent.Primary}"
                                Margin="8,6"
                                Panel.ZIndex="1"/>
                             <ctrl:ProfileCurveControl Margin="8,24,8,8"
                                               Values="{Binding HorizontalProfile}"
-                                              Stroke="#00E5FF"/>
+                                              Stroke="{DynamicResource Accent.Secondary}"/>
                         </Grid>
                     </Border>
 
                     <Border Grid.Column="1"
-                    BorderBrush="#1B5264"
+                    BorderBrush="{DynamicResource Line.Normal}"
                     BorderThickness="1"
                     Margin="6,0,0,0"
-                    Background="#050A10">
+                    Background="{DynamicResource Surface.PanelDeep}">
                         <Grid>
                             <TextBlock Text="V 灰度曲线"
-                               Foreground="#7EE6FF"
+                               Foreground="{DynamicResource Accent.Primary}"
                                Margin="8,6"
                                Panel.ZIndex="1"/>
                             <ctrl:ProfileCurveControl Margin="8,24,8,8"
                                               Values="{Binding VerticalProfile}"
-                                              Stroke="#83FF72"/>
+                                              Stroke="{DynamicResource State.Ok}"/>
                         </Grid>
                     </Border>
                 </Grid>
             </Border>
         </Grid>
-        <Border Grid.Row="1" Grid.Column="1" BorderBrush="#2F7E98" BorderThickness="1" Background="#111923" Margin="0,10,0,8">
+        <Border Grid.Row="1" Grid.Column="1" BorderBrush="{DynamicResource Accent.Primary}" BorderThickness="1" Background="{DynamicResource Surface.PanelDeep}" Margin="0,10,0,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="126"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border BorderBrush="#255F72" BorderThickness="0,0,0,1" Background="#0B1520" Padding="12">
+                <Border BorderBrush="{DynamicResource Line.Normal}" BorderThickness="0,0,0,1" Background="{DynamicResource Surface.PanelDeep}" Padding="12">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -168,38 +147,38 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="运行结果" Foreground="#00E5FF" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Grid.Row="1" Text="{Binding Line1Status}" Foreground="#83FF72"/>
+                        <TextBlock Grid.Row="0" Text="运行结果" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Grid.Row="1" Text="{Binding Line1Status}" Foreground="{DynamicResource State.Ok}"/>
                         <TextBlock Grid.Row="2" Text="{Binding Line1Info}" Foreground="AliceBlue"/>
-                        <TextBlock Grid.Row="3" Text="{Binding FollowOffsetText}" Foreground="#AEC7D3" Margin="0,8,0,0"/>
+                        <TextBlock Grid.Row="3" Text="{Binding FollowOffsetText}" Foreground="{DynamicResource Text.Secondary}" Margin="0,8,0,0"/>
                     </Grid>
                 </Border>
 
                 <TabControl Grid.Row="1" Foreground="Black">
                     <TabControl.ItemContainerStyle>
                         <Style TargetType="TabItem">
-                            <Setter Property="Background" Value="#102536"/>
-                            <Setter Property="Foreground" Value="#DCF8FF"/>
+                            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
                             <Setter Property="Padding" Value="14,6"/>
                             <Setter Property="Margin" Value="0,0,4,0"/>
 
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="Background" Value="#08111B"/>
-                                    <Setter Property="Foreground" Value="#00E5FF"/>
+                                    <Setter Property="Background" Value="{DynamicResource Surface.Canvas}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource Accent.Secondary}"/>
                                     <Setter Property="Panel.ZIndex" Value="1"/>
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#173246"/>
+                                    <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
                     </TabControl.ItemContainerStyle>
 
                     <TabItem Header="抓边">
-                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="#111923" >
+                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}" >
                             <StackPanel>
-                                <TextBlock Text="ROI参数" Foreground="#00E5FF" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <TextBlock Text="ROI参数" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,0,0,8"/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="中心行"/>
@@ -227,8 +206,8 @@
                                     </StackPanel>
                                 </UniformGrid>
 
-                                <Separator Margin="0,8,0,12" Background="#255F72"/>
-                                <TextBlock Text="抓边参数" Foreground="#00E5FF" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <Separator Margin="0,8,0,12" Background="{DynamicResource Line.Normal}"/>
+                                <TextBlock Text="抓边参数" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,0,0,8"/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="平滑系数"/>
@@ -288,16 +267,16 @@
                     </TabItem>
 
                     <TabItem Header="ROI移动">
-                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="#111923">
+                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
                             <StackPanel>
-                                <TextBlock Text="移动方式" Foreground="#00E5FF" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <TextBlock Text="移动方式" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,0,0,8"/>
                                 <ComboBox SelectedValue="{Binding Params.RoiMoveIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Tag">
                                     <ComboBoxItem Content="静态" Tag="StaticROI"/>
                                     <ComboBoxItem Content="标准ROI" Tag="StandardROI"/>
                                     <ComboBoxItem Content="递增ROI" Tag="IncreaseROI"/>
                                 </ComboBox>
 
-                                <TextBlock Text="标准ROI" Foreground="#00E5FF" FontWeight="Bold" Margin="0,6,0,8"/>
+                                <TextBlock Text="标准ROI" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,6,0,8"/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="基准行"/>
@@ -317,7 +296,7 @@
                                     </StackPanel>
                                 </UniformGrid>
 
-                                <TextBlock Text="递增ROI" Foreground="#00E5FF" FontWeight="Bold" Margin="0,8,0,8"/>
+                                <TextBlock Text="递增ROI" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,8,0,8"/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="递增次数"/>
@@ -337,9 +316,9 @@
                     </TabItem>
 
                     <TabItem Header="图像预处理">
-                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="#111923">
+                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
                             <StackPanel>
-                                <CheckBox Content="启用图像预处理" IsChecked="{Binding Params.ImageProcessEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#DCF8FF" Margin="0,0,0,12"/>
+                                <CheckBox Content="启用图像预处理" IsChecked="{Binding Params.ImageProcessEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="{DynamicResource Text.Primary}" Margin="0,0,0,12"/>
                                 <StackPanel IsEnabled="{Binding Params.ImageProcessEnabled}">
                                     <UniformGrid Columns="2">
                                         <StackPanel Margin="0,0,8,0">
@@ -365,9 +344,9 @@
                     </TabItem>
 
                     <TabItem Header="峰值/默认线">
-                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="#111923">
+                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
                             <StackPanel>
-                                <TextBlock Text="峰值谷值选择" Foreground="#00E5FF" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <TextBlock Text="峰值谷值选择" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,0,0,8"/>
                                 <ComboBox SelectedValue="{Binding Params.PeakValleySelect, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Tag">
                                     <ComboBoxItem Content="无" Tag="None"/>
                                     <ComboBoxItem Content="峰值" Tag="peak"/>
@@ -380,10 +359,10 @@
                     </TabItem>
 
                     <TabItem Header="位置跟随">
-                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="#111923">
+                        <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
                             <StackPanel>
-                                <CheckBox Content="启用位置跟随" IsChecked="{Binding Params.EnablePositionFollow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#DCF8FF" Margin="0,0,0,12"/>
-                                <TextBlock Text="基准位置" Foreground="#00E5FF" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <CheckBox Content="启用位置跟随" IsChecked="{Binding Params.EnablePositionFollow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="{DynamicResource Text.Primary}" Margin="0,0,0,12"/>
+                                <TextBlock Text="基准位置" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,0,0,8"/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="基准行"/>
@@ -399,7 +378,7 @@
                                     </StackPanel>
                                 </UniformGrid>
 
-                                <TextBlock Text="当前位置" Foreground="#00E5FF" FontWeight="Bold" Margin="0,8,0,8"/>
+                                <TextBlock Text="当前位置" Foreground="{DynamicResource Accent.Secondary}" FontWeight="Bold" Margin="0,8,0,8"/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="当前行"/>
@@ -421,8 +400,8 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Grid.ColumnSpan="2" BorderBrush="#255F72" BorderThickness="1" Background="#101923" Padding="12,0">
-            <TextBlock VerticalAlignment="Center" Text="{Binding MouseInfo}" Foreground="#AEC7D3"/>
+        <Border Grid.Row="2" Grid.ColumnSpan="2" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" Background="{DynamicResource Surface.PanelDeep}" Padding="12,0">
+            <TextBlock VerticalAlignment="Center" Text="{Binding MouseInfo}" Foreground="{DynamicResource Text.Secondary}"/>
         </Border>
     </Grid>
 </UserControl>

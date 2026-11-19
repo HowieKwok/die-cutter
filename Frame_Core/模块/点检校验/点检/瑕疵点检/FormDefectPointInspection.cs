@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -128,6 +128,7 @@ namespace Frame_Core
         public FormDefectPointInspection(CameraEnum camera, CameraRelevancy _M_CameraRelevancies)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             currentCamera = camera;
             currentCameraManager = _M_CameraRelevancies;
         }

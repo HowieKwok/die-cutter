@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -34,7 +34,7 @@ namespace Plugin.DetectEar
             PluginParams = (ParamsDetectEar)pluginsObj.PluginParams;
             PluginParams.backup(PluginParams); //备份参数，用于修改记录对比
 
-            proc = Project.Instance.GetProcessByName(pluginsObj.moduleInfo.ProcessName);
+            proc = PluginHost.Context.GetProcessByName(pluginsObj.moduleInfo.ProcessName);
             this.Text = pluginsObjBase.moduleInfo.ModuleName;
 
             LoadStandImage();

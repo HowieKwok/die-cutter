@@ -25,6 +25,7 @@ namespace Mef_VisionFrame
         public Form_CraftFrame(SystemInfo _systemInfo, CraftBase craftBase, string craftBasePath)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             M_FormCraftBase = Craft_ViewService.GetView(M_FormCraftBase, _systemInfo.CraftType);
             VM = new VM_Craft(_systemInfo, craftBase, craftBasePath);
             InitMaterialSelect();

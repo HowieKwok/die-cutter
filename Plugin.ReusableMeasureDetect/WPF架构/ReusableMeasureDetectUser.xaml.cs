@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Plugin.ReusableMeasureDetect.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +19,8 @@ namespace Plugin.ReusableMeasureDetect.Views
         /// </summary>
         public ReusableMeasureDetectUser()
         {
+            // 令牌字典必须挂在控件自身：本应用没有 WPF Application 对象，缺这一步 DynamicResource 会静默回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             vm = new ReusableMeasureDetectViewModel();
             DataContext = vm;

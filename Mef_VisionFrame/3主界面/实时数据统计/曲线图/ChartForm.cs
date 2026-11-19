@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using LogTool;
 using NPOI.SS.UserModel.Charts;
 using System;
@@ -27,7 +27,8 @@ namespace Mef_VisionFrame
 
         public ChartForm()
         {
-            InitializeComponent();        
+            InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);        
         }
         private void ChartForm_Load(object sender, EventArgs e)
         {

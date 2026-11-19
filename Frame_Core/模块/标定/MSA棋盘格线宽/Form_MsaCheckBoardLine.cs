@@ -44,7 +44,8 @@ namespace Frame_Core
 
         public Form_MsaCheckBoardLine(String _path)
         {
-            InitializeComponent();
+            InitializeComponent();
+            FormStylingHook.Style(this);
             string strLRoiParaPath= _path + "\\LRoiPara.xml";
             string strLRoiMesureParaPath = _path + "\\LRoiMesurePara.xml";
             cbx_CamSelect.Items.AddRange(Service_Camera.GetCam_Names());

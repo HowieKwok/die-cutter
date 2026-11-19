@@ -25,6 +25,8 @@ namespace Mef_VisionFrame.调试设置.WPF
 
         public WPFDebugProcessView()
         {
+            // 必须在 InitializeComponent 之前注入：XAML 里的 StaticResource 依赖它。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
 
             ModuleRunStateReader stateReader = new ModuleRunStateReader();

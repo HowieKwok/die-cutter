@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -107,10 +107,19 @@
     <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2CC7-4124-B966-FBFF69A7A0E5}</Project>
       <Name>Frame_Core</Name>
+      <Private>False</Private>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Analyzer Include="工具类\BatteryLugClassLibrary.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 插件基类在 Frame_PluginHost；Private=False 防止复制到 Plugins\ 造成双份程序集。 -->
+    <ProjectReference Include="..\Frame_PluginHost\Frame_PluginHost.csproj">
+      <Project>{A1B2C3D4-0004-4E00-9000-000000000004}</Project>
+      <Name>Frame_PluginHost</Name>
+      <Private>False</Private>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

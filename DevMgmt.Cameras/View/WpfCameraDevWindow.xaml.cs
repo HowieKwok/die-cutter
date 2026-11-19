@@ -1,4 +1,4 @@
-﻿using DevMgmt.Cameras.Models;
+using DevMgmt.Cameras.Models;
 using DevMgmt.Cameras.Tool;
 using FrameCommunity;
 using FrameCommunity.Data;
@@ -45,6 +45,8 @@ namespace DevMgmt.Cameras.View
         public WpfCameraDevWindow(CamParam _CamParam)
         {
             CameraVM = new CameraManagerViewModel(_CamParam);
+            // 令牌字典必须挂在窗口自身：本应用没有 WPF Application 对象，缺这一步 DynamicResource 会静默回退。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen;
             WindowInit();

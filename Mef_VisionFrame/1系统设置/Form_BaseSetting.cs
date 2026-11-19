@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -18,6 +18,7 @@ namespace Mef_VisionFrame
         public Form_BaseSetting(Param_PointInspection _param)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             param = _param;
         }
 

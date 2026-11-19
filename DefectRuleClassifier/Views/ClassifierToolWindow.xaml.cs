@@ -70,6 +70,9 @@ namespace DefectRuleClassifier.Views
             IEnumerable<string> featureLabels = null,
             string featureRulePath = null)
         {
+            // 令牌字典必须挂在窗口自身：本应用没有 WPF Application 对象，
+            // 缺这一步 DynamicResource 会静默回退，整片样式颜色失效。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             this.config = config ?? new ModelClassifierConfig();
             Loaded += (s, e) =>

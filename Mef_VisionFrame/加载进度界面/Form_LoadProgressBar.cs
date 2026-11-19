@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -18,6 +18,7 @@ namespace Mef_VisionFrame
         public Form_LoadProgressBar()
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
         }
 
         private void timer1_Tick(object sender, EventArgs e)

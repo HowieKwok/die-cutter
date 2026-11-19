@@ -123,7 +123,7 @@ namespace Plugin.FindIntersection
 
         public void GetResultParams(string varName, object obj)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             if (proc == null)
             {
                 Log4netRecord.ErrorLog.Debug("两线交点工具：发布输出失败，未找到指定流程");
@@ -137,7 +137,7 @@ namespace Plugin.FindIntersection
         {
             try
             {
-                Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+                Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
                 if (proc == null)
                 {
                     Log4netRecord.ErrorLog.Debug("两线交点工具：未找到指定流程");

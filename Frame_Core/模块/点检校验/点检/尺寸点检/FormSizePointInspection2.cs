@@ -1,4 +1,4 @@
-﻿
+
 using Frame_Cor;
 
 using HalconDotNet;
@@ -160,6 +160,7 @@ namespace Frame_Core
         public FormSizePointInspection2(CameraEnum camera, CameraRelevancy _M_CameraRelevancies)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             currentCamera = camera;
             currentCameraManager = _M_CameraRelevancies;
             CurrentSizePointInspectionParam = currentCameraManager.m_SizePointInspectionManage.sizePointInspectionParam;

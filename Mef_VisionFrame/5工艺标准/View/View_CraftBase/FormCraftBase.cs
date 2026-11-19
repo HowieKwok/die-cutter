@@ -1,4 +1,4 @@
-﻿using NLog.Config;
+using NLog.Config;
 using NLog.Time;
 using System;
 using System.Collections.Generic;
@@ -19,7 +19,10 @@ namespace Mef_VisionFrame
         public FormCraftBase()
         {
             InitializeComponent();
-           
+
+            // 工艺视图链的根节点：AntdUI.Window 派生的窗体在这里统一下发样式。
+            // 子类的 InitializeComponent 之后还会追加自己的控件，因此子类也各自接线一次。
+            Frame_Core.FormStylingHook.Style(this);
         }
 
         /// <summary>

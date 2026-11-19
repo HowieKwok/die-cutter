@@ -1,13 +1,12 @@
-﻿<Window x:Class="Plugin.BlobAnalysis.WPFArchitecture.AddFilterRuleDialog"
+<Window x:Class="Plugin.BlobAnalysis.WPFArchitecture.AddFilterRuleDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="新增过滤条件"
         Width="430"
         Height="280"
         WindowStartupLocation="CenterOwner"
-        Background="#F7FBFF"
-        FontFamily="Microsoft YaHei UI"
-        FontSize="13">
+        Background="{DynamicResource Surface.Canvas}"
+        FontFamily="{DynamicResource Font.Family}">
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -22,20 +21,20 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <TextBlock Text="特征" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="#111820"/>
+        <TextBlock Text="特征" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="{DynamicResource Text.Primary}"/>
         <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,5" Height="28"
                   ItemsSource="{Binding FeatureItems}"
                   DisplayMemberPath="Value"
                   SelectedValuePath="Key"
                   SelectedValue="{Binding Feature, Mode=TwoWay}"/>
 
-        <TextBlock Text="最小值" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="#111820"/>
+        <TextBlock Text="最小值" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="{DynamicResource Text.Primary}"/>
         <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5" Height="26" Text="{Binding Min, Mode=TwoWay}"/>
 
-        <TextBlock Text="最大值" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="#111820"/>
+        <TextBlock Text="最大值" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="{DynamicResource Text.Primary}"/>
         <TextBox Grid.Row="2" Grid.Column="1" Margin="0,5" Height="26" Text="{Binding Max, Mode=TwoWay}"/>
 
-        <TextBlock Text="逻辑" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="#111820"/>
+        <TextBlock Text="逻辑" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,5" Foreground="{DynamicResource Text.Primary}"/>
         <ComboBox Grid.Row="3" Grid.Column="1" Margin="0,5" Height="28"
                   ItemsSource="{Binding OperationItems}"
                   DisplayMemberPath="Value"

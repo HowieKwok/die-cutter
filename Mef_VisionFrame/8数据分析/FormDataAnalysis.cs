@@ -1,4 +1,4 @@
-﻿using AntdUI;
+using AntdUI;
 using Frame_Core;
 using HalconDotNet;
 using LiveChartsCore.Drawing;
@@ -46,6 +46,7 @@ namespace Mef_VisionFrame
         public FormDataAnalysis(string Path1, List<string> LImagePath, Action formCloseCountEvent = null)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
 
             path = Path1;
             FormCloseCountEvent = formCloseCountEvent;

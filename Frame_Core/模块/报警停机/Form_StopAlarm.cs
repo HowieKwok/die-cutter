@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -19,6 +19,7 @@ namespace Frame_Core
         public Form_StopAlarm(StopAlarmMessage _stopAlarmessage)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             stopAlarmessage = _stopAlarmessage;
         }
         private void Form_StopAlarm_Load(object sender, EventArgs e)

@@ -1,0 +1,91 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework">
+    <!--
+        窗口外壳：标题栏 + 内容区。只被 ThemedWindow 应用，
+        业务窗口不得再自带一套标题栏与窗口按钮。
+        颜色全部来自 ThemeScope 注入的键。
+    -->
+
+    <Style x:Key="Window.TitleBarButton" TargetType="Button">
+        <Setter Property="Width" Value="38" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource Text.Primary}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Button.HoverBackground}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Window.Themed" TargetType="Window">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Window">
+                    <Border Background="{DynamicResource Surface.Canvas}"
+                            BorderBrush="{DynamicResource Line.Normal}"
+                            BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="36" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Background="{DynamicResource Surface.PanelDeep}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Grid.Column="0"
+                                                      Margin="12,0,0,0"
+                                                      VerticalAlignment="Center"
+                                                      Content="{TemplateBinding Icon}" />
+
+                                    <TextBlock Grid.Column="1"
+                                               Margin="10,0,0,0"
+                                               VerticalAlignment="Center"
+                                               FontSize="{DynamicResource Font.Size.Body}"
+                                               Foreground="{DynamicResource Accent.Primary}"
+                                               Text="{TemplateBinding Title}" />
+
+                                    <StackPanel Grid.Column="2"
+                                                Orientation="Horizontal"
+                                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                                        <Button Command="{Binding MinimizeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                Content="─"
+                                                Style="{StaticResource Window.TitleBarButton}" />
+                                        <Button Command="{Binding ToggleMaximizeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                Content="□"
+                                                Style="{StaticResource Window.TitleBarButton}" />
+                                        <Button Command="{Binding CloseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                Content="✕"
+                                                Foreground="{DynamicResource State.Fail}"
+                                                Style="{StaticResource Window.TitleBarButton}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <ContentPresenter Grid.Row="1" />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

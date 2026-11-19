@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -110,18 +110,35 @@
     <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2cc7-4124-b966-fbff69a7a0e5}</Project>
       <Name>Frame_Core</Name>
+      <Private>False</Private>
     </ProjectReference>
     <ProjectReference Include="..\LogTool\LogTool.csproj">
       <Project>{EE6D8F10-4CB8-4312-8847-5D7568BE4FA0}</Project>
       <Name>LogTool</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <!-- 视图承载令牌字典（ThemeScope）；渲染适配器属于宿主，不随本工程发布。 -->
+    <ProjectReference Include="..\Frame_UI.Wpf\Frame_UI.Wpf.csproj">
+      <Project>{A1B2C3D4-0002-4E00-9000-000000000002}</Project>
+      <Name>Frame_UI.Wpf</Name>
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <Page Include="WPF架构\FindIntersectionWpfView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Frame_PluginHost\Frame_PluginHost.csproj">
+      <Project>{A1B2C3D4-0004-4E00-9000-000000000004}</Project>
+      <Name>Frame_PluginHost</Name>
+      <Private>False</Private>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

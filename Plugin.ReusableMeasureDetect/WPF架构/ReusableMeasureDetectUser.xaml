@@ -6,71 +6,16 @@
              xmlns:pointFilter="clr-namespace:Plugin.ReusableMeasureDetect.PointFilters.Controls"
             >
     <UserControl.Resources>
-        <SolidColorBrush x:Key="ShellBackgroundBrush" Color="#08111B"/>
-        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#111923"/>
-        <SolidColorBrush x:Key="PanelDarkBrush" Color="#0B1520"/>
-        <SolidColorBrush x:Key="InputBackgroundBrush" Color="#07111C"/>
-        <SolidColorBrush x:Key="BorderBrushValue" Color="#215D73"/>
-        <SolidColorBrush x:Key="BorderSoftBrush" Color="#1B5264"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#00E5FF"/>
-        <SolidColorBrush x:Key="AccentSoftBrush" Color="#7EE6FF"/>
-        <SolidColorBrush x:Key="TextBrush" Color="#DCF8FF"/>
-        <SolidColorBrush x:Key="MutedTextBrush" Color="#9FC7D8"/>
-
-        <Style TargetType="{x:Type TextBlock}">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-
-        <Style TargetType="{x:Type TextBox}">
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Margin" Value="0,2,0,6"/>
-            <Setter Property="Padding" Value="6,1"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushValue}"/>
-        </Style>
-
-        <Style TargetType="{x:Type CheckBox}">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Margin" Value="0,0,0,7"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type CheckBox}">
-                        <StackPanel Orientation="Horizontal" Background="Transparent">
-                            <Border x:Name="Box" Width="14" Height="14" Margin="0,1,7,0"
-                                    BorderBrush="{StaticResource BorderBrushValue}" BorderThickness="1"
-                                    Background="{StaticResource InputBackgroundBrush}">
-                                <Path x:Name="CheckMark" Data="M 2 7 L 6 11 L 12 3"
-                                      Stroke="{StaticResource AccentBrush}" StrokeThickness="2"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      Visibility="Collapsed"/>
-                            </Border>
-                            <ContentPresenter RecognizesAccessKey="True"
-                                              VerticalAlignment="Center"
-                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
-                        </StackPanel>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
-                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentSoftBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <SolidColorBrush x:Key="ShellBackgroundBrush" Color="{DynamicResource Surface.Canvas.Color}"/>
+        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="PanelDarkBrush" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="InputBackgroundBrush" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="BorderBrushValue" Color="{DynamicResource Line.Normal.Color}"/>
+        <SolidColorBrush x:Key="BorderSoftBrush" Color="{DynamicResource Line.Normal.Color}"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource Accent.Secondary.Color}"/>
+        <SolidColorBrush x:Key="AccentSoftBrush" Color="{DynamicResource Accent.Primary.Color}"/>
+        <SolidColorBrush x:Key="TextBrush" Color="{DynamicResource Text.Primary.Color}"/>
+        <SolidColorBrush x:Key="MutedTextBrush" Color="{DynamicResource Text.Secondary.Color}"/>
 
         <Style x:Key="ComboToggleButton" TargetType="{x:Type ToggleButton}">
             <Setter Property="Focusable" Value="False"/>
@@ -94,223 +39,7 @@
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                                <Setter TargetName="Chrome" Property="Background" Value="#102536"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type ComboBox}">
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Margin" Value="0,2,0,6"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushValue}"/>
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ComboBox}">
-                        <Grid>
-                            <ToggleButton x:Name="ToggleButton"
-                                          Background="{TemplateBinding Background}"
-                                          BorderBrush="{TemplateBinding BorderBrush}"
-                                          ClickMode="Press"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          Style="{StaticResource ComboToggleButton}"/>
-                            <ContentPresenter x:Name="ContentSite"
-                                              Margin="8,0,24,0"
-                                              VerticalAlignment="Center"
-                                              HorizontalAlignment="Left"
-                                              Content="{TemplateBinding SelectionBoxItem}"
-                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
-                                              IsHitTestVisible="False"
-                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
-                            <Popup x:Name="PART_Popup"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   Placement="Bottom"
-                                   PopupAnimation="Slide">
-                                <Grid MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                    <Border Background="{StaticResource PanelDarkBrush}"
-                                            BorderBrush="{StaticResource AccentBrush}"
-                                            BorderThickness="1">
-                                        <ScrollViewer SnapsToDevicePixels="True">
-                                            <ItemsPresenter/>
-                                        </ScrollViewer>
-                                    </Border>
-                                </Grid>
-                            </Popup>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type ComboBoxItem}">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="{StaticResource PanelDarkBrush}"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
-                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#123044"/>
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#102536"/>
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type ScrollViewer}">
-            <Setter Property="Background" Value="{StaticResource PanelBackgroundBrush}"/>
-        </Style>
-
-        <Style TargetType="{x:Type TabControl}">
-            <Setter Property="Background" Value="{StaticResource PanelBackgroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushValue}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type TabControl}">
-                        <Grid KeyboardNavigation.TabNavigation="Local">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <TabPanel x:Name="HeaderPanel"
-                                      Panel.ZIndex="1"
-                                      Margin="0"
-                                      IsItemsHost="True"
-                                      Background="Transparent"/>
-                            <Border x:Name="ContentPanel"
-                                    Grid.Row="1"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="1"
-                                    Background="{TemplateBinding Background}">
-                                <ContentPresenter x:Name="PART_SelectedContentHost"
-                                                  ContentSource="SelectedContent"
-                                                  Margin="0"
-                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                            </Border>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type TabItem}">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="#102536"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushValue}"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type TabItem}">
-                        <Border x:Name="TabBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1,1,1,0"
-                                CornerRadius="3,3,0,0"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="{StaticResource ShellBackgroundBrush}"/>
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                                <Setter Property="Panel.ZIndex" Value="1"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#173246"/>
-                                <Setter Property="Foreground" Value="{StaticResource AccentSoftBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type GroupBox}">
-            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderSoftBrush}"/>
-            <Setter Property="Background" Value="{StaticResource PanelDarkBrush}"/>
-            <Setter Property="Padding" Value="8"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type GroupBox}">
-                        <Grid SnapsToDevicePixels="True">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <Border Grid.RowSpan="2"
-                                    Margin="0,8,0,0"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="3"/>
-                            <Border HorizontalAlignment="Left"
-                                    Margin="8,0,0,0"
-                                    Padding="8,1"
-                                    Background="{StaticResource PanelBackgroundBrush}"
-                                    BorderBrush="{StaticResource BorderSoftBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="2">
-                                <ContentPresenter ContentSource="Header"
-                                                  TextElement.Foreground="{TemplateBinding Foreground}"
-                                                  TextElement.FontWeight="SemiBold"/>
-                            </Border>
-                            <ContentPresenter Grid.Row="1" Margin="8,12,8,8"/>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type ListBox}">
-            <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderSoftBrush}"/>
-        </Style>
-
-        <Style TargetType="{x:Type ListBoxItem}">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="6,3"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#102536"/>
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#123044"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -321,8 +50,8 @@
         <Style TargetType="{x:Type DataGrid}">
             <Setter Property="Background" Value="{StaticResource InputBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="RowBackground" Value="#0B1520"/>
-            <Setter Property="AlternatingRowBackground" Value="#0F1B29"/>
+            <Setter Property="RowBackground" Value="{DynamicResource Surface.PanelDeep}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource Surface.PanelDeep}"/>
             <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource BorderSoftBrush}"/>
             <Setter Property="VerticalGridLinesBrush" Value="{StaticResource BorderSoftBrush}"/>
@@ -332,43 +61,11 @@
             <Setter Property="RowHeight" Value="25"/>
         </Style>
 
-        <Style TargetType="{x:Type DataGridColumnHeader}">
-            <Setter Property="Foreground" Value="{StaticResource AccentSoftBrush}"/>
-            <Setter Property="Background" Value="#102536"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderSoftBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,1,1"/>
-            <Setter Property="Padding" Value="6,2"/>
-        </Style>
-
-        <Style TargetType="{x:Type DataGridRow}">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="#0B1520"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#123044"/>
-                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="{x:Type DataGridCell}">
-            <Setter Property="BorderBrush" Value="{StaticResource BorderSoftBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="4,1"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#123044"/>
-                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
         <Style x:Key="ToolButton" TargetType="{x:Type Button}">
             <Setter Property="Height" Value="30"/>
             <Setter Property="Margin" Value="0,0,0,6"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="#102536"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Template">
@@ -386,11 +83,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#173246"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
                                 <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentSoftBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#06101A"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
@@ -412,14 +109,14 @@
             <ColumnDefinition Width="460"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="0" Grid.Column="0" Margin="8" BorderBrush="{StaticResource BorderBrushValue}" BorderThickness="1" Background="#020407">
+        <Border Grid.Row="0" Grid.Column="0" Margin="8" BorderBrush="{StaticResource BorderBrushValue}" BorderThickness="1" Background="{DynamicResource Surface.Canvas}">
             <Grid>
-                <wfi:WindowsFormsHost x:Name="MainHost" Background="#020407"/>
+                <wfi:WindowsFormsHost x:Name="MainHost" Background="{DynamicResource Surface.Canvas}"/>
                 <Popup Placement="MousePoint"
                        StaysOpen="False"
                        AllowsTransparency="True"
                        IsOpen="{Binding IsFollowMenuOpen, Mode=TwoWay}">
-                    <Border Background="#102536" BorderBrush="#00E5FF" BorderThickness="1" Padding="6">
+                    <Border Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{DynamicResource Accent.Secondary}" BorderThickness="1" Padding="6">
                         <StackPanel>
                             <Button Style="{StaticResource ToolButton}" MinWidth="130" Content="设置基准坐标" Command="{Binding SetBasePoseCommand}"/>
                             <Button Style="{StaticResource ToolButton}" MinWidth="130" Content="设置当前位置" Command="{Binding SetCurrentPoseCommand}" Margin="0"/>
@@ -431,10 +128,10 @@
 
         <TabControl Grid.Row="0" Grid.Column="1" Margin="0,8,8,8" Background="{StaticResource PanelBackgroundBrush}">
             <TabItem Header="ROI 抓边">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#101826">
-                    <StackPanel Margin="8" Background="#101826">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
+                    <StackPanel Margin="8" Background="{DynamicResource Surface.PanelDeep}">
                         <GroupBox Header="工具开关">
-                            <StackPanel Background="#101826">
+                            <StackPanel Background="{DynamicResource Surface.PanelDeep}">
                                 <CheckBox Content="启用插件" IsChecked="{Binding EnablePlugin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 <CheckBox Content="启用图像抓边" IsChecked="{Binding EnableMeasureGrab, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 <CheckBox Content="启用 ROI" IsChecked="{Binding EnableRoi, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
@@ -459,9 +156,9 @@
                         </GroupBox>
 
                         <GroupBox Header="ROI 位置跟随">
-                            <StackPanel Background="#101826">
+                            <StackPanel Background="{DynamicResource Surface.PanelDeep}">
                                 <CheckBox Content="启用 ROI 位置跟随" IsChecked="{Binding EnablePositionFollow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                <TextBlock Text="{Binding FollowOffsetText}" Foreground="#7EE6FF" Margin="0,0,0,6"/>
+                                <TextBlock Text="{Binding FollowOffsetText}" Foreground="{DynamicResource Accent.Primary}" Margin="0,0,0,6"/>
                                 <UniformGrid Columns="2">
                                     <TextBlock Text="基准 Row"/>
                                     <controls:NumericBox Value="{Binding BaseRow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DecimalPlaces="3" Increment="1"/>
@@ -526,7 +223,7 @@
                         </GroupBox>
 
                         <GroupBox Header="图像预处理 / 离群剔除">
-                            <StackPanel Background="#101826">
+                            <StackPanel Background="{DynamicResource Surface.PanelDeep}">
                                 <UniformGrid Columns="2">
                                     <TextBlock Text="GrayOpening"/>
                                     <controls:NumericBox Value="{Binding ScaleMean, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" DecimalPlaces="2" Increment="1"/>
@@ -547,18 +244,18 @@
             </TabItem>
 
             <TabItem Header="滤波">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#101826">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
                     <pointFilter:FilterUserControl DataContext="{Binding FilterEditor}" Margin="8"/>
                 </ScrollViewer>
             </TabItem>
 
             <TabItem Header="凸点检测">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#101826">
-                    <StackPanel Margin="8" Background="#101826">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
+                    <StackPanel Margin="8" Background="{DynamicResource Surface.PanelDeep}">
                         <GroupBox Header="功能开关">
-                            <StackPanel Background="#101826">
+                            <StackPanel Background="{DynamicResource Surface.PanelDeep}">
                                 <CheckBox Content="启用凸点检测" IsChecked="{Binding EnableConvexPeakDetection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                <TextBlock Text="检测方法：角点凸点" Foreground="#7EE6FF"/>
+                                <TextBlock Text="检测方法：角点凸点" Foreground="{DynamicResource Accent.Primary}"/>
                             </StackPanel>
                         </GroupBox>
 
@@ -605,10 +302,10 @@
             </TabItem>
 
             <TabItem Header="突变检测">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#101826">
-                    <StackPanel Margin="8" Background="#101826">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
+                    <StackPanel Margin="8" Background="{DynamicResource Surface.PanelDeep}">
                         <GroupBox Header="功能开关">
-                            <StackPanel Background="#101826">
+                            <StackPanel Background="{DynamicResource Surface.PanelDeep}">
                                 <CheckBox Content="启用突变检测" IsChecked="{Binding EnableJumpDetection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 <CheckBox Content="显示突变调试" IsChecked="{Binding EnableJumpDebugDisplay, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
@@ -660,7 +357,7 @@
             </TabItem>
 
             <TabItem Header="结果输出">
-                <TabControl Background="#101826">
+                <TabControl Background="{DynamicResource Surface.PanelDeep}">
                     <TabItem Header="原始点">
                         <DataGrid ItemsSource="{Binding RawPointRows}" AutoGenerateColumns="True" IsReadOnly="True" CanUserAddRows="False"/>
                     </TabItem>
@@ -677,21 +374,21 @@
             </TabItem>
 
             <TabItem Header="运行摘要">
-                <StackPanel Margin="8" Background="#101826">
+                <StackPanel Margin="8" Background="{DynamicResource Surface.PanelDeep}">
                     <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                     <DataGrid ItemsSource="{Binding SummaryRows}" AutoGenerateColumns="True" IsReadOnly="True" CanUserAddRows="False"/>
                 </StackPanel>
             </TabItem>
 
             <TabItem Header="帮助">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#101826">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource Surface.PanelDeep}">
                     <TextBlock Margin="8" TextWrapping="Wrap"
                                Text="运行流程：图像输入 -> ROI 抓边 -> 滤波 Pipeline -> 凸点检测 / 突变检测 -> 输出结果。&#x0a;&#x0a;凸点检测和突变检测是两个独立功能，只有各自启用后才运行。凸点当前固定使用角点凸点算法，不再额外设置第二个启用开关。&#x0a;&#x0a;滤波控件按参数字段集合渲染，后续可整体抽到公共库。&#x0a;&#x0a;底部状态栏显示耗时、鼠标 Row/Col、灰度、图像大小、点数和 OK/NG。"/>
                 </ScrollViewer>
             </TabItem>
         </TabControl>
 
-        <Border Grid.Row="1" Grid.ColumnSpan="2" BorderBrush="{StaticResource BorderBrushValue}" BorderThickness="0,1,0,0" Background="#0B1520" Padding="8,4">
+        <Border Grid.Row="1" Grid.ColumnSpan="2" BorderBrush="{StaticResource BorderBrushValue}" BorderThickness="0,1,0,0" Background="{DynamicResource Surface.PanelDeep}" Padding="8,4">
             <TextBlock Text="{Binding StatusBarText}" Foreground="{StaticResource TextBrush}"/>
         </Border>
     </Grid>

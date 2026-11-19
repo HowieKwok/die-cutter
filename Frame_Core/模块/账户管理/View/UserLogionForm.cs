@@ -18,6 +18,7 @@ namespace Frame_Core
         {
             userManage = _UserManage;
             InitializeComponent();
+            FormStylingHook.Style(this);
         }
 
         private void UserSetting_Load(object sender, EventArgs e)

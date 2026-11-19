@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -220,6 +220,7 @@ namespace Mef_VisionFrame
         public Form_WidthLaserDetect()
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
            
             splitContainer1.SplitterDistance = (int)(splitContainer1.Width * 2.3) / 4;
            

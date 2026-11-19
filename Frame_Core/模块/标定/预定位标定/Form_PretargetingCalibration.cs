@@ -98,7 +98,8 @@ namespace Frame_Core
         public ImageSimManage m_ImageSimManage_Cam4 = new ImageSimManage();
         public Form_PretargetingCalibration()
         {
-            InitializeComponent();         
+            InitializeComponent();         
+            FormStylingHook.Style(this);
         }
         private void Form_PretargetingCalibration_Load(object sender, EventArgs e)
         {

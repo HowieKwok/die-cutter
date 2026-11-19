@@ -4,79 +4,79 @@
              xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
              xmlns:ctrl="clr-namespace:FrameCommunity.UserControls;assembly=FrameCommunity"
              MinWidth="900" MinHeight="560">
-    <Grid Background="#1E232B">
+    <Grid Background="{DynamicResource Surface.Canvas}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="310"/>
             <ColumnDefinition Width="6"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="#252C35" BorderBrush="#3C4654" BorderThickness="0,0,1,0" Padding="16">
+        <Border Grid.Column="0" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="0,0,1,0" Padding="16">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock Text="组合交点" FontSize="20" FontWeight="SemiBold" Foreground="#F1F5F9" Margin="0,0,0,4"/>
-                    <TextBlock Text="外部传入两条线段，画面仅用于确认和调整" Foreground="#AAB5C2" TextWrapping="Wrap" Margin="0,0,0,16"/>
-                    <CheckBox Content="启用插件" IsChecked="{Binding IsPluginEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#E6EDF3" Margin="0,0,0,12"/>
+                    <TextBlock Text="组合交点" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary}" Margin="0,0,0,4"/>
+                    <TextBlock Text="外部传入两条线段，画面仅用于确认和调整" Foreground="{DynamicResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                    <CheckBox Content="启用插件" IsChecked="{Binding IsPluginEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="{DynamicResource Text.Primary}" Margin="0,0,0,12"/>
 
-                    <Border Background="#1B2027" BorderBrush="#3C4654" BorderThickness="1" Padding="12" Margin="0,0,0,10">
+                    <Border Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" Padding="12" Margin="0,0,0,10">
                         <StackPanel>
-                            <TextBlock Text="线段 1" Foreground="#FFDB70" FontWeight="SemiBold"/>
+                            <TextBlock Text="线段 1" Foreground="{DynamicResource State.Warn}" FontWeight="SemiBold"/>
                             <UniformGrid Columns="2" Margin="0,8,0,0">
                                 <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="起点行" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="起点行" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line1RowBegin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="起点列" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="起点列" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line1ColBegin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="终点行" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="终点行" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line1RowEnd, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="终点列" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="终点列" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line1ColEnd, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                             </UniformGrid>
-                            <TextBlock Text="{Binding Line1Text}" Foreground="#DCE4EE" TextWrapping="Wrap" FontSize="11" Margin="0,1,0,0"/>
+                            <TextBlock Text="{Binding Line1Text}" Foreground="{DynamicResource Text.Primary}" TextWrapping="Wrap" Margin="0,1,0,0"/>
                         </StackPanel>
                     </Border>
 
-                    <Border Background="#1B2027" BorderBrush="#3C4654" BorderThickness="1" Padding="12" Margin="0,0,0,16">
+                    <Border Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" Padding="12" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="线段 2" Foreground="#81D4FA" FontWeight="SemiBold"/>
+                            <TextBlock Text="线段 2" Foreground="{DynamicResource Accent.Secondary}" FontWeight="SemiBold"/>
                             <UniformGrid Columns="2" Margin="0,8,0,0">
                                 <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="起点行" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="起点行" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line2RowBegin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="起点列" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="起点列" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line2ColBegin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="终点行" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="终点行" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line2RowEnd, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="终点列" Foreground="#AAB5C2"/>
+                                    <TextBlock Text="终点列" Foreground="{DynamicResource Text.Secondary}"/>
                                     <ctrl:NumericBox Value="{Binding Line2ColEnd, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Increment="1" DecimalPlaces="3"/>
                                 </StackPanel>
                             </UniformGrid>
-                            <TextBlock Text="{Binding Line2Text}" Foreground="#DCE4EE" TextWrapping="Wrap" FontSize="11" Margin="0,1,0,0"/>
+                            <TextBlock Text="{Binding Line2Text}" Foreground="{DynamicResource Text.Primary}" TextWrapping="Wrap" Margin="0,1,0,0"/>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="计算结果" Foreground="#AAB5C2" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Border Background="#1B2027" BorderBrush="#3C4654" BorderThickness="1" Padding="12" Margin="0,0,0,16">
+                    <TextBlock Text="计算结果" Foreground="{DynamicResource Text.Secondary}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Border Background="{DynamicResource Surface.PanelDeep}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" Padding="12" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="{Binding IntersectionText}" Foreground="#7EE787" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding AngleText}" Foreground="#DCE4EE" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding IntersectionText}" Foreground="{DynamicResource State.Ok}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding AngleText}" Foreground="{DynamicResource Text.Primary}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
 
-                    <CheckBox Content="允许在图像中调整线段" IsChecked="{Binding IsEditing, Mode=TwoWay}" Foreground="#E6EDF3" Margin="0,0,0,12"/>
+                    <CheckBox Content="允许在图像中调整线段" IsChecked="{Binding IsEditing, Mode=TwoWay}" Foreground="{DynamicResource Text.Primary}" Margin="0,0,0,12"/>
                     <WrapPanel>
                         <Button Content="加载本地图像" Command="{Binding LoadLocalImageCommand}" Padding="12,7" Margin="0,0,8,8"/>
                         <Button Content="刷新外部参数" Command="{Binding RefreshCommand}" Padding="12,7" Margin="0,0,8,8"/>
@@ -87,14 +87,14 @@
             </ScrollViewer>
         </Border>
 
-        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#3C4654"/>
+        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="{DynamicResource Line.Normal}"/>
 
         <Grid Grid.Column="2" Margin="12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <Border Background="#11161D" BorderBrush="#3C4654" BorderThickness="1">
+            <Border Background="{DynamicResource Surface.Canvas}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1">
                 <wfi:WindowsFormsHost x:Name="HalconHost"/>
             </Border>
             <Grid Grid.Row="1" Margin="0,10,0,0">
@@ -102,8 +102,8 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding StatusText}" Foreground="#DCE4EE" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Grid.Column="1" Text="{Binding MouseText}" Foreground="#AAB5C2" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource Text.Primary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="1" Text="{Binding MouseText}" Foreground="{DynamicResource Text.Secondary}" VerticalAlignment="Center" Margin="16,0,0,0"/>
             </Grid>
         </Grid>
     </Grid>

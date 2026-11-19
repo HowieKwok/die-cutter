@@ -384,12 +384,6 @@
     <Compile Include="1系统设置\UC_BaseSetting.Designer.cs">
       <DependentUpon>UC_BaseSetting.cs</DependentUpon>
     </Compile>
-    <Compile Include="4调试设置\UC_ProcessSetting.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="4调试设置\UC_ProcessSetting.Designer.cs">
-      <DependentUpon>UC_ProcessSetting.cs</DependentUpon>
-    </Compile>
     <Compile Include="业务类\业务切换\BIZ_Switchover.cs" />
     <Compile Include="业务类\工位\业务变量\BIZ_Variable_WidthLaser.cs" />
     <Compile Include="加载进度界面\Form_LoadProgressBar.cs">
@@ -461,7 +455,9 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="项目工厂\View\CamDisplayUnit.cs" />
-    <Compile Include="项目工厂\View\CollapseRail.cs" />
+    <Compile Include="项目工厂\View\CollapseRail.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="项目模切裁切机\View\UC_DieCuttingCut.Designer.cs">
       <DependentUpon>UC_DieCuttingCut.cs</DependentUpon>
     </Compile>
@@ -505,9 +501,6 @@
     <EmbeddedResource Include="3主界面\实时数据统计\曲线图\ChartForm.resx">
       <DependentUpon>ChartForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="4调试设置\UC_ProcessSetting.en.resx">
-      <DependentUpon>UC_ProcessSetting.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="5工艺标准\View\View_CraftBase\FormCraftBase.resx">
       <DependentUpon>FormCraftBase.cs</DependentUpon>
     </EmbeddedResource>
@@ -534,9 +527,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="1系统设置\UC_BaseSetting.resx">
       <DependentUpon>UC_BaseSetting.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="4调试设置\UC_ProcessSetting.resx">
-      <DependentUpon>UC_ProcessSetting.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -573,9 +563,6 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
-    <Compile Include="4调试设置\UC_ProcessSetting.WpfDebug.cs">
-      <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="4调试设置\WPF\DebugProcessCardFactory.cs" />
     <Compile Include="4调试设置\WPF\ModuleRunStateReader.cs" />
@@ -614,6 +601,22 @@
     <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2cc7-4124-b966-fbff69a7a0e5}</Project>
       <Name>Frame_Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_UI\Frame_UI.csproj">
+      <Project>{A1B2C3D4-0001-4E00-9000-000000000001}</Project>
+      <Name>Frame_UI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_UI.Wpf\Frame_UI.Wpf.csproj">
+      <Project>{A1B2C3D4-0002-4E00-9000-000000000002}</Project>
+      <Name>Frame_UI.Wpf</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_UI.WinForms\Frame_UI.WinForms.csproj">
+      <Project>{A1B2C3D4-0003-4E00-9000-000000000003}</Project>
+      <Name>Frame_UI.WinForms</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_PluginHost\Frame_PluginHost.csproj">
+      <Project>{A1B2C3D4-0004-4E00-9000-000000000004}</Project>
+      <Name>Frame_PluginHost</Name>
     </ProjectReference>
     <ProjectReference Include="..\LogTool\LogTool.csproj">
       <Project>{EE6D8F10-4CB8-4312-8847-5D7568BE4FA0}</Project>
@@ -725,7 +728,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-
   <!--
     原生依赖：Halcon 运行库（halcon/halconxl/halconc/hcanvas）与控制卡驱动 IOC0640。
     managed 的 halcondotnetxl.dll 由 Reference copy-local 负责，这里只补 native 部分——
@@ -743,13 +745,8 @@
       <_NativeDependency Include="..\DLL\HalconDLL\hcanvas.dll" />
       <_NativeDependency Include="..\DLL\BoardDLL\IOC0640.dll" />
     </ItemGroup>
-
-    <Warning Condition="'@(_NativeDependency->Exists())' != '@(_NativeDependency)'"
-             Text="DLL\ 下缺少原生依赖，运行期可能启动失败。已存在的会被复制，缺失的请补进 DLL\HalconDLL 或 DLL\BoardDLL。" />
-
-    <Copy SourceFiles="@(_NativeDependency->Exists())"
-          DestinationFolder="$(OutDir)"
-          SkipUnchangedFiles="true" />
+    <Warning Condition="'@(_NativeDependency-&gt;Exists())' != '@(_NativeDependency)'" Text="DLL\ 下缺少原生依赖，运行期可能启动失败。已存在的会被复制，缺失的请补进 DLL\HalconDLL 或 DLL\BoardDLL。" />
+    <Copy SourceFiles="@(_NativeDependency-&gt;Exists())" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
   <Import Project="..\packages\SkiaSharp.NativeAssets.macOS.2.88.6\build\net462\SkiaSharp.NativeAssets.macOS.targets" Condition="Exists('..\packages\SkiaSharp.NativeAssets.macOS.2.88.6\build\net462\SkiaSharp.NativeAssets.macOS.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -776,5 +773,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 插件 WPF 基类已从 Frame_Core 上移到应用层：它需要继承 Frame_UI.Wpf 的外壳。 -->
+    <Compile Include="4调试设置\WPF\Hosting\WPFFormPluginBase.cs" />
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
 </Project>

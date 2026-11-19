@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!--
+    隐式样式门禁。
+
+    为什么需要：WPF 的隐式 Style（无 x:Key、按 TargetType 生效）一旦出现在视图的
+    <UserControl.Resources> 里，就会覆盖 ThemeResources.xaml 合并进来的同名样式。
+    这条覆盖是静默的——外观不一致，但编译不报错、运行不报错。
+    因此必须用门禁把"视图内定义隐式样式"变成编译错误。
+
+    为什么只管隐式样式，不管具名样式：
+      具名样式（x:Key="ToolButton"）表达的是业务意图（工具条按钮、危险操作），
+      属于视图私有变体，允许存在。目标是让它们后续收敛成 Button.Toolbar 这类语义变体。
+
+    为什么是基线而不是一次性禁止：
+      现存 18 个视图已有约 100 处隐式样式，直接禁止会让构建立刻红。
+      基线只减不增：治理一个视图就从基线删一行，它随即永久进入受约束状态。
+  -->
+
+  <UsingTask TaskName="XamlImplicitStyleGuard" TaskFactory="CodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <RootPath ParameterType="System.String" Required="true" />
+      <Baseline ParameterType="System.String[]" Required="false" />
+      <ExcludedDirectories ParameterType="System.String[]" Required="false" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var baseline = new HashSet<string>(
+            Baseline ?? new string[0], StringComparer.OrdinalIgnoreCase);
+        var excluded = ExcludedDirectories ?? new string[0];
+        if (!Directory.Exists(RootPath))
+        {
+            Log.LogError("XAMLSTYLE: 扫描根目录不存在：" + RootPath);
+            return false;
+        }
+
+        // 只检查 *.Resources 资源块内部的 Style。
+        // 局部容器样式（如 <ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem">）
+        // 写在属性元素里，只作用于该控件实例，不参与资源查找，属于合法用法，不能误判。
+        var resourcesBlock = new Regex(
+            @"<([A-Za-z0-9_.]+)\.Resources>([\s\S]*?)</\1\.Resources>");
+        // \s+ 是必需的：否则 <Style.Triggers> 会被误判成隐式样式（.Triggers 不是空白）。
+        var implicitStyle = new Regex(@"<Style\s+(?![^>]*x:Key)[^>]*>");
+        int violations = 0;
+
+        foreach (var file in Directory.GetFiles(RootPath, "*.xaml", SearchOption.AllDirectories))
+        {
+            bool skip = false;
+            foreach (var dir in excluded)
+            {
+                if (dir.Length > 0 && file.IndexOf(dir, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    skip = true;
+                    break;
+                }
+            }
+            if (skip) continue;
+
+            string relative = file.Substring(RootPath.Length)
+                                  .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (baseline.Contains(relative)) continue;
+
+            string text = File.ReadAllText(file);
+            int count = 0;
+            foreach (Match block in resourcesBlock.Matches(text))
+            {
+                count += implicitStyle.Matches(block.Groups[2].Value).Count;
+            }
+            if (count == 0) continue;
+
+            Log.LogError(
+                null, "XAMLSTYLE", null, file, 0, 0, 0, 0,
+                "视图定义了 " + count + " 处隐式 Style。WPF 外观只能由 " +
+                "Frame_UI.Wpf/Theme/ThemeResources.xaml 定义；视图内的隐式 Style 会静默覆盖全局样式。" +
+                "请删除这些 Style（具名样式 x:Key=... 不受限制）。");
+            violations++;
+        }
+
+        return violations == 0;
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="XamlStyleGuard" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Mef_VisionFrame'">
+    <XamlImplicitStyleGuard
+        RootPath="$(MSBuildThisFileDirectory)..\"
+        ExcludedDirectories="\Frame_UI\;Frame_UI.Wpf\;Frame_UI.WinForms\;"
+        Baseline="@(XamlStyleBaseline)" />
+  </Target>
+
+  <!--
+    隐式样式基线：只允许减少，不允许新增。
+    治理完某个视图后，从下面删掉对应行——它随即进入受约束状态。
+  -->
+  <ItemGroup>
+    <!--
+      以下文件仍保留"隐式样式"，但保留的是含行为属性的那一类
+      （DataGrid 的 HeadersVisibility / GridLinesVisibility / CanUserAddRows / SelectionMode，
+       以及 NumericBox 的 Increment）。这些属性删掉会改变表格交互，不属于观感范畴，
+       因此连同其所在 Style 一并保留，待后续单独迁移为具名样式。
+    -->
+    <XamlStyleBaseline Include="DefectRuleClassifier\Views\ClassifierToolWindow.xaml" />
+    <XamlStyleBaseline Include="Plugin.BlobAnalysis\WPF架构\WPFBlobAnalysis.xaml" />
+    <XamlStyleBaseline Include="Plugin.CACRunCalibration\WPF架构\WPFRunCalibration.xaml" />
+    <XamlStyleBaseline Include="Plugin.DefectCoat\Views\ClassifyResultWindow.xaml" />
+    <XamlStyleBaseline Include="Plugin.DefectCoat\WPF架构\DefectCoatUser.xaml" />
+    <XamlStyleBaseline Include="Plugin.FindIntersection\WPF架构\FindIntersectionWpfView.xaml" />
+    <XamlStyleBaseline Include="Plugin.ReusableMeasureDetect\WPF架构\ReusableMeasureDetectUser.xaml" />
+    <XamlStyleBaseline Include="Plugin.TemplateMatch\WPF架构\TemplateMatchUser.xaml" />
+    <!--
+      已知例外：本视图位于 Frame_Core，而令牌字典由 Frame_UI.Wpf 的 ThemeScope 注入，
+      LayerGuard 禁止 Frame_Core 引用渲染适配器，因此它拿不到全局隐式样式。
+      删掉这里的隐式样式只会让它退回 WPF 默认外观（白底），比现在更差。
+      要治理必须先把这个视图移出核心层。
+    -->
+    <XamlStyleBaseline Include="Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
+  </ItemGroup>
+</Project>

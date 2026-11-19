@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -322,7 +322,7 @@ namespace Plugin.FindIntersectionAngle
 
         public void GetResultParams(string varName, object obj)
         {
-            Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+            Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
             if (proc == null)
             {
                 Log4netRecord.ErrorLog.Debug("两线交点角度模块：发布输出失败，未找到指定流程");
@@ -335,7 +335,7 @@ namespace Plugin.FindIntersectionAngle
         {
             try
             {
-                Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+                Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
                 if (proc == null)
                 {
                     Log4netRecord.ErrorLog.Debug("两线交点模块：未找到指定流程");

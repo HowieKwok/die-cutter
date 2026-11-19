@@ -17,7 +17,8 @@ namespace Frame_Core
         Form_CalibrationPlate form_CalibrationPlate = new Form_CalibrationPlate() { FormBorderStyle = FormBorderStyle.None, TopLevel = false, Dock = DockStyle.Fill };
         public Form_SelectCamCalibrationPlate()
         {
-            InitializeComponent();
+            InitializeComponent();
+            FormStylingHook.Style(this);
         
         }
 

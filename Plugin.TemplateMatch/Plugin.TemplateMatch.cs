@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Frame_Core.pluginParams;
 using HalconDotNet;
 using System;
@@ -63,7 +63,7 @@ namespace Plugin.TemplateMatch
             if (p == null) return;
             p.filePath = moduleInfo.filePath;
             p.EnsureDefaultTemplates();
-            p.TemplateRootDir = TemplateStorageService.BuildTemplateRoot(Project.Instance.paramPathSet.ProcessPath, moduleInfo);
+            p.TemplateRootDir = TemplateStorageService.BuildTemplateRoot(PluginHost.Context.ProcessPath, moduleInfo);
             engine.Initialize(p, p.TemplateRootDir);
             if(!DefaultFrist)
             {
@@ -84,7 +84,7 @@ namespace Plugin.TemplateMatch
             PluginParams.filePath = moduleInfo.filePath;
             var p = PluginParams as ParamsTemplateMatch;
             if (p != null)
-                p.TemplateRootDir = TemplateStorageService.BuildTemplateRoot(Project.Instance.paramPathSet.ProcessPath, moduleInfo);
+                p.TemplateRootDir = TemplateStorageService.BuildTemplateRoot(PluginHost.Context.ProcessPath, moduleInfo);
             return PluginParams.Save();
         }
 

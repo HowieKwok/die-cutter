@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using Frame_Core.pluginParams;
 using HalconAlgorithm;
 using HalconDotNet;
@@ -48,7 +48,7 @@ namespace Plugin.D3MeasureDepth
         {
             pluginsObj = (D3MeasureDepthObj)pluginsObjBase;
             PluginParams = (ParamsD3MeasureDepth)pluginsObj.PluginParams;
-            proc = Project.Instance.GetProcessByName(pluginsObj.moduleInfo.ProcessName);
+            proc = PluginHost.Context.GetProcessByName(pluginsObj.moduleInfo.ProcessName);
             this.Text = pluginsObjBase.moduleInfo.ModuleName;
             HOperatorSet.GenEmptyObj(out ho_Rectangle2);
             HOperatorSet.GenEmptyObj(out ho_SmallRectangle2);

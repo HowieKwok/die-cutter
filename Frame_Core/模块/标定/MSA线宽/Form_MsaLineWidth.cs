@@ -47,7 +47,8 @@ namespace Frame_Core
 
         public Form_MsaLineWidth()
         {
-            InitializeComponent();
+            InitializeComponent();
+            FormStylingHook.Style(this);
         
             displayWindow = new DisplayWindowClass(HWC_Display, TB_PositionAndGray, FullScrean, "Form_MsaCircle");
          

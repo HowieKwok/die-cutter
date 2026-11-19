@@ -39,7 +39,13 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!--
+      版本必须与 Frame_Core\ChartDLL\CommunityToolkit.Mvvm.dll（AssemblyVersion 8.1.0.0）一致。
+      原先用 8.4.2，导致经 ProjectReference 引入本工程的宿主（如 ControlBoard）编译期按
+      8.4.0.0 绑定，运行时加载到的却是输出目录里的 8.1.0.0，抛 FileLoadException
+      （找到的程序集清单定义与程序集引用不匹配）。
+    -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.1.0" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="halcondotnetxl, Version=20.11.1.0, Culture=neutral, PublicKeyToken=4973bed59ddbf2b8, processorArchitecture=MSIL">

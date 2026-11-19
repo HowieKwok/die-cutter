@@ -12,6 +12,9 @@ namespace DefectRuleClassifier.Views
     {
         public RuleSettingsWindow()
         {
+            // 令牌字典必须挂在窗口自身：本应用没有 WPF Application 对象，
+            // 缺这一步 DynamicResource 会静默回退（本窗口整片样式的颜色都会失效）。
+            Frame_UI.Wpf.ThemeScope.Ensure(this);
             InitializeComponent();
             Loaded += (s, e) => EndAllDataGridEdits();
         }

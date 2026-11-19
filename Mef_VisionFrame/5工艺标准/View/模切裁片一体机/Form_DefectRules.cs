@@ -1,4 +1,4 @@
-﻿using NPOI.SS.Formula.Functions;
+using NPOI.SS.Formula.Functions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -23,6 +23,7 @@ namespace Mef_VisionFrame
         public Form_DefectRules(List<DefectCraft_DieCuttingCut> _defectCrafts, int index)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             Init();
             defectCrafts = _defectCrafts;
             currentModel = ModelEnum.编辑;
@@ -42,6 +43,7 @@ namespace Mef_VisionFrame
         public Form_DefectRules(DefectCraft_DieCuttingCut _currentDefectCraft)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             Init();
             currentDefectCraft = _currentDefectCraft;
             currentModel = ModelEnum.添加;

@@ -38,4 +38,16 @@
       <_ALExeToolPath>@(_MefALExeFallback->'%(RootDir)%(Directory)')</_ALExeToolPath>
     </PropertyGroup>
   </Target>
+
+  <!--
+    分层门禁与发布边界已迁到 Build/Layer.props。
+    这里只做 Import：清单、插件私有化、引用方向断言三者读同一份事实，
+    不再在本文件里维护第二份禁止引用列表。
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)Build\Layer.props" />
+  <Import Project="$(MSBuildThisFileDirectory)Build\XamlColorGuard.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)Build\XamlStyleGuard.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)Build\XamlResourceGuard.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)Build\XamlFontGuard.targets" />
+
 </Project>

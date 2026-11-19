@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!--
+    XAML 色值字面量门禁。
+
+    为什么需要：令牌层（Frame_UI）是颜色唯一真源，但业务视图的 XAML 里可以随手写
+    "#FF1F1F1F"，编译器不会拦。没有机制时，主题化永远只是"调试设置那一片干净了"。
+
+    为什么是基线而不是一次性禁止：现存 22 个文件已经有 600 余处字面量，
+    直接禁止会让构建立刻红、逼迫所有人绕过门禁。
+    因此采用"基线只减不增"：
+      - 基线内的文件暂时豁免，允许保留历史字面量；
+      - 不在基线的文件一旦出现字面量，立即报错；
+      - 治理某个文件后，从基线里删掉它，它就永久进入受约束状态。
+
+    允许出现字面量的位置（不在基线里、也不需要治理）：
+      - Frame_UI / Frame_UI.Wpf / Frame_UI.WinForms：令牌层与适配器，本来就该定义颜色。
+  -->
+
+  <UsingTask TaskName="XamlColorLiteralGuard" TaskFactory="CodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <RootPath ParameterType="System.String" Required="true" />
+      <Baseline ParameterType="System.String[]" Required="false" />
+      <ExcludedDirectories ParameterType="System.String[]" Required="false" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var baseline = new HashSet<string>(
+            Baseline ?? new string[0], StringComparer.OrdinalIgnoreCase);
+        var excluded = ExcludedDirectories ?? new string[0];
+        // GetFiles 返回的是规范化后的完整路径，而 RootPath 带 "Build\..\"，
+        // 两者长度不同。必须先归一化，否则 Substring 截出的相对路径永远对不上基线。
+        string root = Path.GetFullPath(RootPath)
+                          .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (!Directory.Exists(root))
+        {
+            Log.LogError("XAMLCOLOR: 扫描根目录不存在：" + root);
+            return false;
+        }
+
+        var literal = new Regex(@"#(?:[0-9A-Fa-f]{8}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3,4})\b");
+        int violations = 0;
+
+        foreach (var file in Directory.GetFiles(root, "*.xaml", SearchOption.AllDirectories))
+        {
+            bool skip = false;
+            foreach (var dir in excluded)
+            {
+                if (dir.Length > 0 && file.IndexOf(dir, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    skip = true;
+                    break;
+                }
+            }
+            if (skip) continue;
+
+            // 用“路径结尾匹配”判断是否在基线里，而不是 Substring 算相对路径。
+            // RootPath 带 "Build\..\"、可能有尾部分隔符，任何长度假设一旦不成立就静默失效，
+            // 表现是“门禁看起来在跑、实际一条都没匹配上”。
+            string normalizedFile = file.Replace('/', '\\');
+            bool inBaseline = false;
+            foreach (var entry in baseline)
+            {
+                if (entry.Length == 0) continue;
+                string normalizedEntry = entry.Replace('/', '\\').TrimStart('\\');
+                if (normalizedFile.EndsWith("\\" + normalizedEntry, StringComparison.OrdinalIgnoreCase))
+                {
+                    inBaseline = true;
+                    break;
+                }
+            }
+            if (inBaseline) continue;
+
+            var hits = literal.Matches(File.ReadAllText(file));
+            if (hits.Count == 0) continue;
+
+            Log.LogError(
+                null, "XAMLCOLOR", null, file, 0, 0, 0, 0,
+                "业务视图出现 " + hits.Count + " 处十六进制色值（如 " + hits[0].Value +
+                "）。颜色必须来自令牌（DynamicResource），不能写字面量。" +
+                "若该文件属于历史债务，请将它加入 Build/XamlColorGuard.targets 的基线。");
+            violations++;
+        }
+
+        return violations == 0;
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="XamlColorGuard" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Mef_VisionFrame'">
+    <!--
+      只在可执行工程上跑一次：它已经能看到整个解决方案的视图文件，
+      逐个工程重复扫描只会把同一份结论打印 20 遍。
+    -->
+    <XamlColorLiteralGuard
+        RootPath="$(MSBuildThisFileDirectory)..\"
+        ExcludedDirectories="\Frame_UI\;Frame_UI.Wpf\;Frame_UI.WinForms\;"
+        Baseline="@(XamlColorBaseline)" />
+  </Target>
+
+  <!--
+    历史债务基线：只允许减少，不允许新增。
+    治理完某个文件后，从下面删掉对应行——它随即进入受约束状态。
+  -->
+  <ItemGroup>
+    <XamlColorBaseline Include="Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
+  </ItemGroup>
+</Project>

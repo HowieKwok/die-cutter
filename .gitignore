@@ -26,6 +26,9 @@ x86/
 *.ipch
 *.pdb.locked
 
+# ---- Cursor 规则（本地配置，不纳入版本库）----
+.cursor/rules/
+
 # ---- 临时/备份文件 ----
 *.tmp
 *.bak

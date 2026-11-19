@@ -17,7 +17,8 @@ namespace Frame_Core
         Form_Checkerboard form_Checkerboard = new Form_Checkerboard() { FormBorderStyle = FormBorderStyle.None, TopLevel = false, Dock = DockStyle.Fill };
         public Form_SelectCamCheckerboard()
         {
-            InitializeComponent();          
+            InitializeComponent();          
+            FormStylingHook.Style(this);
         }
         private void Form_SelectCamCheckerboard_Load(object sender, EventArgs e)
         {

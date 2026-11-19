@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -16,6 +16,7 @@ namespace Mef_VisionFrame
         public FormMessagebox(string message, string caption)
         {
             InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
             this.Text = caption;
             this.Size = new System.Drawing.Size(300, 150);
 

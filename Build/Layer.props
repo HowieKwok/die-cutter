@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!--
+    分层与共享边界的唯一真源。
+
+    同一份清单供给两处消费：
+      1. LayerGuard           引用方向违规直接变成编译错误；
+      2. LayerPublishAudit     插件构建后审计自己的输出目录，出现宿主程序集副本即报错。
+
+    清单本身只声明“哪些程序集属于宿主”，不负责去改写各工程的引用——
+    那条路在本机 MSBuild 上不可靠（见第 1 节注释），改由审计兜住结果。
+
+    为什么集中：先前每个插件工程各写一遍 Private=False，新增工程靠人记；
+    Directory.Build.props 里又抄了一份禁止引用清单。两份事实必然漂移，
+    于是出现"门禁通过但发布目录里躺着旧副本"这类事故。
+  -->
+
+  <PropertyGroup>
+    <!--
+      插件角色由命名约定决定，与插件容器的 DirectoryCatalog("Plugin.*.dll") 共用同一事实。
+      不再要求每个插件工程声明一个 flag：命名即角色，漏写无法发生。
+    -->
+    <IsPluginProject>$([System.String]::Copy('$(MSBuildProjectName)').StartsWith('Plugin.'))</IsPluginProject>
+  </PropertyGroup>
+
+  <!-- 宿主独占程序集：插件可编译期引用，但绝不允许随插件发布。 -->
+  <ItemGroup>
+    <HostExclusiveAssembly Include="Frame_Core" />
+    <HostExclusiveAssembly Include="Frame_PluginHost" />
+    <HostExclusiveAssembly Include="Frame_UI" />
+    <HostExclusiveAssembly Include="Frame_UI.WinForms" />
+    <HostExclusiveAssembly Include="Frame_UI.Wpf" />
+  </ItemGroup>
+
+  <!-- 渲染适配器：核心与令牌层都不得反向依赖。 -->
+  <ItemGroup>
+    <UiAdapterAssembly Include="Frame_UI.Wpf" />
+    <UiAdapterAssembly Include="Frame_UI.WinForms" />
+  </ItemGroup>
+
+  <!--
+    令牌层白名单。用白名单而非黑名单：新增一个 UI 框架（WindowsFormsIntegration
+    这类）不会因为"忘记加进禁止列表"而漏检。
+  -->
+  <ItemGroup>
+    <TokensLayerAllowedAssembly Include="System" />
+    <TokensLayerAllowedAssembly Include="System.Core" />
+    <TokensLayerAllowedAssembly Include="mscorlib" />
+  </ItemGroup>
+
+  <!-- ========== 1. 发布审计 ========== -->
+
+  <!--
+    发布边界只有这一处强制点，且刻意只做“检测”不做“改写”。
+
+    原因：曾尝试在本文件里批量把 ProjectReference 的 Private 改成 False ——
+    Update + 展开项列表、属性函数参数内嵌 %(Filename) 两种写法在本机 MSBuild 上
+    都不会真正改到元数据，规则恒为假，却让人误以为有保护。
+    唯一被证明有效的机制是工程文件里手写的 <Private>False</Private>，
+    因此这里不再重复那套写法，而是直接审计结果：
+    输出目录里出现宿主独占程序集副本就报错。
+  -->
+
+  <!-- ========== 2. 引用方向 ========== -->
+
+  <Target Name="LayerGuard" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <!--
+        两侧都加分隔符：String.Contains 是子串匹配，Frame_UI 会误命中 Frame_UI.Wpf，
+        导致“适配器引用令牌层”被当成“适配器互相引用”。用 ;名字; 做精确匹配。
+      -->
+      <_UiAdapterList>;@(UiAdapterAssembly, ';');</_UiAdapterList>
+      <_TokensAllowedList>;@(TokensLayerAllowedAssembly, ';');</_TokensAllowedList>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <!-- 令牌层：白名单之外的任何程序集引用都是违规。 -->
+      <_TokensBadRef Include="@(Reference)"
+                     Condition="'$(MSBuildProjectName)' == 'Frame_UI'
+                                and !$(_TokensAllowedList.Contains(';%(Filename);'))" />
+
+      <!-- 令牌层：不许引用任何 Frame_* 程序集（含业务核心）。 -->
+      <_TokensBadProjectRef Include="@(ProjectReference)"
+                            Condition="'$(MSBuildProjectName)' == 'Frame_UI'
+                                       and $([System.String]::Copy('%(Filename)').StartsWith('Frame_'))" />
+
+      <!-- 业务核心：不得反向依赖渲染适配器。 -->
+      <_CoreBadRef Include="@(ProjectReference)"
+                   Condition="'$(MSBuildProjectName)' == 'Frame_Core'
+                              and $(_UiAdapterList.Contains(';%(Filename);'))" />
+
+      <!--
+        渲染适配器互不引用。两台适配器共用令牌层，若互相引用就会多出第二条依赖方向，
+        “令牌层是唯一的颜色真源”随之失效，插件编译面也会重新暴露另一台适配器。
+      -->
+      <_AdapterCrossRef Include="@(ProjectReference)"
+                        Condition="$(_UiAdapterList.Contains(';$(MSBuildProjectName);'))
+                                   and $(_UiAdapterList.Contains(';%(Filename);'))" />
+    </ItemGroup>
+
+    <Error Condition="'@(_TokensBadRef)' != ''"
+           Text="Frame_UI 只允许引用令牌层白名单：@(_TokensBadRef)。令牌层必须保持零 UI 框架依赖。" />
+
+    <Error Condition="'@(_TokensBadProjectRef)' != ''"
+           Text="Frame_UI 不得引用 Frame_* 程序集：@(_TokensBadProjectRef)。令牌层不能依赖业务。" />
+
+    <Error Condition="'@(_CoreBadRef)' != ''"
+           Text="Frame_Core 不得引用渲染适配器：@(_CoreBadRef)。核心只允许依赖抽象契约。" />
+
+    <Error Condition="'@(_AdapterCrossRef)' != ''"
+           Text="渲染适配器不得互相引用：@(_AdapterCrossRef)。两者只能共同依赖令牌层。" />
+  </Target>
+
+  <!-- ========== 3. 发布审计 ========== -->
+
+  <!--
+    发布边界的最后一道：即使 Private 被某个导入的 targets 改回去，
+    也不能让宿主独占程序集躺进插件输出目录。
+    这里只报错、不删除——静默删掉会掩盖配置错误，下一次仍然会犯。
+  -->
+  <Target Name="LayerPublishAudit" AfterTargets="Build" Condition="'$(IsPluginProject)' == 'true'">
+    <ItemGroup>
+      <!-- MSBuild 不允许把项列表与普通字符串直接串联（MSB4012）：
+           先转成“文件名列表”，再用 transform 拼上目录。 -->
+      <_HostExclusiveDllName Include="@(HostExclusiveAssembly->'%(Identity).dll')" />
+      <_HostExclusiveCopyCandidate Include="@(_HostExclusiveDllName->'$(TargetDir)%(Identity)')" />
+      <_HostExclusiveCopyFound Include="@(_HostExclusiveCopyCandidate)" Condition="Exists('%(Identity)')" />
+    </ItemGroup>
+
+    <Error Condition="'@(_HostExclusiveCopyFound)' != ''"
+           Text="插件输出目录出现宿主独占程序集副本：@(_HostExclusiveCopyFound)。这会让插件加载到第二份类型，导致基类身份分裂。请检查 Private 设置与自行添加的 Copy 任务。" />
+  </Target>
+</Project>

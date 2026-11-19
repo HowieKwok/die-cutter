@@ -38,6 +38,12 @@
     <ProjectReference Include="..\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2cc7-4124-b966-fbff69a7a0e5}</Project>
       <Name>Frame_Core</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_PluginHost\Frame_PluginHost.csproj">
+      <Project>{A1B2C3D4-0004-4E00-9000-000000000004}</Project>
+      <Name>Frame_PluginHost</Name>
+      <Private>False</Private>
     </ProjectReference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -95,5 +101,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
+  <ItemGroup>
+    <!-- 视图承载令牌字典（ThemeScope）；渲染适配器属于宿主，不随本工程发布。 -->
+    <ProjectReference Include="..\Frame_UI.Wpf\Frame_UI.Wpf.csproj">
+      <Project>{A1B2C3D4-0002-4E00-9000-000000000002}</Project>
+      <Name>Frame_UI.Wpf</Name>
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

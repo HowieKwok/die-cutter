@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -38,6 +38,7 @@ namespace Frame_Core
         public DBJChanelForm(TCPCientManager _DBJCardManager,int _mode=0)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             mode = _mode;
             if (mode==0)
             {

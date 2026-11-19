@@ -297,7 +297,7 @@ namespace Plugin.DefectCoat.Models
         {
             try
             {
-                Frame_Core.Process proc = Project.Instance.GetProcessById(moduleInfo.ProcessID);
+                Frame_Core.Process proc = PluginHost.Context.GetProcessById(moduleInfo.ProcessID);
                 proc?.AddOutPutParam(moduleInfo.ModuleName, varName, obj);
             }
             catch

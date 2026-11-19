@@ -1,73 +1,29 @@
-﻿<UserControl x:Class="Plugin.BlobAnalysis.WPFArchitecture.WPFBlobAnalysis"
+<UserControl x:Class="Plugin.BlobAnalysis.WPFArchitecture.WPFBlobAnalysis"
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
-             Background="#05080D" Foreground="#EAFBFF" FontFamily="Microsoft YaHei UI" FontSize="13"
+             Background="{DynamicResource Surface.Canvas}" Foreground="{DynamicResource Text.Primary}" FontFamily="{DynamicResource Font.Family}"
              Loaded="OnLoaded"
              Unloaded="OnUnloaded">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="PanelBg" Color="#081018"/>
-        <SolidColorBrush x:Key="PanelBg2" Color="#0B141E"/>
-        <SolidColorBrush x:Key="LineCyan" Color="#23D9FF"/>
-        <SolidColorBrush x:Key="LinePink" Color="#FF3FB4"/>
-        <SolidColorBrush x:Key="InputBg" Color="#F7FBFF"/>
+        <SolidColorBrush x:Key="PanelBg" Color="{DynamicResource Surface.Panel.Color}"/>
+        <SolidColorBrush x:Key="PanelBg2" Color="{DynamicResource Surface.PanelDeep.Color}"/>
+        <SolidColorBrush x:Key="LineCyan" Color="{DynamicResource Accent.Primary.Color}"/>
+        <SolidColorBrush x:Key="LinePink" Color="{DynamicResource Accent.Secondary.Color}"/>
+        <SolidColorBrush x:Key="InputBg" Color="{DynamicResource Surface.PanelDeep.Color}"/>
 
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="MinHeight" Value="30"/>
-            <Setter Property="Margin" Value="4,0"/>
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Background" Value="#102638"/>
-            <Setter Property="Foreground" Value="#F7FEFF"/>
-            <Setter Property="BorderBrush" Value="{StaticResource LineCyan}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Margin" Value="0,3,8,3"/>
-            <Setter Property="Padding" Value="6,2"/>
-            <Setter Property="Background" Value="{StaticResource InputBg}"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="BorderBrush" Value="#BFD3E0"/>
-        </Style>
-        <Style TargetType="ComboBox">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="0,3,8,3"/>
-            <Setter Property="Padding" Value="4,1"/>
-            <Setter Property="Background" Value="{StaticResource InputBg}"/>
-            <Setter Property="Foreground" Value="#111820"/>
-        </Style>
-        <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="Margin" Value="0,5,14,5"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
         <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="#F7FBFF"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="RowBackground" Value="#FFFFFF"/>
-            <Setter Property="AlternatingRowBackground" Value="#EEF6FB"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.PanelDeep}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="RowBackground" Value="{DynamicResource Surface.Panel}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource Surface.PanelDeep}"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
             <Setter Property="SelectionMode" Value="Single"/>
         </Style>
-        <Style TargetType="TabControl">
-            <Setter Property="Background" Value="{StaticResource PanelBg}"/>
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="BorderBrush" Value="#355A6E"/>
-        </Style>
-        <Style TargetType="TabItem">
-            <Setter Property="MinWidth" Value="88"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Foreground" Value="#111820"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
         <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
-            <Setter Property="Foreground" Value="#EAFBFF"/>
-            <Setter Property="BorderBrush" Value="#21485A"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Line.Normal}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
@@ -88,7 +44,7 @@
 
         <Border Grid.ColumnSpan="3" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource LineCyan}" BorderThickness="1" CornerRadius="6" Padding="12,8">
             <DockPanel LastChildFill="False">
-                <TextBlock DockPanel.Dock="Left" Text=" Blob分析工具" FontSize="22" FontWeight="Bold"/>
+                <TextBlock DockPanel.Dock="Left" Text=" Blob分析工具" FontWeight="Bold"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Content="加载图像" Click="OnLoadImageClick"/>
                     <Button Content="图像适应" Click="OnFitImageClick"/>
@@ -115,7 +71,7 @@
                 <Grid>
                     <TextBlock Text="运行图" Margin="8" FontWeight="Bold" Panel.ZIndex="2"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,12,0" Panel.ZIndex="2">
-                        <TextBlock Text="{Binding MouseInfo}" Foreground="#8DFF64" Margin="0,0,18,0"/>
+                        <TextBlock Text="{Binding MouseInfo}" Foreground="{DynamicResource State.Ok}" Margin="0,0,18,0"/>
                         <TextBlock Text="{Binding ImageInfo}"/>
                     </StackPanel>
                     <Border Margin="4,34,4,4">
@@ -153,22 +109,22 @@
                 <ColumnDefinition Width="8"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Border Background="{StaticResource PanelBg}" BorderBrush="#21485A" BorderThickness="1" CornerRadius="4" Padding="12">
+            <Border Background="{StaticResource PanelBg}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Padding="12">
                 <StackPanel>
                     <TextBlock Text="图像/鼠标" Foreground="{StaticResource LineCyan}" FontWeight="Bold"/>
                     <TextBlock Text="{Binding ImageInfo}" Margin="0,10,0,0"/>
                     <TextBlock Text="{Binding MouseInfo}" Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="2" Background="{StaticResource PanelBg}" BorderBrush="#21485A" BorderThickness="1" CornerRadius="4" Padding="12">
+            <Border Grid.Column="2" Background="{StaticResource PanelBg}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Padding="12">
                 <StackPanel>
                     <TextBlock Text="运行输出" Foreground="{StaticResource LinePink}" FontWeight="Bold"/>
                     <TextBlock Text="{Binding RunSummary}" Margin="0,10,0,0"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="4" Background="{StaticResource PanelBg}" BorderBrush="#21485A" BorderThickness="1" CornerRadius="4" Padding="12">
+            <Border Grid.Column="4" Background="{StaticResource PanelBg}" BorderBrush="{DynamicResource Line.Normal}" BorderThickness="1" CornerRadius="4" Padding="12">
                 <StackPanel>
-                    <TextBlock Text="状态" Foreground="#8DFF64" FontWeight="Bold"/>
+                    <TextBlock Text="状态" Foreground="{DynamicResource State.Ok}" FontWeight="Bold"/>
                     <TextBlock Text="{Binding StatusText}" Margin="0,10,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
@@ -180,7 +136,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="Blob 参数与输出" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+                <TextBlock Text="Blob 参数与输出" FontWeight="Bold" Margin="0,0,0,10"/>
                 <TabControl Grid.Row="1">
                     <TabItem Header="基础参数">
                         <Border Background="{StaticResource PanelBg2}" Padding="10">

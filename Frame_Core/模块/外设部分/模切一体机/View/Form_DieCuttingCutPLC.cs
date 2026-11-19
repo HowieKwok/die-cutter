@@ -21,6 +21,7 @@ namespace Frame_Core
         public Form_DieCuttingCutPLC(PLCCommunicationBase server)
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             Server = server;
         }
 

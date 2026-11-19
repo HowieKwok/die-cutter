@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!--
+    静态资源键门禁。
+
+    为什么需要：{StaticResource X} 的键不存在时，XAML 编译期不报错，
+    运行时抛 ResourceReferenceKeyNotFoundException，结果是窗口直接打不开。
+    这是"删样式/改名"最容易造成的功能性故障，且只有跑到那个界面才会暴露。
+
+    规则：全仓每个 xaml 里 {StaticResource X} 引用的 X，
+          必须能在某个 xaml 的 x:Key 中找到定义。
+          DynamicResource 不在此列——它由 ThemeScope 运行时注入，没有 x:Key。
+
+    现状是该差集为空，因此这里做严格检查（无基线），新增悬空引用立即失败。
+  -->
+
+  <UsingTask TaskName="XamlResourceKeyGuard" TaskFactory="CodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <RootPath ParameterType="System.String" Required="true" />
+      <ExcludedDirectories ParameterType="System.String[]" Required="false" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        if (!Directory.Exists(RootPath))
+        {
+            Log.LogError("XAMLKEY: 扫描根目录不存在：" + RootPath);
+            return false;
+        }
+
+        var excluded = ExcludedDirectories ?? new string[0];
+        var files = Directory.GetFiles(RootPath, "*.xaml", SearchOption.AllDirectories);
+
+        // x:Key="K" 收集
+        var defined = new HashSet<string>(StringComparer.Ordinal);
+        var keyRegex = new Regex(@"x:Key\s*=\s*""([^""]+)""");
+        foreach (var file in files)
+        {
+            foreach (Match m in keyRegex.Matches(File.ReadAllText(file)))
+            {
+                defined.Add(m.Groups[1].Value);
+            }
+        }
+
+        // {StaticResource K} 收集。跳过 {x:Static ...} 这类嵌套表达式：
+        // 键名以字母或下划线开头，且不含 { 与空格。
+        var refRegex = new Regex(@"\{StaticResource\s+([A-Za-z_][A-Za-z0-9_.]*)\s*\}");
+        int violations = 0;
+        var reported = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in files)
+        {
+            bool skip = false;
+            foreach (var dir in excluded)
+            {
+                if (dir.Length > 0 && file.IndexOf(dir, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    skip = true;
+                    break;
+                }
+            }
+            if (skip) continue;
+
+            foreach (Match m in refRegex.Matches(File.ReadAllText(file)))
+            {
+                string key = m.Groups[1].Value;
+                if (defined.Contains(key)) continue;
+
+                string id = file + "|" + key;
+                if (!reported.Add(id)) continue;
+
+                Log.LogError(
+                    null, "XAMLKEY", null, file, 0, 0, 0, 0,
+                    "引用了不存在的静态资源键 \"" + key + "\"。" +
+                    "运行时会在窗口加载时抛 ResourceReferenceKeyNotFoundException。" +
+                    "请恢复该 x:Key 定义，或改用具名样式之外的方式。");
+                violations++;
+            }
+        }
+
+        return violations == 0;
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="XamlResourceKeyGuard" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Mef_VisionFrame'">
+    <XamlResourceKeyGuard RootPath="$(MSBuildThisFileDirectory)..\" />
+  </Target>
+</Project>

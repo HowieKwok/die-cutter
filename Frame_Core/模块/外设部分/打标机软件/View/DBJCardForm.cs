@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -19,6 +19,7 @@ namespace Frame_Core
         public DBJCardForm()
         {
             InitializeComponent();
+            FormStylingHook.Style(this);
             
         }
 
@@ -27,6 +28,7 @@ namespace Frame_Core
         {
 
             InitializeComponent();
+            FormStylingHook.Style(this);
             tcpCientManager = (DBJCardManager)_DBJCardManager;
            
         }

@@ -22,6 +22,7 @@ namespace Frame_Core
         {
             userManage = _UserManage;
             InitializeComponent();
+            FormStylingHook.Style(this);
         }
 
         private void btnAddAccount_Click(object sender, EventArgs e)

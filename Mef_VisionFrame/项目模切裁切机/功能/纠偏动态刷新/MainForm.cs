@@ -10,7 +10,11 @@ namespace Mef_VisionFrame
         private readonly CorrectPosDeal _deal = new CorrectPosDeal(0,100);
         private int _frame;
         private MonitorForm _monitorForm;
-        public MainForm() { InitializeComponent(); }
+        public MainForm()
+        {
+            InitializeComponent();
+            Frame_Core.FormStylingHook.Style(this);
+        }
         private void OpenMonitor_Click(object sender, EventArgs e)
         {
             // 监控窗体全程只保留一个实例，重复点击只置前显示。

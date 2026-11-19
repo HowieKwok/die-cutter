@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using HalconDotNet;
 using LogTool;
 using System;
@@ -321,7 +321,7 @@ namespace Plugin.FindMark
 
             PluginParams.backup(PluginParams);
             RefreshParamsFromView(PluginParams);
-           // PluginParams.FilePath = Project.Instance.logParam.LogSavePath + "\\ParamsChangeLog\\";
+           // PluginParams.FilePath = PluginHost.Context.LogSavePath + "\\ParamsChangeLog\\";
             error = YControlAutobind.Saveing<PluginParamsBase, IYCustomAttribute>(this, PluginParams);
             // 调用父窗体
             base.Btn_Save_Click(sender, e);

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Composition;
@@ -98,8 +98,10 @@ namespace Frame_Core
                         pluginsInformation.PluginsBuildName = plugInsObjBase.Name;
                        
                     }
-                    //判断是否是PluginsFormBase的子类
-                    if (typeof(FormPluginBase).IsAssignableFrom(plugInsObjBase))
+                    // 判断是否是插件编辑器视图。
+                    // 用 UI 无关的标记接口识别：具体窗体基类已上移到应用层，
+                    // Frame_Core 不能再引用它（会被分层门禁拒绝）。
+                    if (typeof(IPluginEditorView).IsAssignableFrom(plugInsObjBase))
                     {
                         pluginsInformation.PluginsFormType = plugInsObjBase;
                     }
