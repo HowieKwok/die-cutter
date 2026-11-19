@@ -106,20 +106,20 @@
        以及 NumericBox 的 Increment）。这些属性删掉会改变表格交互，不属于观感范畴，
        因此连同其所在 Style 一并保留，待后续单独迁移为具名样式。
     -->
-    <XamlStyleBaseline Include="DefectRuleClassifier\Views\ClassifierToolWindow.xaml" />
-    <XamlStyleBaseline Include="Plugin.BlobAnalysis\WPF架构\WPFBlobAnalysis.xaml" />
-    <XamlStyleBaseline Include="Plugin.CACRunCalibration\WPF架构\WPFRunCalibration.xaml" />
-    <XamlStyleBaseline Include="Plugin.DefectCoat\Views\ClassifyResultWindow.xaml" />
-    <XamlStyleBaseline Include="Plugin.DefectCoat\WPF架构\DefectCoatUser.xaml" />
-    <XamlStyleBaseline Include="Plugin.FindIntersection\WPF架构\FindIntersectionWpfView.xaml" />
-    <XamlStyleBaseline Include="Plugin.ReusableMeasureDetect\WPF架构\ReusableMeasureDetectUser.xaml" />
-    <XamlStyleBaseline Include="Plugin.TemplateMatch\WPF架构\TemplateMatchUser.xaml" />
+    <XamlStyleBaseline Include="src\infrastructure\DefectRuleClassifier\Views\ClassifierToolWindow.xaml" />
+    <XamlStyleBaseline Include="src\plugin\Plugin.BlobAnalysis\WPF架构\WPFBlobAnalysis.xaml" />
+    <XamlStyleBaseline Include="src\plugin\Plugin.CACRunCalibration\WPF架构\WPFRunCalibration.xaml" />
+    <XamlStyleBaseline Include="src\plugin\Plugin.DefectCoat\Views\ClassifyResultWindow.xaml" />
+    <XamlStyleBaseline Include="src\plugin\Plugin.DefectCoat\WPF架构\DefectCoatUser.xaml" />
+    <XamlStyleBaseline Include="src\plugin\Plugin.FindIntersection\WPF架构\FindIntersectionWpfView.xaml" />
+    <XamlStyleBaseline Include="src\plugin\Plugin.ReusableMeasureDetect\WPF架构\ReusableMeasureDetectUser.xaml" />
+    <XamlStyleBaseline Include="src\plugin\Plugin.TemplateMatch\WPF架构\TemplateMatchUser.xaml" />
     <!--
       已知例外：本视图位于 Frame_Core，而令牌字典由 Frame_UI.Wpf 的 ThemeScope 注入，
       LayerGuard 禁止 Frame_Core 引用渲染适配器，因此它拿不到全局隐式样式。
       删掉这里的隐式样式只会让它退回 WPF 默认外观（白底），比现在更差。
       要治理必须先把这个视图移出核心层。
     -->
-    <XamlStyleBaseline Include="Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
+    <XamlStyleBaseline Include="src\frame\Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
   </ItemGroup>
 </Project>

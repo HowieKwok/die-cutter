@@ -99,6 +99,6 @@
       已知例外：本视图位于 Frame_Core，拿不到 ThemeScope 注入的隐式样式，
       删掉局部字体只会让它回落到 WPF 默认字体。要治理需先把视图移出核心层。
     -->
-    <XamlFontBaseline Include="Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
+    <XamlFontBaseline Include="src\frame\Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
   </ItemGroup>
 </Project>

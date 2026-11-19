@@ -110,6 +110,6 @@
     治理完某个文件后，从下面删掉对应行——它随即进入受约束状态。
   -->
   <ItemGroup>
-    <XamlColorBaseline Include="Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
+    <XamlColorBaseline Include="src\frame\Frame_Core\模块\系统设置\保存设置\New\View\WindowImageSave.xaml" />
   </ItemGroup>
 </Project>
