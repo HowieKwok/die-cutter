@@ -78,6 +78,13 @@ namespace Mef_VisionFrame
                     }
                 };
 
+                // 仿真：必须在项目初始化之前挂上钩子（INIProject 内部按运行模式起仿真服务端）
+                Mef_VisionFrame.Simulation.SimBootstrap.Attach();
+
+                // 初始化阶段与 UI 阶段分开：能不能进主界面在这里决定。
+                // 失败时这里直接退出，不构造 Form_Main，也就不会装配 Server。
+                if (!StartupBootstrap.Run()) return;
+
                 Application.Run(new Form_Main());
             }
          

@@ -2500,75 +2500,13 @@ namespace Mef_VisionFrame
 
         #region 父类任务
 
-        public override void SimLoadImage()
-        {
-            if (Project.Instance.Is_simulation)
-                ExecuteMethodClass.ExecuteMethod(() =>
-                {
-                    if (ProjectFactory.F_Model.WorkModelBase.M_SimRunCommand == SimRunCommand.SimPrev)
-                    {
-                        Parallel.ForEach(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, (item) =>
-                        {
-                            CameraEnum cameraEnum = (CameraEnum)item.Key;
-                            bool flag = false;
-
-                            flag = SimControl.LoadPrevImage_Sim(Service_Camera.Get_CameraRelevancy((int)cameraEnum).m_ImageSimManage,
-                                         ref item.Value.QueueGrabImage, $"{(cameraEnum).ToString()}仿真加载图片");
-                            Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[(int)cameraEnum].CallBackImgDataDeal();
-
-                        });
 
 
 
-                        ProjectFactory.F_Model.WorkModelBase.M_SimRunCommand = SimRunCommand.Stop;
-
-                        foreach (ProcessServices item in Project.Instance.m_ProcessList)
-                        {
-                            Project.Instance.ExecuteOnce(item.process.processInfo.ProcessID);
-                        }
-                    }
-                    else if (ProjectFactory.F_Model.WorkModelBase.M_SimRunCommand == SimRunCommand.SimRun)
-                    {
-                        Parallel.ForEach(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, (item) =>
-                        {
-                            CameraEnum cameraEnum = (CameraEnum)item.Key;
-                            bool flag = false;
-
-                            flag = SimControl.LoadNextImage_Sim(Service_Camera.Get_CameraRelevancy((int)cameraEnum).m_ImageSimManage,
-                                         ref item.Value.QueueGrabImage, $"{(cameraEnum).ToString()}仿真加载图片");
-
-                            Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[(int)cameraEnum].CallBackImgDataDeal();
-
-                        });
 
 
-                    }
-                    else if (ProjectFactory.F_Model.WorkModelBase.M_SimRunCommand == SimRunCommand.SimNext)
-                    {
-                        Parallel.ForEach(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, (item) =>
-                        {
-                            CameraEnum cameraEnum = (CameraEnum)item.Key;
-                            bool flag = false;
+        // 旧仿真取图（SimLoadImage）已移除：仿真改由 SimCamera 取图，与真机走同一条队列与回调路径。
 
-                            flag = SimControl.LoadNextImage_Sim(Service_Camera.Get_CameraRelevancy((int)cameraEnum).m_ImageSimManage,
-                                          ref item.Value.QueueGrabImage, $"{(cameraEnum).ToString()}仿真加载图片");
-                            Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[(int)cameraEnum].CallBackImgDataDeal();
-
-
-                        });
-
-                        ProjectFactory.F_Model.WorkModelBase.M_SimRunCommand = SimRunCommand.Stop;
-
-                        foreach (ProcessServices item in Project.Instance.m_ProcessList)
-                        {
-                            Project.Instance.ExecuteOnce(item.process.processInfo.ProcessID);
-                        }
-                    }
-
-
-
-                });
-        }
 
         public override bool StartFilmRoll(string filmRollName)
         {
@@ -2656,13 +2594,6 @@ namespace Mef_VisionFrame
         {
             return ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
             {
-                if (Project.Instance.Is_simulation)
-                {
-                    // Project.Instance.m_SlaveMachine.Remo.SendMsg("FJ_ERROR", "副机开始运行失败");
-                    System.Windows.Forms.MessageBox.Show(" “仿真运行”状态禁止自动运行。");
-                    return false;
-                }
-
                 if (!Project.Instance.Is_MojuanStart)
                 {
                     // Project.Instance.m_SlaveMachine.Remo.SendMsg("FJ_ERROR", "副机开始运行失败");
@@ -2764,35 +2695,6 @@ namespace Mef_VisionFrame
             });
         }
 
-        public override void RunModelSwitch()
-        {
-            ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
-            {
-                if (Project.Instance.Is_simulation == true)
-                {
-                    //切换为自动模式
-                    Project.Instance.Is_simulation = false;
-
-                    //切换为自动模式清除仿真数据
-                    Project.Instance.baseProDevice.InitProduct_Sim();
-
-                    if (Project.Instance.Is_MojuanStart)
-                    {
-                        Project.Instance.NewMujuanhao(Project.Instance.systemInfo.RecipeName, Project.Instance.systemInfo.currentMojuanhao, Project.Instance.systemInfo.CraftType);
-                    }
-
-                }
-                else
-                {
-                    //切换为仿真模式
-                    Project.Instance.Is_simulation = true;
-
-
-                    Project.Instance.NewMujuanhao(Project.Instance.systemInfo.RecipeName, "SimTest", Project.Instance.systemInfo.CraftType);
-                    Data.InitFilePath();
-                }
-            });
-        }
 
         public override List<StatusLabelItem> GetStatusBarInfo()
         {
@@ -2983,6 +2885,22 @@ namespace Mef_VisionFrame
                     if (CutStation_Heartbeat.GetIsArrivalTime(HeartbeatTime))
                     {
                         CutStation_Heartbeat.Trigger("裁切工位——心跳");
+
+                        // PLC 心跳（D1004）：与 IO 脉冲共用同一触发点，两者相位天然一致，
+                        // 不会出现"IO 在跳、PLC 不动"的假象。写失败只记日志，不打断工位节拍。
+                        try
+                        {
+                            var plc = Project.Instance.server_DiecuttingCutPLC;
+                            if (plc != null)
+                            {
+                                plc.m_DevAddress.心跳.Value = !plc.m_DevAddress.心跳.Value;
+                                plc.Write(plc.m_DevAddress.心跳, true, plc.HeartbeatLog);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log4netRecord.ErrorLog.Debug("PLC 心跳写入异常：" + ex.Message);
+                        }
                     }
 
                     if (DefectStation_Heartbeat.GetIsArrivalTime(HeartbeatTime))

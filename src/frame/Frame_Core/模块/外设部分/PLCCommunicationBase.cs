@@ -23,6 +23,16 @@ namespace Frame_Core
         public bool InitState = false;
 
         /// <summary>
+        /// 本机型需要在符号型服务端（CIP）预注册的地址。
+        /// 基类不猜：默认空，由持有地址表的子类覆写。
+        /// 仿真侧据此注册符号，因此不需要认识任何具体机型。
+        /// </summary>
+        public virtual IEnumerable<string> GetRegisterSymbols()
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        /// <summary>
         /// 本连接自己的 PLC 参数（IP/端口/协议/字节序）。
         /// 声明在基类是因为每个机型各连一台 PLC，参数必须各存一份：
         /// 五金是 CIP 符号寻址，激光是 Fins 的 D 寄存器，共用一份会互相改掉对方的协议与地址。

@@ -1,4 +1,4 @@
-﻿using DevMgmt.Light.Models;
+using DevMgmt.Light.Models;
 using FrameCommunity;
 using FrameCommunity.Data;
 using HalconDotNet;
@@ -58,7 +58,6 @@ namespace Frame_Core
             for (int i = 0; i < m_nCamCount; i++)
             {
                 m_DicCamOperaParam[i] = new PFTCleanProParams(((CameraEnum)i).ToString());
-                m_DicCamOperaParam_Sim[i] = new PFTCleanProParams(((CameraEnum)i).ToString());
             }
             Project.Instance.BindCamImageSource(m_DicCamOperaParam);
 
@@ -97,7 +96,6 @@ namespace Frame_Core
                     proms.dic_EAproductsInfo[0] = ExPandHeadLinedic(i, 0, 1, ABMis, imageHeight, Calipix_y, Calipix_x);//new一个新产品信息
                                                                                                                        // m_DicCamOperaParam[index] = proms;
                 }
-                InitProduct_Sim();
                 Project.Instance.BindCamImageSource(m_DicCamOperaParam);
                 return true;
             }
@@ -107,46 +105,6 @@ namespace Frame_Core
                 Log4netRecord.ErrorLog.Debug("初始化系统数据报错————\n" + ee.ToString());
                 return false;
             }
-
-        }
-        public override bool InitProduct_Sim()
-        {
-            try
-            {
-                /*</清空仿真数据>*/
-                foreach (var item in Project.Instance.M_CameraRelevancies)
-                {
-                    //初始化仿真路径ID
-                    Service_Camera.Get_CameraRelevancy(item.Key).m_ImageSimManage.InitSimFlag();
-
-                }
-
-                foreach (var item in m_DicCamOperaParam_Sim)
-                {
-                    item.Value?.Dispose();
-                }
-                for (int i = 0; i < m_nCamCount; i++)
-                {
-                    double Calipix_y = Service_Camera.GetCam_CalibrationValue_Y(i);
-                    double Calipix_x = Service_Camera.GetCam_CalibrationValue_X(i);
-                    double ABMis = 0;
-                    double imageHeight = Service_Camera.GetCam_ImageHeight(i);
-
-                    //PFTCleanProParams promsim = new PFTCleanProParams(((CameraEnum)index).ToString());
-                    PFTCleanProParams promsim = (PFTCleanProParams)m_DicCamOperaParam_Sim[i];
-                    promsim.dic_EAproductsInfo[0] = ExPandHeadLinedic(i, 0, 1, ABMis, imageHeight, Calipix_y, Calipix_x);//new一个新产品信息
-                                                                                                                         // m_DicCamOperaParam_Sim[index] = promsim;
-                }
-
-                return true;
-            }
-            catch (Exception ee)
-            {
-                System.Windows.MessageBox.Show(ee.ToString());
-                Log4netRecord.ErrorLog.Debug("初始化仿真数据报错————\n" + ee.ToString());
-                return false;
-            }
-
         }
         public override void BuildProcessServiceList()
         {
@@ -651,8 +609,8 @@ namespace Frame_Core
                 double HeadMisAtoB = m_craft.HeadMis_AtoB / Calipix_y;//
 
                 // 选择参数和队列基于是否模拟
-                PFTCleanProParams PFTCleanParamBase = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as PFTCleanProParams : m_DicCamOperaParam[camID] as PFTCleanProParams;
-                PFTCleanProParams PFTCleanParamFrom = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID + 1] as PFTCleanProParams : m_DicCamOperaParam[camID + 1] as PFTCleanProParams;
+                PFTCleanProParams PFTCleanParamBase = m_DicCamOperaParam[camID] as PFTCleanProParams;
+                PFTCleanProParams PFTCleanParamFrom = m_DicCamOperaParam[camID + 1] as PFTCleanProParams;
                 var imageQueue = PFTCleanParamBase.alreadyDealGrabImage;
                 PFTCleanParamBase.semaphoreSlimCam.Wait();
 
@@ -1507,7 +1465,7 @@ namespace Frame_Core
                                  // 选择参数和队列基于是否模拟
                 double ZoomFactorX = 0.5;
                 double ZoomFactorY = 0.5;
-                PFTCleanProParams CleanEAParamBase = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as PFTCleanProParams : m_DicCamOperaParam[camID] as PFTCleanProParams;
+                PFTCleanProParams CleanEAParamBase = m_DicCamOperaParam[camID] as PFTCleanProParams;
                 var PFTimageQueue = CleanEAParamBase.PFTImageProdQueue;
                 CleanEAParamBase.semaphoreSlim.Wait(200);
 
@@ -1719,8 +1677,8 @@ namespace Frame_Core
 
 
                 // 选择参数和队列基于是否模拟
-                PFTCleanProParams PFTCleanParamBase = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID - 1] as PFTCleanProParams : m_DicCamOperaParam[camID - 1] as PFTCleanProParams;
-                PFTCleanProParams PFTCleanParamFrom = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as PFTCleanProParams : m_DicCamOperaParam[camID] as PFTCleanProParams;
+                PFTCleanProParams PFTCleanParamBase = m_DicCamOperaParam[camID - 1] as PFTCleanProParams;
+                PFTCleanProParams PFTCleanParamFrom = m_DicCamOperaParam[camID] as PFTCleanProParams;
                 var imageQueue = PFTCleanParamFrom.alreadyDealGrabImage;
                 PFTCleanParamFrom.semaphoreSlimCam.Wait();
 
@@ -2496,7 +2454,7 @@ namespace Frame_Core
                 double ZoomFactorX = 0.5;
                 double ZoomFactorY = 0.5;
 
-                PFTCleanProParams PFTCleanParamFrom = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as PFTCleanProParams : m_DicCamOperaParam[camID] as PFTCleanProParams;
+                PFTCleanProParams PFTCleanParamFrom = m_DicCamOperaParam[camID] as PFTCleanProParams;
                 var PFTimageQueue = PFTCleanParamFrom.PFTImageProdQueue;
                 PFTCleanParamFrom.semaphoreSlim.Wait(200);
 
@@ -2701,7 +2659,7 @@ namespace Frame_Core
 
                 // bool ExecuteSuccess = false;
                 // 选择参数和队列基于是否模拟
-                PFTCleanProParams PFTCleanParamBase = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as PFTCleanProParams : m_DicCamOperaParam[camID] as PFTCleanProParams;
+                PFTCleanProParams PFTCleanParamBase = m_DicCamOperaParam[camID] as PFTCleanProParams;
 
 
                 PFTCleanParamBase.semaphoreSlimCam.Wait();
@@ -2822,7 +2780,7 @@ namespace Frame_Core
 
                 // bool ExecuteSuccess = false;
                 // 选择参数和队列基于是否模拟
-                PFTCleanProParams PFTCleanParamBase = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as PFTCleanProParams : m_DicCamOperaParam[camID] as PFTCleanProParams;
+                PFTCleanProParams PFTCleanParamBase = m_DicCamOperaParam[camID] as PFTCleanProParams;
 
 
                 PFTCleanParamBase.semaphoreSlimCam.Wait();

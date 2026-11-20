@@ -1,4 +1,4 @@
-﻿using DotNetDetour;
+using DotNetDetour;
 
 using Extensions;
 using FrameCommunity;
@@ -87,7 +87,7 @@ namespace Frame_Core
 
             if (QueueGrabImage.Count > 0)
             {
-                if (!Project.Instance.GetStates() && !Project.Instance.Is_simulation)
+                if (!Project.Instance.GetStates())
                 {
                     ImageInfo imageInfo = QueueGrabImage.Dequeue();
                     disposeImageCount++;
@@ -131,7 +131,7 @@ namespace Frame_Core
 
             if (Queue3DImage.Count > 0)
             {
-                if (!Project.Instance.GetStates() && !Project.Instance.Is_simulation)
+                if (!Project.Instance.GetStates())
                 {
                     Image3DClass image3DClass = Queue3DImage.Dequeue();
                     disposeImageCount++;

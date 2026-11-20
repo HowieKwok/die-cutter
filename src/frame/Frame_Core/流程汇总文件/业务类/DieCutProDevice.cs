@@ -59,7 +59,6 @@ namespace Frame_Core.业务类
             {
                 CamSlotDef slot = profile.CamSlots[i];
                 m_DicCamOperaParam[i] = slot.NewParam();
-                m_DicCamOperaParam_Sim[i] = slot.NewParam();
             }
             Project.Instance.BindCamImageSource(m_DicCamOperaParam);
             HOperatorSet.SetSystem("clip_region", "false");
@@ -89,7 +88,6 @@ namespace Frame_Core.业务类
                 {
                     item.Value?.Dispose();
                 }
-                InitProduct_Sim();
                 return true;
             }
             catch (Exception ee)
@@ -97,26 +95,6 @@ namespace Frame_Core.业务类
 
                 System.Windows.MessageBox.Show(ee.ToString());
                 Log4netRecord.ErrorLog.Debug("初始化系统数据报错————\n" + ee.ToString());
-                return false;
-
-            }
-        }
-
-
-        public override bool InitProduct_Sim()
-        {
-            try
-            {
-                foreach (var item in m_DicCamOperaParam_Sim)
-                {
-                    item.Value?.Dispose();
-                }
-                return true;
-            }
-            catch (Exception ee)
-            {
-                System.Windows.MessageBox.Show(ee.ToString());
-                Log4netRecord.ErrorLog.Debug("初始化仿真系统数据报错————\n" + ee.ToString());
                 return false;
 
             }
@@ -736,9 +714,9 @@ namespace Frame_Core.业务类
 
 
                 // 选择参数和队列基于是否模拟
-                DieCutParam ProParam主相机模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as DieCutParam : m_DicCamOperaParam[camID] as DieCutParam;
+                DieCutParam ProParam主相机模切业务 = m_DicCamOperaParam[camID] as DieCutParam;
                 // 从相机按角色取，不再依赖"主相机下标 + 1"的假设
-                DieCutParam ProParam从相机模切业务 = Project.Instance.Is_simulation ? GetCamParamSim(CamRole.模切从相机) as DieCutParam : GetCamParam(CamRole.模切从相机) as DieCutParam;
+                DieCutParam ProParam从相机模切业务 = GetCamParam(CamRole.模切从相机) as DieCutParam;
                 var imageQueue = ProParam主相机模切业务.alreadyDealGrabImage;
                 //通过信号量把控线程
                 ProParam主相机模切业务.semaphoreSlimCam.Wait(50);
@@ -1184,7 +1162,7 @@ namespace Frame_Core.业务类
                 CurrentThread.Priority = ThreadPriority.Highest;
 
                 // 选择参数和队列基于是否模拟
-                DieCutParam ProParam相机模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as DieCutParam : m_DicCamOperaParam[camID] as DieCutParam;
+                DieCutParam ProParam相机模切业务 = m_DicCamOperaParam[camID] as DieCutParam;
                 var imageQueue = ProParam相机模切业务.alreadyDealGrabImage;
                 //通过信号量把控线程
                 ProParam相机模切业务.semaphoreSlimCam.Wait(50);
@@ -1568,7 +1546,7 @@ namespace Frame_Core.业务类
 
                 // 选择参数和队列基于是否模拟
                 // 从相机按角色取，不再依赖"主相机下标 + 1"的假设
-                DieCutParam ProParam从相机模切业务 = Project.Instance.Is_simulation ? GetCamParamSim(CamRole.模切从相机) as DieCutParam : GetCamParam(CamRole.模切从相机) as DieCutParam;
+                DieCutParam ProParam从相机模切业务 = GetCamParam(CamRole.模切从相机) as DieCutParam;
                 var imageQueue = ProParam从相机模切业务.alreadyDealGrabImage;
                 //通过信号量把控线程
                 ProParam从相机模切业务.semaphoreSlimCam.Wait(50);
@@ -1857,7 +1835,7 @@ namespace Frame_Core.业务类
 
                 // 选择参数和队列基于是否模拟
 
-                DieCutParam ProParm模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[CID] as DieCutParam : m_DicCamOperaParam[CID] as DieCutParam;
+                DieCutParam ProParm模切业务 = m_DicCamOperaParam[CID] as DieCutParam;
                 //通过信号量把控线程
                 ProParm模切业务.semaphoreSlim.Wait(30);
 
@@ -2244,7 +2222,7 @@ namespace Frame_Core.业务类
                 };
 
 
-                SizeDetectParam ProParam尺寸业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as SizeDetectParam : m_DicCamOperaParam[camID] as SizeDetectParam;
+                SizeDetectParam ProParam尺寸业务 = m_DicCamOperaParam[camID] as SizeDetectParam;
                 var imageQueue = ProParam尺寸业务.alreadyDealGrabImage;
                 ProParam尺寸业务.semaphoreSlimCam.Wait(45);
                 if (imageQueue.Count > 0)
@@ -3229,7 +3207,7 @@ namespace Frame_Core.业务类
                 };
 
 
-                SizeDetectParam ProParam尺寸业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[CID] as SizeDetectParam : m_DicCamOperaParam[CID] as SizeDetectParam;
+                SizeDetectParam ProParam尺寸业务 = m_DicCamOperaParam[CID] as SizeDetectParam;
                 var imageQueue = ProParam尺寸业务.alreadyDealGrabImage;
                 ProParam尺寸业务.semaphoreSlimCam.Wait(45);
                 if (imageQueue.Count > 0)
@@ -3594,7 +3572,7 @@ namespace Frame_Core.业务类
                 double Calipix_x = Service_Camera.GetCam_CalibrationValue_X(camID);
                 double 基准点X = m_craft.Get_GlobalVariableItem(camID, "AlignCamBaseCol").Value.ToDouble();
                 double 基准点Y = m_craft.Get_GlobalVariableItem(camID, "AlignCamBaseRow").Value.ToDouble();
-                CutCorrectParam ProParam纠偏业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as CutCorrectParam : m_DicCamOperaParam[camID] as CutCorrectParam;
+                CutCorrectParam ProParam纠偏业务 = m_DicCamOperaParam[camID] as CutCorrectParam;
 
                 //默认基准点
                 PointInfo point基准 = new PointInfo()

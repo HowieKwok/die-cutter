@@ -35,6 +35,12 @@ namespace Frame_Core
 
         public abstract BaseProDevice CreateProDevice();
 
+        /// <summary>默认就是 0640 板卡；两种机型共用一张卡，差异只在点位表。</summary>
+        public virtual ControlBoard.Interface.IControlCard CreateControlCard()
+        {
+            return new ControlBoard.板卡类型工具.ControlIOC0640();
+        }
+
         public abstract IReadOnlyList<IoPoint> IoPoints { get; }
 
         /// <summary>声明流程清单，顺序即构建顺序。建立流程时会连同模块装配一起执行。</summary>

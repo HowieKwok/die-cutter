@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
@@ -115,8 +115,8 @@ namespace Mef_VisionFrame
             ExecuteMethod(() =>
             {
                 CameraEnum cameraEnum = CameraEnum.Cam1;
-                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = Project.Instance.Is_simulation ? BIZ_Variable.dic_EAproductsInfo_SimA : BIZ_Variable.dic_EAproductsInfo_A;
-                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_B = Project.Instance.Is_simulation ? BIZ_Variable.dic_EAproductsInfo_SimB : BIZ_Variable.dic_EAproductsInfo_B;
+                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = BIZ_Variable.dic_EAproductsInfo_A;
+                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_B = BIZ_Variable.dic_EAproductsInfo_B;
                 double Calipix_x = Service_Camera.GetCam_CalibrationValue_X((int)cameraEnum);
                 double Calipix_y = Service_Camera.GetCam_CalibrationValue_Y((int)cameraEnum);
 
@@ -151,8 +151,8 @@ namespace Mef_VisionFrame
             ExecuteMethod(() =>
             {
                 CameraEnum cameraEnum = CameraEnum.Cam2;
-                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = Project.Instance.Is_simulation ? BIZ_Variable.dic_EAproductsInfo_SimA : BIZ_Variable.dic_EAproductsInfo_A;
-                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_B = Project.Instance.Is_simulation ? BIZ_Variable.dic_EAproductsInfo_SimB : BIZ_Variable.dic_EAproductsInfo_B;
+                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = BIZ_Variable.dic_EAproductsInfo_A;
+                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_B = BIZ_Variable.dic_EAproductsInfo_B;
                 double Calipix_x = Service_Camera.GetCam_CalibrationValue_X((int)cameraEnum);
                 double Calipix_y = Service_Camera.GetCam_CalibrationValue_Y((int)cameraEnum);
 
@@ -232,7 +232,7 @@ namespace Mef_VisionFrame
             ExecuteMethod(() =>
             {
                 CameraEnum cameraEnum = CameraEnum.Cam1;
-                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = Project.Instance.Is_simulation ? BIZ_Variable.dic_EAproductsInfo_SimA : BIZ_Variable.dic_EAproductsInfo_A;
+                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = BIZ_Variable.dic_EAproductsInfo_A;
                 HOperatorSet.CountSeconds(out camEAProduct.detectionTime.Image_StartDataProcessTime);
                 PFTCleanEAProductInfo pFTCleanEAProductInfo = camEAProduct as PFTCleanEAProductInfo;
 
@@ -274,8 +274,8 @@ namespace Mef_VisionFrame
             ExecuteMethod(() =>
             {
                 CameraEnum cameraEnum = CameraEnum.Cam2;
-                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = Project.Instance.Is_simulation ? BIZ_Variable.dic_EAproductsInfo_SimA : BIZ_Variable.dic_EAproductsInfo_A;
-                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_B = Project.Instance.Is_simulation ? BIZ_Variable.dic_EAproductsInfo_SimB : BIZ_Variable.dic_EAproductsInfo_B;
+                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_A = BIZ_Variable.dic_EAproductsInfo_A;
+                ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_B = BIZ_Variable.dic_EAproductsInfo_B;
                 HOperatorSet.CountSeconds(out camEAProduct.detectionTime.Image_StartDataProcessTime);
                 PFTCleanEAProductInfo pFTCleanEAProductInfo = camEAProduct as PFTCleanEAProductInfo;
                 MessageNotify.AddDebugLog($"Cam2_EA数据刚开始，EAID:{pFTCleanEAProductInfo.EAID}");
@@ -647,43 +647,11 @@ namespace Mef_VisionFrame
             //throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// 旧仿真取图入口（IBIZWorkerBase）。已废弃：仿真由 SimCamera 送图，这里保留空实现以满足接口。
+        /// </summary>
         public void SimLoadImage(bool simAutoFlag, ref bool simRunFlag)
         {
-            try
-            {
-                if (simRunFlag)
-                {
-                    Parallel.ForEach(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, (item) =>
-                    {
-                        CameraEnum cameraEnum = (CameraEnum)item.Key;
-                        bool flag = false;
-
-                        flag = SimControl.LoadImage_Sim(Service_Camera.Get_CameraRelevancy((int)cameraEnum).m_ImageSimManage,
-                                     ref item.Value.QueueGrabImage, $"{(cameraEnum).ToString()}仿真加载图片");
-
-                        if (flag)
-                        {
-                            (item.Value as PFTCleanProParams).CallBackImgDataDeal();
-                        }
-
-                    });
-
-
-
-                    if (!simAutoFlag)
-                    {
-                        simRunFlag = false;
-                        foreach (ProcessServices item in Project.Instance.m_ProcessList)
-                        {
-                            Project.Instance.ExecuteOnce(item.process.processInfo.ProcessID);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log4netRecord.ErrorLog.Error(ex);
-            }
         }
 
         public void StartMojuan(string strMojuanPath)

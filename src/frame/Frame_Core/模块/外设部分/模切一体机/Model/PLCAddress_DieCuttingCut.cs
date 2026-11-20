@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Frame_Core
 {
-    public class PLCAddress_DieCuttingCut
+    public class PLCAddress_DieCuttingCut : IPLCAddressTable
     {
         //public CommunicationData<short> 外观CCD结果请求 = new CommunicationData<short>();
         //public CommunicationData<short> 外观CCD_结果 = new CommunicationData<short>();
@@ -51,6 +51,12 @@ namespace Frame_Core
             //空箔报警.SetAddress("D2208").SetName("空箔报警");
             //白班接带.SetAddress("D2300").SetName("白班接带");
             //夜班接带.SetAddress("D2302").SetName("夜班接带");
+        }
+
+        /// <summary>激光是寄存器寻址（D 寄存器），服务端不需要预先登记任何符号。</summary>
+        public IEnumerable<string> GetRegisterSymbols()
+        {
+            yield break;
         }
     }
 

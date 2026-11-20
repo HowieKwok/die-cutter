@@ -57,7 +57,6 @@ namespace Mef_VisionFrame
             this.englishToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.timer_StatusBarUpdate = new System.Windows.Forms.Timer(this.components);
-            this.timer_SimLoadImage = new System.Windows.Forms.Timer(this.components);
             this.timer_DJ = new System.Windows.Forms.Timer(this.components);
             this.timer_CraftBack = new System.Windows.Forms.Timer(this.components);
             this.uC_StateView1 = new Mef_VisionFrame.UC_StateView();
@@ -331,12 +330,6 @@ namespace Mef_VisionFrame
             this.timer_StatusBarUpdate.Interval = 500;
             this.timer_StatusBarUpdate.Tick += new System.EventHandler(this.timer_StatusBarUpdate_Tick);
             // 
-            // timer_SimLoadImage
-            // 
-            this.timer_SimLoadImage.Enabled = true;
-            this.timer_SimLoadImage.Interval = 500;
-            this.timer_SimLoadImage.Tick += new System.EventHandler(this.timer_SimLoadImage_Tick);
-            // 
             // timer_DJ
             // 
             this.timer_DJ.Enabled = true;
@@ -400,7 +393,6 @@ namespace Mef_VisionFrame
         private System.Windows.Forms.ToolStripMenuItem 语言ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem chineseToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem englishToolStripMenuItem;
-        private System.Windows.Forms.Timer timer_SimLoadImage;
         public System.Windows.Forms.ToolStripMenuItem 相机标定ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 磁盘设置ToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem 尺寸点检ToolStripMenuItem;

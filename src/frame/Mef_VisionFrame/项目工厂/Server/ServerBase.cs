@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,14 +15,7 @@ namespace Mef_VisionFrame
         public abstract event Action RefreshToolView;
         public abstract event Action RefreshView;
         public abstract event Action InitView;
-        /// <summary>
-        /// 仿真加载图像
-        /// </summary>
-        public abstract void SimLoadImage();
-
         public abstract List<StatusLabelItem>  GetStatusBarInfo();
-
-        public abstract void RunModelSwitch();
 
         public abstract bool StartFilmRoll(string filmRollName);
 

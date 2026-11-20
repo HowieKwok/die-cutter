@@ -1,4 +1,4 @@
-﻿using DevMgmt.Cameras.Models;
+using DevMgmt.Cameras.Models;
 using DevMgmt.Cameras.SDK;
 using FrameCommunity.错误代码;
 using LogTool;
@@ -56,6 +56,20 @@ namespace DevMgmt
         }
 
         /// <summary>
+        /// 宿主注入：仿真初始化（体检 + PLC 服务端 + 相机工厂）。返回 false 表示阻断，项目初始化应中止。
+        /// </summary>
+        public static Func<bool> SimInitialize;
+
+        /// <summary>宿主注入：相机参数 → 仿真图片目录。</summary>
+        public static Func<CameraParameterBase, string> SimImageDirResolver;
+
+        /// <summary>
+        /// 仿真相机工厂。由宿主在初始化项目之前注入；保持为 null 即走真机采集。
+        /// 这样核心层既不需要引用仿真项目，也不需要知道运行模式。
+        /// </summary>
+        public static Func<CameraDev, CameraObj> SimCameraFactory;
+
+        /// <summary>
         /// 连接相机
         /// </summary>
         /// <param name="cameraDev"></param>
@@ -79,6 +93,19 @@ namespace DevMgmt
             try
             {
                 CloseCam(cameraDev);
+
+                // 仿真：宿主注入工厂时用仿真相机替换 SDK 采集实现，后续连接流程与真机一致
+                if (SimCameraFactory != null)
+                {
+                    cameraDev.Camera = SimCameraFactory(cameraDev);
+                    if (cameraDev.Camera != null)
+                    {
+                        cameraDev.Camera.CamID = cameraDev.CameraParameter.ID;
+                        cameraDev.ConnStatus = cameraDev.Camera.InitCam();
+                        cameraDev.ConnStatus &= cameraDev.Camera.OpenCam();
+                        return;
+                    }
+                }
 
                 // 灰点面阵
                 if (camTypeEnum == CamTypeEnum.灰点面阵)

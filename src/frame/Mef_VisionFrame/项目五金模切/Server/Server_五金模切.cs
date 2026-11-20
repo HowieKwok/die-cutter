@@ -73,11 +73,6 @@ namespace Mef_VisionFrame
         {
             return ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
             {
-                if (Project.Instance.Is_simulation)
-                {
-                    MessageBox.Show(" “仿真运行”状态禁止自动运行。");
-                    return false;
-                }
 
                 foreach (ProcessServices item in Project.Instance.m_ProcessList)
                 {
@@ -122,34 +117,6 @@ namespace Mef_VisionFrame
             });
         }
 
-        public override void RunModelSwitch()
-        {
-            ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
-            {
-                if (Project.Instance.Is_simulation)
-                {
-                    // 切自动：清掉仿真数据，按当前膜卷重建生产数据路径
-                    Project.Instance.Is_simulation = false;
-                    Project.Instance.baseProDevice.InitProduct_Sim();
-
-                    if (Project.Instance.Is_MojuanStart)
-                    {
-                        Project.Instance.NewMujuanhao(Project.Instance.systemInfo.RecipeName,
-                            Project.Instance.systemInfo.currentMojuanhao, Project.Instance.systemInfo.CraftType);
-                    }
-                }
-                else
-                {
-                    // 切仿真：数据目录固定 SimTest，不能继续往实机膜卷目录里写
-                    Project.Instance.Is_simulation = true;
-                    Project.Instance.NewMujuanhao(Project.Instance.systemInfo.RecipeName, "SimTest",
-                        Project.Instance.systemInfo.CraftType);
-                    Data.InitFilePath();
-                }
-
-                RefreshToolView?.Invoke();
-            });
-        }
 
         #endregion
 
@@ -454,76 +421,12 @@ namespace Mef_VisionFrame
 
         #region 仿真
 
-        /// <summary>
-        /// 仿真取图。由 Form_Main 的 500ms 定时器驱动（不是线程），三个命令与激光模切一致：
-        ///   SimPrev / SimNext —— 取一张，执行一轮全部流程，然后复位停止，用于单步验证；
-        ///   SimRun          —— 每个节拍取一张，流程线程自己在跑。
-        ///
-        /// 连续仿真额外加了一道闸门：尺寸工位还有没合算完的片就先不喂图，否则新的三路会
-        /// 覆盖掉上一片的组内容（仿真是开环的，没有 PLC 那一层节拍保护）。
-        /// </summary>
-        public override void SimLoadImage()
-        {
-            if (!Project.Instance.Is_simulation) return;
+        // 旧仿真取图（SimLoadImage / SimGrabByCam / SimRunOnce）已废弃。
+        // 仿真改由 Frame_Simulation 的 SimCamera 从相机队列送图，与真机同一条路径。
 
-            ExecuteMethodClass.ExecuteMethod(() =>
-            {
-                switch (Data.M_SimRunCommand)
-                {
-                    case SimRunCommand.SimPrev:
-                        SimGrabByCam(SimControl.LoadPrevImage_Sim);
-                        Data.M_SimRunCommand = SimRunCommand.Stop;
-                        SimRunOnce();
-                        break;
 
-                    case SimRunCommand.SimNext:
-                        SimGrabByCam(SimControl.LoadNextImage_Sim);
-                        Data.M_SimRunCommand = SimRunCommand.Stop;
-                        SimRunOnce();
-                        break;
 
-                    case SimRunCommand.SimRun:
-                        if (!IsSizeStationIdle) return;
-                        SimGrabByCam(SimControl.LoadNextImage_Sim);
-                        break;
-                }
-            });
-        }
 
-        /// <summary>仿真取图函数的签名（带 ref，所以不能用 Func 委托）。</summary>
-        private delegate bool SimGrabDelegate(ImageSimManage manage, ref QueuePackage<ImageInfo> queue, string source);
-
-        /// <summary>五路并行取图：取到就交给该路的仿真参数，进 alreadyDealGrabImage。</summary>
-        private void SimGrabByCam(SimGrabDelegate grab)
-        {
-            Parallel.ForEach(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, item =>
-            {
-                int camIndex = item.Key;
-                string camName = ((CameraEnum)camIndex).ToString();
-
-                try
-                {
-                    bool got = grab(Service_Camera.Get_CameraRelevancy(camIndex).m_ImageSimManage,
-                                     ref item.Value.QueueGrabImage, camName + "仿真加载图片");
-                    if (!got) return;   // 该路没有可取的图：不唤醒流程，避免空转
-
-                    item.Value.CallBackImgDataDeal();
-                }
-                catch (Exception ex)
-                {
-                    Log4netRecord.ErrorLog.Error($"{camName} 仿真取图异常：{ex}");
-                }
-            });
-        }
-
-        /// <summary>单步：让每条流程各跑一次。</summary>
-        private void SimRunOnce()
-        {
-            foreach (ProcessServices item in Project.Instance.m_ProcessList)
-            {
-                Project.Instance.ExecuteOnce(item.process.processInfo.ProcessID);
-            }
-        }
 
         #endregion
 

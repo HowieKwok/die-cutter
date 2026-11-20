@@ -98,7 +98,7 @@ namespace Frame_Core
         public ImageSimManage m_ImageSimManage_Cam4 = new ImageSimManage();
         public Form_PretargetingCalibration()
         {
-            InitializeComponent();         
+            InitializeComponent();         
             FormStylingHook.Style(this);
         }
         private void Form_PretargetingCalibration_Load(object sender, EventArgs e)
@@ -2342,7 +2342,7 @@ namespace Frame_Core
         }
 
         /// <summary>
-        /// 把自动标定回调绑到指定角色的相机上（实机 + 仿真各一份）。
+        /// 把自动标定回调绑到指定角色的相机上。
         /// 机型没有该角色时直接跳过：五金模切没有裁切纠偏相机。
         /// </summary>
         private void BindAutoCalibration(CamRole role, BaseProParam.AutoCalibration handler)
@@ -2351,7 +2351,6 @@ namespace Frame_Core
             if (!Project.Instance.baseProDevice.TryGetCamIndex(role, 0, out camIndex)) return;
 
             BindAutoCalibration(Project.Instance.baseProDevice.m_DicCamOperaParam, camIndex, handler);
-            BindAutoCalibration(Project.Instance.baseProDevice.m_DicCamOperaParam_Sim, camIndex, handler);
         }
 
         private static void BindAutoCalibration(Dictionary<int, BaseProParam> paramMap, int camIndex, BaseProParam.AutoCalibration handler)

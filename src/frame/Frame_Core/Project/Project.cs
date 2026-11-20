@@ -98,7 +98,11 @@ namespace Frame_Core
 
         //状态
         public bool Is_MojuanStart = false;//膜卷开始标志
-        public bool Is_simulation = false; //项目仿真运行标志位。
+        /// <summary>
+        /// 是否仿真模式。派生自启动期读取的运行模式配置，运行期不可修改。
+        /// 旧的 Is_simulation 字段可写，是"运行中切换模式"那一套的残留。
+        /// </summary>
+        public bool Is_simulation => systemInfo.RunMode == RunModeEnum.Simulation; //项目仿真运行标志位。
 
         public bool Is_bShowStationTiming = false;//是否显示工位时间
         public bool LightOnOff = false;//光源状态开关
@@ -160,6 +164,24 @@ namespace Frame_Core
             get { return systemInfo != null && systemInfo.CraftType == MaterialCrafEnum.五金模切; }
         }
 
+        /// <summary>
+        /// 当前机型生效的 PLC 通道。由 PlcChannelRegistry 按 CraftType 解析，
+        /// 本类因此不出现任何机型分支；新增机型只需增加一个 IPlcChannel 实现。
+        /// </summary>
+        public IPlcChannel ActivePlcChannel { get; private set; }
+
+        /// <summary>当前机型正在使用的 PLC 通讯服务（尚未创建时为 null）。</summary>
+        public PLCCommunicationBase 当前PLC
+        {
+            get { return ActivePlcChannel == null ? null : ActivePlcChannel.Service; }
+        }
+
+        /// <summary>当前 PLC 是否为符号寻址（CIP）。仿真据此选服务端协议，不需要认识机型。</summary>
+        public bool PlcUseCip
+        {
+            get { return ActivePlcChannel != null && ActivePlcChannel.UseCip; }
+        }
+
         //控制卡参数
         public ParamControlCord M_ParamControlCord = new ParamControlCord();
 
@@ -194,33 +216,54 @@ namespace Frame_Core
 
         public void Init_Dev()
         {
-            try
+            // 控制卡是 Server 构造的前置条件（构造期间就要配中断、建 IO 输出），
+            // 因此单独成步并排在最前：它失败必须在它自己的名字下报出来，
+            // 而不是变成后面某一步的异常、或者远处 Server 里的空引用。
+            RunDeviceStep("控制卡", InitControlCard);
+
+            RunDeviceStep("相机", delegate
             {
                 M_CamParam.l_CameraDevs.ConnectAllCam();
-                M_CamParam.l_CameraDevs.StartGrabImage();        
+                M_CamParam.l_CameraDevs.StartGrabImage();
+            });
 
+            RunDeviceStep("光源", delegate
+            {
                 M_LightControllerParam.l_LightControllerDevs.ConnectAllDev();
                 M_LightControllerParam.l_LightControllerDevs.OpenAllLight();
                 LightOnOff = M_LightControllerParam.l_LightControllerDevs.GetAllLightOpenState();
+            });
 
-                // 两种机型的 PLC 地址表不同：五金只连自己的 CIP 符号表，激光只连 D 寄存器表。
-                // 同时连会让没接 PLC 的那一路持续触发"主设备连接失败"停机报警。
-                // 参数也各用各的实例：协议/地址/端口不能互相污染。
-                if (Is五金模切)
-                {
-                    server_五金模切PLC?.Connect(M_PLCDevParam_五金.IsConnect, M_PLCDevParam_五金.GetPLCType(), (CommunicationProtocolEnum)M_PLCDevParam_五金.ComType, M_PLCDevParam_五金.PLC_IP, M_PLCDevParam_五金.DevPort, (emDataFormat)M_PLCDevParam_五金.nByteTrans);
-                }
-                else
-                {
-                    server_DiecuttingCutPLC.Connect(M_PLCDevParam.IsConnect, M_PLCDevParam.GetPLCType(), (CommunicationProtocolEnum)M_PLCDevParam.ComType, M_PLCDevParam.PLC_IP, M_PLCDevParam.DevPort, (emDataFormat)M_PLCDevParam.nByteTrans);
-                }
+            // 两种机型的 PLC 地址表不同：五金只连自己的 CIP 符号表，激光只连 D 寄存器表。
+            // 同时连会让没接 PLC 的那一路持续触发"主设备连接失败"停机报警。
+            // 参数也各用各的实例：协议/地址/端口不能互相污染。
+            // 连哪台 PLC、用哪份参数，全部由当前通道决定。
+            RunDeviceStep("PLC", delegate { ActivePlcChannel?.Connect(this); });
+        }
 
-                ServiceCardManage.Instance.InitServiceCard(M_ParamControlCord);
+        /// <summary>
+        /// 控制卡实现由机型画像提供：真机是 0640 板卡，仿真时宿主把画像换成模拟卡。
+        /// 画像契约保证返回值非空，因此"卡没创建出来"这种状态在类型层面不存在。
+        /// </summary>
+        private void InitControlCard()
+        {
+            var card = DeviceProfileRegistry.Resolve(systemInfo.CraftType).CreateControlCard();
+            ServiceCardManage.Instance.Init(card, M_ParamControlCord);
+        }
+
+        /// <summary>
+        /// 单个设备的连接步骤。一步失败不牵连其他设备，但必须带步骤名以 Error 级落日志：
+        /// 各 Connect 实现内部本来就会吞异常，这里再静默吞一次就等于"设备没连上，只有一条 Debug 记录"。
+        /// </summary>
+        private static void RunDeviceStep(string step, Action action)
+        {
+            try
+            {
+                action();
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Debug(ex);
-
+                Log4netRecord.ErrorLog.Error("设备初始化失败：" + step + " —— " + ex);
             }
         }
         public void Close_Dev()
@@ -258,8 +301,16 @@ namespace Frame_Core
         }
 
 
+        /// <summary>
+        /// 初始化过程中抛出的异常，null 表示没有硬失败。
+        /// 与 <see cref="INIProject"/> 的返回值分开：返回值还会因为某个参数读到默认值而变 false，
+        /// 那种情况旧机台一直是带病继续启动的，不能等同于"必须退出"。
+        /// </summary>
+        public Exception InitError { get; private set; }
+
         public bool INIProject()
         {
+            InitError = null;
             bool initParamResult = true;
             bool initObjectResult = true;
             string paramPath = "";
@@ -323,16 +374,15 @@ namespace Frame_Core
                 //     共用一份时，在现场改五金 IP/协议会把激光的参数一起改掉。
                 //     两种机型各放各的机型目录，只读当前机型那一份：
                 //     都读的话，另一份就是上一台机器的残留，却仍会被后续诊断读到。
-                if (Is五金模切)
+                //     机型知识全部在各自的 IPlcChannel 里：这里只按 CraftType 取通道，
+                //     参数文件、服务类型、协议形态都由通道自己决定，本文件不再出现机型分支。
+                ActivePlcChannel = PlcChannelRegistry.Resolve(systemInfo.CraftType);
+                if (ActivePlcChannel == null)
                 {
-                    M_PLCDevParam_五金 = M_PLCDevParam_五金.ReadExtension<PLCDevParam_五金>(paramPathSet.MachinePath, $"PLCDevParamr");
+                    throw new NotSupportedException(
+                        "未注册的 PLC 通道：" + systemInfo.CraftType + "，请在 Frame_Core 增加 IPlcChannel 实现。");
                 }
-                else
-                {
-                    M_PLCDevParam = M_PLCDevParam.ReadExtension<PLCDevParam>(paramPathSet.MachinePath, $"PLCDevParamr");
-                }
-                server_DiecuttingCutPLC = new Server_DiecuttingCutPLC(M_PLCDevParam);
-                server_五金模切PLC = new Server_五金模切PLC(M_PLCDevParam_五金);
+                ActivePlcChannel.LoadParams(this, paramPathSet.MachinePath);
 
                 //【6】加载点检参数（机型层：工位随相机布局变化）
                 M_param_PointInspection = M_param_PointInspection.ReadExtension<Param_PointInspection>(paramPathSet.MachinePath, $"PointInspectionParamer");
@@ -345,6 +395,13 @@ namespace Frame_Core
                 MyMetrics.GetCpuPercentLikeTaskManager();
 
                 //【100】连接设备
+                // 仿真：宿主注入的初始化（体检 + PLC 服务端 + 相机工厂）；阻断则中止，避免误连真机
+                if (DevMgmt.CameraDevExtensions.SimInitialize != null
+                    && !DevMgmt.CameraDevExtensions.SimInitialize())
+                {
+                    return false;
+                }
+
                 Init_Dev();
 
                 //相机相关
@@ -422,8 +479,10 @@ namespace Frame_Core
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Debug(ex);
-                System.Windows.Forms.MessageBox.Show("初始化失败，请检查日志文件！");
+                // 异常只记在这里；对操作员的提示统一由 StartupBootstrap 负责，
+                // 避免"日志埋一条、弹窗弹一次、上层再猜一次"的多出口写法。
+                Log4netRecord.ErrorLog.Error("项目初始化异常", ex);
+                InitError = ex;
                 initParamResult = false;
             }
             return initParamResult;

@@ -8,6 +8,16 @@ using System.Threading.Tasks;
 
 namespace Frame_Core
 {
+    /// <summary>
+    /// 运行模式。持久化在 SystemParam.json，程序启动时读取一次，运行期不允许切换。
+    /// Auto = 0 是刻意的默认值：旧配置文件没有该字段时反序列化得到 0，升级后仍是自动模式。
+    /// </summary>
+    public enum RunModeEnum
+    {
+        Auto = 0,
+        Simulation = 1
+    }
+
     [Serializable]
     public  class SystemInfo : FrameCommunity.DataOperation.JsonSerializationOperation
     {         
@@ -85,6 +95,16 @@ namespace Frame_Core
 
 
 
+
+        /// <summary>
+        /// 运行模式（自动 / 仿真）
+        /// </summary>
+        private RunModeEnum _RunMode = RunModeEnum.Auto;
+        public RunModeEnum RunMode
+        {
+            get => _RunMode;
+            set { _RunMode = value; }
+        }
 
         /// <summary>
         /// 通讯工位选择

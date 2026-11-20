@@ -18,7 +18,7 @@ config/
     正极/ model.onnx model_info.txt test.json
     负极/
   General/                       通用层：拷到 ZSystemConfigurationFile 根下
-    SystemParam.json             出厂机型（CraftType）
+    SystemParam.json             出厂机型（CraftType）与运行模式（RunMode）
     UserParam.xml                账号表
     ControlCordParam.json
   ＜机型名＞/                     机型层：拷到 ZSystemConfigurationFile/＜机型名＞/

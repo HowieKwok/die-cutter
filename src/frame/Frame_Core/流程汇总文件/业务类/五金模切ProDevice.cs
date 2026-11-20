@@ -42,7 +42,6 @@ namespace Frame_Core.业务类
             {
                 CamSlotDef slot = profile.CamSlots[i];
                 m_DicCamOperaParam[i] = slot.NewParam();
-                m_DicCamOperaParam_Sim[i] = slot.NewParam();
             }
 
             // 与激光模切同一个 Halcon 全局设置：关闭 region 自动裁剪，
@@ -64,30 +63,11 @@ namespace Frame_Core.业务类
                 {
                     item.Value?.Dispose();
                 }
-                InitProduct_Sim();
                 return true;
             }
             catch (Exception ee)
             {
                 Log4netRecord.ErrorLog.Error("五金模切初始化系统数据报错：\n" + ee);
-                return false;
-            }
-        }
-
-        /// <summary>仿真参数同样要清：仿真取图队列里可能还压着上一轮的图。</summary>
-        public override bool InitProduct_Sim()
-        {
-            try
-            {
-                foreach (var item in m_DicCamOperaParam_Sim)
-                {
-                    item.Value?.Dispose();
-                }
-                return true;
-            }
-            catch (Exception ee)
-            {
-                Log4netRecord.ErrorLog.Error("五金模切初始化仿真数据报错：\n" + ee);
                 return false;
             }
         }

@@ -405,6 +405,10 @@
     <Compile Include="项目工厂\Server\IBizWorkerBase.cs" />
     <Compile Include="项目工厂\Server\ServerBase.cs" />
     <Compile Include="项目工厂\ViewModel\VMBase.cs" />
+    <Compile Include="Simulation\SimBootstrap.cs" />
+    <Compile Include="Simulation\SimControlCard.cs" />
+    <Compile Include="Simulation\SimDeviceProfile.cs" />
+    <Compile Include="Startup\StartupBootstrap.cs" />
     <Compile Include="Form_Main.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -601,6 +605,10 @@
     <ProjectReference Include="..\..\frame\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2cc7-4124-b966-fbff69a7a0e5}</Project>
       <Name>Frame_Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_Simulation\Frame_Simulation.csproj">
+      <Project>{7F3C1A2E-5B4D-4E8A-9C61-2D8F0B7A9E31}</Project>
+      <Name>Frame_Simulation</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\ui\Frame_UI\Frame_UI.csproj">
       <Project>{A1B2C3D4-0001-4E00-9000-000000000001}</Project>

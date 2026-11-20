@@ -39,6 +39,12 @@ namespace Frame_Core
         /// <summary>五金自己的点位表，与激光的 PLCAddress_DieCuttingCut 互不相干。</summary>
         public PLCAddress_五金模切 Address = new PLCAddress_五金模切();
 
+        /// <summary>把点位表的符号声明转出去，仿真服务端只认这个能力。</summary>
+        public override IEnumerable<string> GetRegisterSymbols()
+        {
+            return Address.GetRegisterSymbols();
+        }
+
         #endregion
     }
 }

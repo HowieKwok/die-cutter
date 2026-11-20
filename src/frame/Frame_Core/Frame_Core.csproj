@@ -314,6 +314,8 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="tools\自定义控件\ToolGlyph.cs" />
+    <Compile Include="模块\外设部分\PLCAddressTable.cs" />
+    <Compile Include="模块\外设部分\PlcChannel.cs" />
     <Compile Include="模块\外设部分\五金模切\Model\PLCAddress_五金模切.cs" />
     <Compile Include="模块\外设部分\五金模切\Model\PLCDevParam_五金.cs" />
     <Compile Include="模块\外设部分\五金模切\Server\Server_五金模切PLC.cs" />

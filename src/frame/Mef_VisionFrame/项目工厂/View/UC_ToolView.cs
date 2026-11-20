@@ -57,7 +57,7 @@ namespace Mef_VisionFrame
             toolTips.SetToolTip(btn_run, "启动 / 停止");
             toolTips.SetToolTip(btn_next, "下一片");
             toolTips.SetToolTip(btn_Reset, "CCD 软件复位");
-            toolTips.SetToolTip(btn_AutoSim, "自动模式 / 仿真模式切换");
+            toolTips.SetToolTip(btn_AutoSim, "运行模式（启动时由配置决定，运行期不可切换）");
             toolTips.SetToolTip(btn_ClearCutData, "清除纠偏队列");
             toolTips.SetToolTip(btn_FilmRollSwitch, "开始 / 结束膜卷");
             toolTips.SetToolTip(input_FilmRoll, "当前膜卷号");
@@ -87,7 +87,9 @@ namespace Mef_VisionFrame
             btn_next.Image = Frame_Core.ToolGlyph.SkipNext(18, ink);
 
             // 模式键：未选中=自动（齿轮/绿），选中=仿真（锥形瓶/琥珀）。
-            // 墨色由各自底色反差推算，换配色不用再改这里。
+            // 墨色由各自底色反差推算，换配色不用再改这里。只显示图标，不带文字。
+            btn_AutoSim.UnCheckedText = string.Empty;
+            btn_AutoSim.CheckedText = string.Empty;
             btn_AutoSim.UnCheckedImage = Frame_Core.ToolGlyph.AutoMode(18,
                 Frame_Core.ToolGlyph.ContrastInk(btn_AutoSim.UnCheckedBackColor));
             btn_AutoSim.CheckedImage = Frame_Core.ToolGlyph.SimMode(18,
@@ -115,19 +117,18 @@ namespace Mef_VisionFrame
             panel_DataShow.GetType().GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(this.panel_DataShow, true);
         }
 
+        /// <summary>
+        /// 模式按钮只读：保持 Enabled 才能显示 ToolTip，因此用点击事件把选中态拉回配置值，
+        /// 抵消控件自身的 Checked 翻转，保证图标始终等于当前运行模式。
+        /// </summary>
         private void btn_AutoSim_Click(object sender, EventArgs e)
         {
-            DialogResult result = System.Windows.Forms.MessageBox.Show("切换运行模式？", "询问", MessageBoxButtons.YesNo);
-            if (result == DialogResult.No) return;
-
-            VM.BaseServer.RunModelSwitch();
-            RefreshView();
+            btn_AutoSim.Checked = Project.Instance.Is_simulation;
         }
 
         private void btn_Prev_Click(object sender, EventArgs e)
         {
-            if (Project.Instance.Is_simulation)
-                VM.BaseData.M_SimRunCommand = SimRunCommand.SimPrev;
+            // 单步取图已并入仿真相机节拍，此按钮保留但暂无动作。
         }
 
         private void btn_run_Click(object sender, EventArgs e)
@@ -140,28 +141,10 @@ namespace Mef_VisionFrame
                 }
                 else
                 {
-                    //自动
-                    if (!Project.Instance.Is_simulation)
-                    {
-                        VM.BaseServer.StartRun();
-                    }
-                    //仿真
-                    else
-                    {
-
-                        foreach (ProcessServices item in Project.Instance.m_ProcessList)
-                        {
-                            Project.Instance.StartRun(item.process.processInfo.ProcessID);
-                        }
-
-                        VM.BaseData.M_SimRunCommand = SimRunCommand.SimRun;
-                        RefreshView();
-                    }
+                    // 自动/仿真共用同一条启动路径：差异只存在于相机与 PLC 的底层实现。
+                    VM.BaseServer.StartRun();
                 }
-
-
             });
-
         }
 
         private void btn_next_Click(object sender, EventArgs e)
@@ -206,6 +189,10 @@ namespace Mef_VisionFrame
                 {
                     btn_run.Checked = Project.Instance.Is_Run;
                     btn_AutoSim.Checked = Project.Instance.Is_simulation;
+                    // 模式只读：不能用点击切换，但必须保持 Enabled —— WinForms 的 ToolTip 不会为禁用控件弹出。
+                    // 因此这里不 Disabled，改由 btn_AutoSim_Click 把选中态拉回配置值。
+                    btn_AutoSim.Enabled = true;
+                    toolTips.SetToolTip(btn_AutoSim, Project.Instance.Is_simulation ? "仿真模式" : "自动模式");
                     btn_FilmRollSwitch.Checked = Project.Instance.Is_MojuanStart;
                     switch_LightOnOff.Checked = Project.Instance.LightOnOff;
 
@@ -214,7 +201,7 @@ namespace Mef_VisionFrame
                         if (Project.Instance.Is_MojuanStart)
                         {
                             input_FilmRoll.Text = Project.Instance.systemInfo.currentMojuanhao;
-                            btn_AutoSim.Enabled = false;
+                            btn_AutoSim.Enabled = true;
                             btn_Prev.Enabled = false;
                             btn_next.Enabled = false;
                             input_FilmRoll.Enabled = false;
@@ -232,7 +219,7 @@ namespace Mef_VisionFrame
                         if (Project.Instance.Is_Run)
                         {
                             switch_LightOnOff.Enabled = false;
-                            btn_AutoSim.Enabled = false;
+                            btn_AutoSim.Enabled = true;
                             btn_Prev.Enabled = false;
                             btn_next.Enabled = false;
                         }
@@ -249,7 +236,7 @@ namespace Mef_VisionFrame
                         if (Project.Instance.Is_MojuanStart)
                         {
                             input_FilmRoll.Text = Project.Instance.systemInfo.currentMojuanhao;
-                            btn_AutoSim.Enabled = false;
+                            btn_AutoSim.Enabled = true;
                             btn_Prev.Enabled = false;
                             btn_next.Enabled = false;
                             input_FilmRoll.Enabled = false;

@@ -19,7 +19,7 @@ namespace Frame_Core
     /// 多次NG信号是 0/1，由软件置 1、2 秒后置 0。
     /// 心跳信号是 0/1，由软件每 1 秒翻转一次。
     /// </summary>
-    public class PLCAddress_五金模切
+    public class PLCAddress_五金模切 : IPLCAddressTable
     {
         /// <summary>上线扫（模切主相机）本片外观结论。</summary>
         public CommunicationData<short> UpLineScanResult = new CommunicationData<short>();
@@ -51,6 +51,21 @@ namespace Frame_Core
             UpLineScanNgOverTimes.SetAddress("CCD_DATA_RD.LineScan_Up_NG_OverTimes").SetName("CCD上线扫多次NG");
             DownLineScanNgOverTimes.SetAddress("CCD_DATA_RD.LineScan_Down_NG_OverTimes").SetName("CCD下线扫多次NG");
             SizeNgOverTimes.SetAddress("CCD_DATA_RD.Size_NG_OverTimes").SetName("CCD尺寸多次NG");
+        }
+
+        /// <summary>
+        /// 五金点位全部是 CIP 符号，服务端必须逐个注册才允许写入。
+        /// 显式列出而不是反射：新增/改名点位时这里编译期就能暴露遗漏。
+        /// </summary>
+        public IEnumerable<string> GetRegisterSymbols()
+        {
+            yield return UpLineScanResult.Address;
+            yield return DownLineScanResult.Address;
+            yield return SizeResult.Address;
+            yield return Heartbeat.Address;
+            yield return UpLineScanNgOverTimes.Address;
+            yield return DownLineScanNgOverTimes.Address;
+            yield return SizeNgOverTimes.Address;
         }
     }
 }

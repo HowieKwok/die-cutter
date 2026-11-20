@@ -1,4 +1,4 @@
-﻿using Eholly.ZChart;
+using Eholly.ZChart;
 using Frame_Core;
 using LogTool;
 
@@ -35,9 +35,6 @@ namespace Mef_VisionFrame
             //    BIZ_DataWorker.BIZ_Variable.dic_EAproductsInfo_A = ((PFTCleanProParams)Project.Instance.baseProDevice.m_DicCamOperaParam[0]).dic_EAproductsInfo;
             //    BIZ_DataWorker.BIZ_Variable.dic_EAproductsInfo_B = ((PFTCleanProParams)Project.Instance.baseProDevice.m_DicCamOperaParam[1]).dic_EAproductsInfo;
 
-            //    BIZ_DataWorker.BIZ_Variable.dic_EAproductsInfo_SimA = ((PFTCleanProParams)Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0]).dic_EAproductsInfo;
-            //    BIZ_DataWorker.BIZ_Variable.dic_EAproductsInfo_SimB = ((PFTCleanProParams)Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1]).dic_EAproductsInfo;
-
             //    IBIZWorkerBase = BIZ_DataWorker;
             //    IBIZWorkerBase.InitVariable();
             //    IBIZWorkerBase.InitForm();
@@ -52,11 +49,6 @@ namespace Mef_VisionFrame
 
 
 
-            //    Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].ProductCallBack = new Action<ProductBase>(BIZ_DataWorker.ProcessingData_FrameCam1);
-            //    Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[0].ProductCallBackCraft = new Action<ProductBase>(BIZ_DataWorker.ProcessingData_EACam1);
-
-            //    Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].ProductCallBack = new Action<ProductBase>(BIZ_DataWorker.ProcessingData_FrameCam2);
-            //    Project.Instance.baseProDevice.m_DicCamOperaParam_Sim[1].ProductCallBackCraft = new Action<ProductBase>(BIZ_DataWorker.ProcessingData_EACam2);
 
             
 

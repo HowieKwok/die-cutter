@@ -44,8 +44,6 @@ namespace Frame_Core
 
         public Dictionary<int, BaseProParam> m_DicCamOperaParam = new Dictionary<int, BaseProParam>();
 
-        public Dictionary<int, BaseProParam> m_DicCamOperaParam_Sim = new Dictionary<int, BaseProParam>();
-
         private IDeviceProfile camProfile;
 
         /// <summary>
@@ -94,14 +92,6 @@ namespace Frame_Core
             return m_DicCamOperaParam[Profile.IndexOf(role)];
         }
 
-        /// <summary>按角色取仿真参数；机型没有该角色时抛异常。</summary>
-        public BaseProParam GetCamParamSim(CamRole role)
-        {
-            return m_DicCamOperaParam_Sim[Profile.IndexOf(role)];
-        }
-
-
-
         //INIProduct初始化事件
         public event Action m_eventINIProduct;
 
@@ -127,12 +117,6 @@ namespace Frame_Core
         {
             return true; ;
         }
-
-        public virtual bool InitProduct_Sim()
-        {
-            return true; ;
-        }
-
 
         #region 通用功能工具方法
         //功能块

@@ -35,12 +35,6 @@ namespace Mef_VisionFrame
                         descriptor.DisplayName, slot.Index, slot.Name));
                 }
                 slot.BindCallbacks(server, workParam);
-
-                BaseProParam simParam;
-                if (device.m_DicCamOperaParam_Sim.TryGetValue(slot.Index, out simParam))
-                {
-                    slot.BindCallbacks(server, simParam);
-                }
             }
         }
     }

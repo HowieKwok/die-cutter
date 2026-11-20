@@ -35,6 +35,13 @@ namespace Frame_Core
         /// <summary>创建本机型的设备业务对象。</summary>
         BaseProDevice CreateProDevice();
 
+        /// <summary>
+        /// 创建本机型的控制卡实现。真机返回 0640 板卡；仿真由宿主把画像换成模拟实现。
+        /// 契约：必须返回实例，不得返回 null——"这台机器没有这种卡"要用专门的空实现表达，
+        /// 因为 Server 构造期间就要拿它配中断、建 IO 输出，缺卡不能在远处表现为空引用。
+        /// </summary>
+        ControlBoard.Interface.IControlCard CreateControlCard();
+
         /// <summary>按角色取相机下标；该机型没有这个角色时抛异常。</summary>
         int IndexOf(CamRole role);
 

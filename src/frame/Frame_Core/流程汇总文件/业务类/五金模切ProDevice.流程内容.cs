@@ -485,7 +485,7 @@ namespace Frame_Core.业务类
                 CurrentThread.Priority = ThreadPriority.Highest;
 
                 // 选择参数和队列基于是否模拟
-                DieCutParam ProParam相机模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as DieCutParam : m_DicCamOperaParam[camID] as DieCutParam;
+                DieCutParam ProParam相机模切业务 = m_DicCamOperaParam[camID] as DieCutParam;
                 var imageQueue = ProParam相机模切业务.alreadyDealGrabImage;
                 //通过信号量把控线程
                 ProParam相机模切业务.semaphoreSlimCam.Wait(50);
@@ -920,7 +920,7 @@ namespace Frame_Core.业务类
 
                 // 选择参数和队列基于是否模拟
 
-                DieCutParam ProParm模切业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[CID] as DieCutParam : m_DicCamOperaParam[CID] as DieCutParam;
+                DieCutParam ProParm模切业务 = m_DicCamOperaParam[CID] as DieCutParam;
                 //通过信号量把控线程
                 ProParm模切业务.semaphoreSlim.Wait(30);
 
@@ -1309,7 +1309,7 @@ namespace Frame_Core.业务类
                 };
 
 
-                SizeDetectParam ProParam尺寸业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[camID] as SizeDetectParam : m_DicCamOperaParam[camID] as SizeDetectParam;
+                SizeDetectParam ProParam尺寸业务 = m_DicCamOperaParam[camID] as SizeDetectParam;
                 var imageQueue = ProParam尺寸业务.alreadyDealGrabImage;
                 ProParam尺寸业务.semaphoreSlimCam.Wait(45);
                 if (imageQueue.Count > 0)
@@ -2293,7 +2293,7 @@ namespace Frame_Core.业务类
                 };
 
 
-                SizeDetectParam ProParam尺寸业务 = Project.Instance.Is_simulation ? m_DicCamOperaParam_Sim[CID] as SizeDetectParam : m_DicCamOperaParam[CID] as SizeDetectParam;
+                SizeDetectParam ProParam尺寸业务 = m_DicCamOperaParam[CID] as SizeDetectParam;
                 var imageQueue = ProParam尺寸业务.alreadyDealGrabImage;
                 ProParam尺寸业务.semaphoreSlimCam.Wait(45);
                 if (imageQueue.Count > 0)

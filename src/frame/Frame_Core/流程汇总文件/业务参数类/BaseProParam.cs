@@ -1,4 +1,4 @@
-﻿using FrameCommunity;
+using FrameCommunity;
 using FrameCommunity.Data;
 using HalconDotNet;
 using LogTool;
@@ -132,7 +132,7 @@ namespace Frame_Core
 
             if (QueueGrabImage.Count > 0)
             {
-                if (!Project.Instance.GetStates() && !Project.Instance.Is_simulation)
+                if (!Project.Instance.GetStates())
                 {
                     ImageInfo imageInfo = QueueGrabImage.Dequeue();
                     disposeImageCount++;

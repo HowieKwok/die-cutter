@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,15 +22,6 @@ namespace Mef_VisionFrame
         /// B面EA产品
         /// </summary>
         public ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_B { get; set; }
-
-        /// <summary>
-        /// A面EA产品
-        /// </summary>
-        public ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_SimA { get; set; }
-        /// <summary>
-        /// B面EA产品
-        /// </summary>
-        public ConcurrentDictionary<int, PFTCleanEAProductInfo> dic_EAproductsInfo_SimB { get; set; }
 
         /// <summary>
         /// EA数据统计表，AB相机数据合体再统计，报警停机也在里面

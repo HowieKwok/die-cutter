@@ -31,6 +31,18 @@ namespace Frame_Core
             profiles.Add(profile.CraftType, profile);
         }
 
+        /// <summary>
+        /// 用另一份画像替换已注册的机型画像。
+        /// 仿真启动时用它把控制卡换成本地模拟实现（其余成员委托给原画像），
+        /// 于是"这台机器由哪些实现组成"只有注册这一个入口，运行期不再出现模式分支。
+        /// 只在启动阶段调用。
+        /// </summary>
+        public static void Override(IDeviceProfile profile)
+        {
+            if (profile == null) throw new ArgumentNullException("profile");
+            profiles[profile.CraftType] = profile;
+        }
+
         public static IDeviceProfile Resolve(MaterialCrafEnum craftType)
         {
             IDeviceProfile profile;

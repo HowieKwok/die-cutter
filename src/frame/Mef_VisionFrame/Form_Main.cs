@@ -35,7 +35,6 @@ namespace Mef_VisionFrame
         /// </summary>
         public string Str_LatestTimeProgram = "20200202-xxxx";
 
-        Form_LoadProgressBar form_LoadProgressBar;
         static Form_Main form_Main;
 
         /// <summary>
@@ -56,14 +55,40 @@ namespace Mef_VisionFrame
             };
             menuStrip1.Items.Add(themeItem);
         }
+
+        /// <summary>
+        /// 仿真模式下追加"仿真"菜单入口。必须在 INIProject 之后调用——
+        /// RunMode 是 INIProject 里读的，构造函数开头调用会把入口漏掉。
+        /// </summary>
+        private void AppendSimulationMenuItem()
+        {
+            if (!Simulation.SimBootstrap.IsSimulation) return;
+
+            ToolStripMenuItem simItem = new ToolStripMenuItem("仿真");
+            simItem.ToolTipText = "设置仿真产能、查看相机/PLC 仿真记录";
+            simItem.Click += delegate
+            {
+                if (Simulation.SimBootstrap.Runtime == null) return;
+
+                // 非模态：可与主界面同时操作
+                Frame_Simulation.View.Form_Simulation form =
+                    new Frame_Simulation.View.Form_Simulation(Simulation.SimBootstrap.Runtime);
+                Frame_Core.FormStylingHook.Style(form);   // 与主界面同主题
+                form.Show(this);
+            };
+
+            menuStrip1.Items.Add(simItem);
+        }
         /// <summary>
         /// 配置缺失时在状态 chip 行末尾（与"磁盘剩余/内存"同一个父容器）追加一个红色条目，
         /// 启动弹窗被点掉后仍然可见，点击可重新查看明细。配置完整时不添加任何控件。
         /// </summary>
         private void AppendConfigWarningBar()
         {
-            List<string> problems = StartupPreflight.LastProblems;
-            if (problems == null || problems.Count == 0) return;
+            // 仿真图片目录这类问题不阻断启动，但必须让用户看见——它就在同一个提示条里。
+            List<string> problems = new List<string>(StartupPreflight.LastProblems ?? new List<string>());
+            problems.AddRange(Simulation.SimBootstrap.StartupWarnings);
+            if (problems.Count == 0) return;
 
             uC_StateView1.SetWarning("配置不完整（" + problems.Count + " 项）", delegate
             {
@@ -87,14 +112,9 @@ namespace Mef_VisionFrame
                 .GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .SetValue(panel_Main, true, null);
 
-            try
-            {
-                //加载进度条
-                this.Hide();
-                form_LoadProgressBar = new Form_LoadProgressBar();
-                Thread thBar = new Thread(() => { form_LoadProgressBar.SendToBack(); form_LoadProgressBar.ShowDialog(); });
-                thBar.IsBackground = true; thBar.Start();
-                Project.Instance.INIProject();//初始化项目
+            // 项目初始化已前移到 Program.Main 的启动阶段（StartupBootstrap）：
+            // 构造函数只组装界面，不再读配置、不再碰设备。
+            AppendSimulationMenuItem();
                 //CraftSetting=new Form_CraftSetting();
                 //MainDetection = new UC_MainDetection();
                 //BaseSetting = new UC_BaseSetting();
@@ -123,13 +143,6 @@ namespace Mef_VisionFrame
                 ////初始化状态
                 //InitStateBar_Flag = true;
                 //form_LoadProgressBar.closingFlag = true;
-
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-                close();
-            }
 
         }
 
@@ -174,7 +187,7 @@ namespace Mef_VisionFrame
                 MainSlaveMachine = "HSVISONSLAVE";
 
             Init_LatestTimeProgram("");
-            UapateSimPath();
+            RefreshSimulationImagePaths();
 
             // 登录态只由 UserManage 持有，徽标订阅事件做渲染（可能来自通讯线程，内部已做 Invoke 保护）
             Project.Instance.userManage.LoginEvent -= UserManage_LoginEvent;
@@ -183,7 +196,6 @@ namespace Mef_VisionFrame
 
             //初始化状态
             InitStateBar_Flag = true;
-            form_LoadProgressBar.closingFlag = true;
 
         }
 
@@ -437,7 +449,12 @@ namespace Mef_VisionFrame
             RefreshUserBadge();
         }
 
-        public void UapateSimPath()
+        /// <summary>
+        /// 相机设置变更后刷新两处取图来源：
+        ///   1. ImageSimManage —— 标定/点检界面的一次性仿真取图仍在用它；
+        ///   2. SimCamera —— 仿真运行期的取图，改路径后必须重扫，否则要重启才生效。
+        /// </summary>
+        public void RefreshSimulationImagePaths()
         {
             try
             {
@@ -445,6 +462,21 @@ namespace Mef_VisionFrame
                 {
                     Service_Camera.Get_CameraRelevancy(item.Key).m_ImageSimManage.ReadImageSimPath(Service_Camera.Get_CameraDev(item.Key).CameraParameter.EmulationPath);
                     Service_Camera.Get_CameraRelevancy(item.Key).m_ImageSimManage.InitSimFlag();
+                }
+
+                if (Simulation.SimBootstrap.IsSimulation && Simulation.SimBootstrap.Runtime != null)
+                {
+                    Simulation.SimBootstrap.Runtime.ReloadImageSets(
+                        new Func<DevMgmt.Cameras.Models.CameraDev, Frame_Simulation.SimCameraSpec>(dev =>
+                        {
+                            if (dev == null || dev.CameraParameter == null) return null;
+                            return new Frame_Simulation.SimCameraSpec
+                            {
+                                Name = dev.CameraParameter.CameraName,
+                                ImageDir = Simulation.SimBootstrap.ResolveImageDir(dev.CameraParameter)
+                            };
+                        }),
+                        Project.Instance.M_CamParam.l_CameraDevs.Cast<DevMgmt.Cameras.Models.CameraDev>());
                 }
             }
             catch (Exception ex)
@@ -463,7 +495,9 @@ namespace Mef_VisionFrame
                 window.HideSomeControls();
                 window.ShowDialog();
 
-                UapateSimPath();
+                RefreshSimulationImagePaths();
+                // 仿真相机不重建，只把新目录指过去：改完路径立刻能跑，不用重启。
+                Simulation.SimBootstrap.ReloadImageDirs();
             }
             catch (Exception ex)
             {
@@ -668,20 +702,7 @@ namespace Mef_VisionFrame
         /// <summary>
         /// 仿真加载图像锁标志
         /// </summary>
-        bool SimLockFlag = false;
-        /// <summary>
-        /// 仿真加载图片
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void timer_SimLoadImage_Tick(object sender, EventArgs e)
-        {
-            if (SimLockFlag) return;
-
-            SimLockFlag = true;
-            ProjectFactory.F_Server?.WorkServerBase?.SimLoadImage();
-            SimLockFlag = false;
-        }
+        // 旧仿真取图定时器（timer_SimLoadImage）已移除：仿真取图下沉到 SimCamera 的采集线程。
 
         private void 磁盘设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
