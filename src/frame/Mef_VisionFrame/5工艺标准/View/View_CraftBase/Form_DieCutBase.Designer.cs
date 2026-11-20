@@ -127,7 +127,7 @@ namespace Mef_VisionFrame
             this.panel4 = new AntdUI.Panel();
             this.label17 = new AntdUI.Label();
             this.CraftType = new AntdUI.Input();
-            this.Electrode = new AntdUI.Select();
+            this.ElectrodeText = new AntdUI.Select();
             this.label1 = new AntdUI.Label();
             this.label2 = new AntdUI.Label();
             this.RecipeName = new AntdUI.Input();
@@ -990,7 +990,7 @@ namespace Mef_VisionFrame
             // 
             this.panel4.Controls.Add(this.label17);
             this.panel4.Controls.Add(this.CraftType);
-            this.panel4.Controls.Add(this.Electrode);
+            this.panel4.Controls.Add(this.ElectrodeText);
             this.panel4.Controls.Add(this.label1);
             this.panel4.Controls.Add(this.label2);
             this.panel4.Controls.Add(this.RecipeName);
@@ -1020,14 +1020,14 @@ namespace Mef_VisionFrame
             this.CraftType.TabIndex = 8;
             this.CraftType.Text = "input2";
             // 
-            // Electrode
+            // ElectrodeText
             // 
-            this.Electrode.List = true;
-            this.Electrode.Location = new System.Drawing.Point(94, 117);
-            this.Electrode.Name = "Electrode";
-            this.Electrode.Size = new System.Drawing.Size(386, 28);
-            this.Electrode.TabIndex = 6;
-            this.Electrode.Text = "select1";
+            this.ElectrodeText.List = true;
+            this.ElectrodeText.Location = new System.Drawing.Point(94, 117);
+            this.ElectrodeText.Name = "ElectrodeText";
+            this.ElectrodeText.Size = new System.Drawing.Size(386, 28);
+            this.ElectrodeText.TabIndex = 9;
+            this.ElectrodeText.Text = "input2";
             // 
             // label1
             // 
@@ -1180,7 +1180,6 @@ namespace Mef_VisionFrame
         private AntdUI.Label label3;
         private AntdUI.Input MachineNumber;
         private AntdUI.Input RecipeName;
-        private AntdUI.Select Electrode;
         private AntdUI.Panel panel2;
         private AntdUI.Divider divider2;
         private System.Windows.Forms.DataGridView dataGridView_Size;
@@ -1251,6 +1250,7 @@ namespace Mef_VisionFrame
         private AntdUI.Panel panel4;
         private AntdUI.Label label17;
         private AntdUI.Input CraftType;
+        private AntdUI.Select ElectrodeText;
         private AntdUI.TabPage tabPage4;
         private System.Windows.Forms.DataGridView dataGridView_GlobalVariable;
         private System.Windows.Forms.DataGridViewTextBoxColumn Column15;

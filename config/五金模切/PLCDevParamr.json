@@ -1,0 +1,11 @@
+{
+  "filePath": "D:\\Code\\项目代码\\模切\\die-cutter-main\\Mef_VisionFrame\\bin\\Debug\\ZSystemConfigurationFile\\PLCDevParamr_五金",
+  "fileFullPath": "D:\\Code\\项目代码\\模切\\die-cutter-main\\Mef_VisionFrame\\bin\\Debug\\ZSystemConfigurationFile\\PLCDevParamr_五金.json",
+  "ComType": 1,
+  "IsConnect": true,
+  "LocalPC_IP": "127.0.0.1",
+  "PLC_IP": "127.0.0.1",
+  "DevPort": 2000,
+  "nByteTrans": 2,
+  "PLCType": "Omron"
+}

@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -24,8 +24,7 @@ namespace Frame_Core
         /// <summary>
         /// 工艺配方名称
         /// </summary>
-        private string _RecipeName { get; set; } = "默认配方";
-        public string RecipeName
+        private string _RecipeName { get; set; } = "默认配方";        public string RecipeName
         {
             get => _RecipeName;
             set { _RecipeName = value; }

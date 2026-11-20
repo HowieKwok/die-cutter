@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -15,6 +15,7 @@ namespace Mef_VisionFrame
     public partial class UC_StateView : UserControl
     {
         private readonly Dictionary<string, Label> _labels = new Dictionary<string, Label>();
+        private Label _warningLabel;
         public UC_StateView()
         {
             InitializeComponent();
@@ -57,7 +58,59 @@ namespace Mef_VisionFrame
             }
 
             _content.ResumeLayout();
+            AppendWarningLabel();
             CenterContent();
+        }
+
+        /// <summary>
+        /// 常驻警示条目：与设备状态 chip 同一行、同一父容器，但不会被 LoadItems 的
+        /// Clear() 冲掉（清空后由 AppendWarningLabel 补回）。传空文本即移除。
+        /// </summary>
+        public void SetWarning(string text, Action onClick)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => SetWarning(text, onClick)));
+                return;
+            }
+
+            if (_warningLabel != null)
+            {
+                _content.Controls.Remove(_warningLabel);
+                _warningLabel.Dispose();
+                _warningLabel = null;
+            }
+
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
+            _warningLabel = new Label
+            {
+                AutoSize = true,
+                Text = text,
+                ForeColor = Color.White,
+                BackColor = GetBackColor(StatusLevel.Alarm),
+                Padding = new Padding(12, 6, 12, 6),
+                Margin = new Padding(4),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = onClick == null ? Cursors.Default : Cursors.Hand
+            };
+
+            if (onClick != null)
+            {
+                _warningLabel.Click += delegate { onClick(); };
+            }
+
+            _content.Controls.Add(_warningLabel);
+            CenterContent();
+        }
+
+        private void AppendWarningLabel()
+        {
+            if (_warningLabel != null && !_content.Controls.Contains(_warningLabel))
+            {
+                _content.Controls.Add(_warningLabel);
+            }
         }
 
         public void BuildLabels(int count)

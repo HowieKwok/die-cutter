@@ -50,5 +50,16 @@ namespace Plugin.DefectCoat.Services
         {
             return string.IsNullOrWhiteSpace(path) ? GetDefaultFeatureRulePath() : path;
         }
+
+        /// <summary>
+        /// 解析配置里记录的模型/规则路径。
+        /// 绝对路径原样返回（老现场配置不受影响）；相对路径按软件根目录解析，
+        /// 这样配置 JSON 才能随程序一起拷到另一台机器而仍然有效。
+        /// </summary>
+        public static string ResolvePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return path;
+            return Path.IsPathRooted(path) ? path : Path.Combine(GetSoftwareRoot(), path);
+        }
     }
 }

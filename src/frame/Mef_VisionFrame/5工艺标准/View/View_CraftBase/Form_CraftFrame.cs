@@ -28,32 +28,25 @@ namespace Mef_VisionFrame
             Frame_Core.FormStylingHook.Style(this);
             M_FormCraftBase = Craft_ViewService.GetView(M_FormCraftBase, _systemInfo.CraftType);
             VM = new VM_Craft(_systemInfo, craftBase, craftBasePath);
-            InitMaterialSelect();
             InitTableColumns();
 
         }
+
+        /// <summary>
+        /// 当前运行的机型。启动时由 SystemParam.CraftType 决定，运行期不允许切换：
+        /// 机型一旦改变，相机布局、流程结构、配方目录都会换一套，中途切换必然读到半套数据。
+        /// </summary>
+        private MaterialCrafEnum MachineType
+        {
+            get { return VM.systemInfo.CraftType; }
+        }
+
         private void Form_CraftFrame_Load(object sender, EventArgs e)
         {
-            comb_materialCraf.SelectedIndex = (int)VM.systemInfo.CraftType;
+            Update_TableCrafts(MachineType, VM.systemInfo.RecipeName);
+            ShowCraftView();
         }
         #region 私有工具
-        /// <summary>
-        /// 填充机型下拉。只列出已实现（已注册设备画像）的机型：
-        /// 未注册的机型既没有配方参数类也没有工艺窗体，选中它只会读到空数据。
-        /// 注意：选项按枚举声明顺序加入，且激光模切一体机是 0 号，
-        /// 因此下方仍可用 (MaterialCrafEnum)SelectedIndex 反查机型；新增机型请追加在枚举末尾。
-        /// </summary>
-        private void InitMaterialSelect()
-        {
-            comb_materialCraf.Items.Clear();
-            foreach (MaterialCrafEnum craftType in Enum.GetValues(typeof(MaterialCrafEnum)))
-            {
-                IDeviceProfile profile;
-                if (!DeviceProfileRegistry.TryResolve(craftType, out profile)) continue;
-
-                comb_materialCraf.Items.Add(new SelectItem(craftType));
-            }
-        }
         private void InitTableColumns()
         {
             tableCrafts.Columns.Clear();
@@ -175,12 +168,23 @@ namespace Mef_VisionFrame
             bool hasSelected = (craftRow != null);
             bool isCurrent = craftRow?.IsCurrent ?? false;
             string selectRecipeName = craftRow?.CraftName ?? "";
+            bool canRemove = hasSelected && !isCurrent;
+            ContextMenuStripItem removeItem = new ContextMenuStripItem("移除配方")
+            {
+                Tag = "remove",
+                Enabled = canRemove
+            };
+            // 禁用项仍染红色时，AntdUI 会按 ControlPaint.DrawStringDisabled 把红色与底色混合，
+            // 显示成发虚的暗红。只在可用时才上红色。
+            if (canRemove) removeItem.Fore = Color.Red;
+
             IContextMenuStripItem[] items =
             {
                 new ContextMenuStripItem("新建配方") { Tag = "create" },
+                new ContextMenuStripItem("切换配方") { Tag = "switch", Enabled = hasSelected && !isCurrent },
                 new ContextMenuStripItem("复制配方") { Tag = "copy", Enabled = hasSelected },
                 new ContextMenuStripItem("重命名配方") { Tag = "rename", Enabled = hasSelected&& !isCurrent},
-                new ContextMenuStripItem("移除配方") { Tag = "remove", Enabled = hasSelected && !isCurrent, Fore = Color.Red },
+                removeItem,
                 new ContextMenuStripItemDivider(),
                 new ContextMenuStripItem("打开配方文件位置") { Tag = "open" }
             };
@@ -191,23 +195,27 @@ namespace Mef_VisionFrame
 
                 try
                 {
-                    if (tag == "create")
+                    if (tag == "switch")
+                    {
+                        SwitchToRecipe(craftRow);
+                    }
+                    else if (tag == "create")
                     {
                         if (!ShowNameDialog("新建配方", "", out string newName)) return;
-                        VM.CreateRecipe((MaterialCrafEnum)comb_materialCraf.SelectedIndex, newName);
-                        Update_TableCrafts((MaterialCrafEnum)comb_materialCraf.SelectedIndex, VM.systemInfo.RecipeName);
+                        VM.CreateRecipe(MachineType, newName);
+                        Update_TableCrafts(MachineType, VM.systemInfo.RecipeName);
                     }
                     else if (tag == "copy")
                     {
-                        bool result = VM.CopyRecipe((MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName, out string newName);
-                        Update_TableCrafts((MaterialCrafEnum)comb_materialCraf.SelectedIndex, VM.systemInfo.RecipeName);
+                        bool result = VM.CopyRecipe(MachineType, selectRecipeName, out string newName);
+                        Update_TableCrafts(MachineType, VM.systemInfo.RecipeName);
 
                         if (result)
                         {
-                            string oldProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName);
-                            string oldInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName);
-                            string newProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, newName);
-                            string newInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, newName);
+                            string oldProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, selectRecipeName);
+                            string oldInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, selectRecipeName);
+                            string newProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, newName);
+                            string newInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, newName);
 
                             Project.Instance.Process流程插件管理者.CopyRecipe(oldProcessPath, oldInstanceParamPath, newProcessPath, newInstanceParamPath);
                         }
@@ -222,13 +230,13 @@ namespace Mef_VisionFrame
                         }
 
                         if (!ShowNameDialog("重命名配方", selectRecipeName, out string newName)) return;
-                        VM.RenameRecipe((MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName, newName);
-                        Update_TableCrafts((MaterialCrafEnum)comb_materialCraf.SelectedIndex, VM.systemInfo.RecipeName);
+                        VM.RenameRecipe(MachineType, selectRecipeName, newName);
+                        Update_TableCrafts(MachineType, VM.systemInfo.RecipeName);
 
-                        string oldProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName);
-                        string oldInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName);
-                        string newProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, newName);
-                        string newInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, newName);
+                        string oldProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, selectRecipeName);
+                        string oldInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, selectRecipeName);
+                        string newProcessPath = CraftExtension.GetProcessFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, newName);
+                        string newInstanceParamPath = CraftExtension.GetProcessInstanceFilePath(Project.Instance.paramPathSet.CraftPath, MachineType, newName);
                         Project.Instance.Process流程插件管理者.RenameRecipe(oldProcessPath, oldInstanceParamPath, newProcessPath, newInstanceParamPath);
                     }
                     else if (tag == "remove")
@@ -241,25 +249,28 @@ namespace Mef_VisionFrame
 
                         try
                         {
-                            VM.DeleteRecipe((MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName);
-                            Update_TableCrafts((MaterialCrafEnum)comb_materialCraf.SelectedIndex, VM.systemInfo.RecipeName);
+                            // DeleteRecipe 内部会二次确认；用户取消时返回 false，
+                            // 这里必须立即退出——否则流程目录照删，还会误报"删除成功"。
+                            if (!VM.DeleteRecipe(MachineType, selectRecipeName)) return;
 
-                            string processPath = CraftExtension.GetProcessFileBasePath(Project.Instance.paramPathSet.CraftPath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, selectRecipeName);
+                            Update_TableCrafts(MachineType, VM.systemInfo.RecipeName);
+
+                            string processPath = CraftExtension.GetProcessFileBasePath(Project.Instance.paramPathSet.CraftPath, MachineType, selectRecipeName);
                             if (Directory.Exists(processPath))
                             {
                                 Directory.Delete(processPath,true);
                             }
+
+                            MessageBox.Show($"配方【{selectRecipeName}】已成功删除");
                         }
                         catch (Exception ex)
                         {
                             MessageBox.Show($"删除配方失败：{ex.Message}");
                         }
-
-                        MessageBox.Show($"配方【{selectRecipeName}】已成功删除");
                     }
                     else if (tag == "open")
                     {
-                        VM.OpenRecipeFolder((MaterialCrafEnum)comb_materialCraf.SelectedIndex);
+                        VM.OpenRecipeFolder(MachineType);
                     }
                 }
                 catch (Exception ex)
@@ -281,61 +292,91 @@ namespace Mef_VisionFrame
         }
         #endregion
 
-        private void comb_materialCraf_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
+        /// <summary>
+        /// 按当前机型挂载工艺窗体，并定位到正在使用的配方。
+        /// 原来是"下拉改机型 → 重建窗体"，机型改成运行期固定后，这里只负责挂载。
+        /// </summary>
+        private void ShowCraftView()
         {
-            if (comb_materialCraf.SelectedIndex < 0) return;
-            MaterialCrafEnum materialCrafEnum = (MaterialCrafEnum)comb_materialCraf.SelectedIndex;
-            Update_TableCrafts(materialCrafEnum, VM.systemInfo.RecipeName);
+            M_FormCraftBase = Craft_ViewService.GetView(M_FormCraftBase, MachineType);
+            panel_Main.Controls.Clear();
+            panel_Main.Controls.Add(M_FormCraftBase);
+            M_FormCraftBase.Show();
 
-            if (tableCrafts.CurrentCell != null && tableCrafts.Rows.Count > 0)
-            {
-                // 清空所有原有选中行
-                //tableCrafts.ClearSelection();
-
-                // 设置目标行为选中
-                tableCrafts.Rows[tableCrafts.CurrentCell.RowIndex].Selected = true;
-
-                // 设为当前激活单元格（高亮聚焦）
-                //tableCrafts.CurrentCell = tableCrafts.Rows[tableCrafts.CurrentCell.RowIndex].Cells[0];
-
-                M_FormCraftBase = Craft_ViewService.GetView(M_FormCraftBase, materialCrafEnum);
-                panel_Main.Controls.Clear();
-                panel_Main.Controls.Add(M_FormCraftBase);
-                M_FormCraftBase.Show();
-
-                CraftRow row = GetSelectRecipeInfo(tableCrafts.CurrentCell.RowIndex);
-                Update_ParamToView(materialCrafEnum, row.CraftName);
-            }
-            else
+            if (tableCrafts.Rows.Count == 0)
             {
                 panel_Main.Controls.Clear();
+                return;
             }
 
+            int rowIndex = 0;
+            for (int i = 0; i < tableCrafts.Rows.Count; i++)
+            {
+                CraftRow item = GetSelectRecipeInfo(i);
+                if (item != null && item.IsCurrent)
+                {
+                    rowIndex = i;
+                    break;
+                }
+            }
+
+            tableCrafts.CurrentCell = tableCrafts.Rows[rowIndex].Cells[0];
+            tableCrafts.Rows[rowIndex].Selected = true;
+
+            CraftRow row = GetSelectRecipeInfo(rowIndex);
+            Update_ParamToView(MachineType, row.CraftName);
         }
         private void tableCrafts_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
-            CraftRow row = GetSelectRecipeInfo(e.RowIndex);
-            if (CurrentCraftBase.RecipeName == VM.systemInfo.RecipeName) return;
+            SwitchToRecipe(GetSelectRecipeInfo(e.RowIndex));
+        }
 
+        /// <summary>
+        /// 切换到目标配方：写 SystemParam.RecipeName 后退出程序，由下次启动生效。
+        ///
+        /// 三条约束按顺序：拿不到目标 → 提示；已是当前配方 → 提示；生产中 → 拒绝。
+        /// 只有全部通过才读盘加载，避免用户取消后 CurrentCraftBase 与 craftBase 指不同配方。
+        /// </summary>
+        private void SwitchToRecipe(CraftRow row)
+        {
+            if (row == null) return;
 
-            CurrentCraftBase = Craft_ModelService.GetCraft(VM.CraftBasePath, (MaterialCrafEnum)comb_materialCraf.SelectedIndex, row.CraftName);
-            string str = "";
-            str += $"是否切换配方?";
-            str += $"\r\n 当前工艺：{VM.M_craftBase.CraftType}，当前配方：{VM.M_craftBase.RecipeName},工艺极性：{VM.M_craftBase.Electrode}";
-            str += $"\r\n 切换工艺：{CurrentCraftBase.CraftType}，当前配方：{CurrentCraftBase.RecipeName},工艺极性：{CurrentCraftBase.Electrode}";
-
-            if (System.Windows.Forms.MessageBox.Show(str, "请停机状态切换,切换后软件自动关闭", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            if (row.CraftName == VM.systemInfo.RecipeName)
             {
-                Project.Instance.craftBase = CurrentCraftBase;
-                VM.systemInfo.RecipeName = CurrentCraftBase.RecipeName;
-                VM.systemInfo.CraftType = CurrentCraftBase.CraftType;
-                VM.systemInfo.Save();
-                this.Hide();
-
-                // this.Close(); //关闭工艺设置界面
-                Environment.Exit(0); //关闭整个工程
+                MessageBox.Show($"配方【{row.CraftName}】已经是当前生产配方。");
+                return;
             }
+
+            if (Project.Instance.Is_MojuanStart)
+            {
+                MessageBox.Show("正在生产中，不能切换配方。请先停机。");
+                return;
+            }
+
+            CraftBase target = Craft_ModelService.GetCraft(VM.CraftBasePath, MachineType, row.CraftName);
+            if (target == null)
+            {
+                MessageBox.Show($"配方【{row.CraftName}】加载失败，无法切换。");
+                return;
+            }
+
+            string str = "";
+            str += $"是否切换配方?\r\n 切换后软件将自动关闭，请手动重启生效。";
+            str += $"\r\n 当前配方：{VM.M_craftBase.RecipeName}，工艺极性：{VM.M_craftBase.Electrode}";
+            str += $"\r\n 切换配方：{target.RecipeName}，工艺极性：{target.Electrode}";
+
+            if (MessageBox.Show(str, "切换配方", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            {
+                return;
+            }
+
+            Project.Instance.craftBase = target;
+            VM.systemInfo.RecipeName = target.RecipeName;
+            VM.systemInfo.Save();
+            this.Hide();
+
+            Environment.Exit(0); //关闭整个工程
         }
 
         private void tableCrafts_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
@@ -350,7 +391,7 @@ namespace Mef_VisionFrame
             {
                 if (CurrentCraftBase.RecipeName == row.CraftName) return;
 
-                MaterialCrafEnum materialCrafEnum = (MaterialCrafEnum)comb_materialCraf.SelectedIndex;
+                MaterialCrafEnum materialCrafEnum = MachineType;
                 Update_ParamToView(materialCrafEnum, row.CraftName);
             }
         }
@@ -384,7 +425,7 @@ namespace Mef_VisionFrame
 
         private void inputSearch_TextChanged(object sender, EventArgs e)
         {
-            Update_TableCrafts((MaterialCrafEnum)comb_materialCraf.SelectedIndex, VM.systemInfo.RecipeName);
+            Update_TableCrafts(MachineType, VM.systemInfo.RecipeName);
         }
     }
 }

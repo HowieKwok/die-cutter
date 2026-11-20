@@ -1,0 +1,10 @@
+{
+  "filePath": "D:\\TEMP\\Release\\ZSystemConfigurationFile\\PLCDevParamr",
+  "fileFullPath": "D:\\TEMP\\Release\\ZSystemConfigurationFile\\PLCDevParamr.json",
+  "ComType": 0,
+  "IsConnect": true,
+  "LocalPC_IP": "127.0.0.1",
+  "PLC_IP": "192.168.250.1",
+  "DevPort": 9600,
+  "nByteTrans": 2
+}

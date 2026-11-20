@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -779,4 +779,12 @@
     <Compile Include="4调试设置\WPF\Hosting\WPFFormPluginBase.cs" />
     <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
+  <!-- 编译后把 config/ 里对应机型的配置投放到输出目录（Debug/Release 都生效）。
+       机型取自 config\General\SystemParam.json 的 CraftType，映射与拷贝逻辑见脚本。
+       只投放 config/ 内存在的文件，标定等机器级参数不受影响。 -->
+  <Target Name="CopyMachineConfig" AfterTargets="Build">
+    <!-- 末尾的 "." 是必要的：$(OutDir) 以反斜杠结尾，紧跟右引号会把引号转义掉，
+         导致参数串接。拼上 "." 后由脚本 GetFullPath 归一化回目录本身。 -->
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\..\build\copy-machine-config.ps1&quot; -RepoRoot &quot;$(MSBuildProjectDirectory)\..\..\..&quot; -OutDir &quot;$(MSBuildProjectDirectory)\$(OutDir).&quot;" />
+  </Target>
 </Project>

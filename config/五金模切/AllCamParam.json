@@ -1,0 +1,121 @@
+{
+  "l_CameraDevs": [
+    {
+      "filePath": "",
+      "fileFullPath": "",
+      "CameraParameter": {
+        "filePath": "",
+        "fileFullPath": "",
+        "ID": 1,
+        "CameraName": "下线扫",
+        "DevType": 700,
+        "CameraSerial": "DB1804005",
+        "CardSerial": "DB1576538",
+        "CameraIP": "127.0.0.1",
+        "PCIP": "127.0.0.1",
+        "ConfigFiles": "",
+        "CardModel": "",
+        "Port": 0,
+        "ImageWidth": 4096,
+        "ImageHeight": 5000,
+        "EmulationPath": "D:\\Code\\项目代码\\模切\\ffytr\\下线扫\\原图",
+        "CalibrationValue_X": 0.0816588,
+        "CalibrationValue_Y": 0.06289308
+      }
+    },
+    {
+      "filePath": "",
+      "fileFullPath": "",
+      "CameraParameter": {
+        "filePath": "",
+        "fileFullPath": "",
+        "ID": 2,
+        "CameraName": "上线扫",
+        "DevType": 700,
+        "CameraSerial": "DB1804007",
+        "CardSerial": "DB1576495",
+        "CameraIP": "127.0.0.1",
+        "PCIP": "127.0.0.1",
+        "ConfigFiles": "",
+        "CardModel": "",
+        "Port": 0,
+        "ImageWidth": 4096,
+        "ImageHeight": 5000,
+        "EmulationPath": "D:\\Code\\项目代码\\模切\\ffytr\\上线扫\\原图",
+        "CalibrationValue_X": 0.08197424,
+        "CalibrationValue_Y": 0.06289308
+      }
+    },
+    {
+      "filePath": "",
+      "fileFullPath": "",
+      "CameraParameter": {
+        "filePath": "",
+        "fileFullPath": "",
+        "ID": 8,
+        "CameraName": "左上",
+        "DevType": 300,
+        "CameraSerial": "DB1829669",
+        "CardSerial": "",
+        "CameraIP": "192.168.10.111",
+        "PCIP": "192.168.10.101",
+        "ConfigFiles": "",
+        "CardModel": "",
+        "Port": 0,
+        "ImageWidth": 4096,
+        "ImageHeight": 5000,
+        "EmulationPath": "D:\\Code\\项目代码\\模切\\ffytr\\左上\\原图\\NG",
+        "CalibrationValue_X": 1.0,
+        "CalibrationValue_Y": 1.0
+      }
+    },
+    {
+      "filePath": "",
+      "fileFullPath": "",
+      "CameraParameter": {
+        "filePath": "",
+        "fileFullPath": "",
+        "ID": 9,
+        "CameraName": "左下",
+        "DevType": 500,
+        "CameraSerial": "DB1461089",
+        "CardSerial": "",
+        "CameraIP": "127.0.0.1",
+        "PCIP": "127.0.0.1",
+        "ConfigFiles": "",
+        "CardModel": "",
+        "Port": 0,
+        "ImageWidth": 4096,
+        "ImageHeight": 5000,
+        "EmulationPath": "D:\\Code\\项目代码\\模切\\ffytr\\左下\\原图\\NG",
+        "CalibrationValue_X": 1.0,
+        "CalibrationValue_Y": 1.0
+      }
+    },
+    {
+      "filePath": "",
+      "fileFullPath": "",
+      "CameraParameter": {
+        "filePath": "",
+        "fileFullPath": "",
+        "ID": 10,
+        "CameraName": "右下",
+        "DevType": 300,
+        "CameraSerial": "DB1829485",
+        "CardSerial": "",
+        "CameraIP": "192.168.10.110",
+        "PCIP": "192.168.10.100",
+        "ConfigFiles": "",
+        "CardModel": "",
+        "Port": 0,
+        "ImageWidth": 4096,
+        "ImageHeight": 5000,
+        "EmulationPath": "D:\\Code\\项目代码\\模切\\ffytr\\右下\\原图\\OK",
+        "CalibrationValue_X": 1.0,
+        "CalibrationValue_Y": 1.0
+      }
+    }
+  ],
+  "filePath": "D:\\Code\\项目代码\\模切\\die-cutter-main\\Mef_VisionFrame\\bin\\Debug\\ZSystemConfigurationFile\\AllCamParam",
+  "fileFullPath": "D:\\Code\\项目代码\\模切\\die-cutter-main\\Mef_VisionFrame\\bin\\Debug\\ZSystemConfigurationFile\\AllCamParam.json"
+}

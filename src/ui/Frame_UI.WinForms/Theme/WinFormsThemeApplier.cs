@@ -259,6 +259,20 @@ namespace Frame_UI.WinForms
             var button = control as Button;
             if (button != null)
             {
+                // 强调按钮：业务侧只打 Tag("primary")，不认识颜色令牌（Frame_Core 不引用 UI 层）。
+                // 没有这一分支时，非 AntdUI 界面（登录框等）的按钮只能是灰底，
+                // 和其它界面的 AntdUI 主按钮放在一起就像"没适配主题"。
+                if (IsPrimaryTagged(button))
+                {
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.UseVisualStyleBackColor = false;
+                    button.BackColor = ColorBridge.AccentPrimary;
+                    button.ForeColor = Color.White;
+                    button.FlatAppearance.BorderColor = ColorBridge.AccentPrimary;
+                    button.FlatAppearance.MouseOverBackColor = ColorBridge.AccentPrimary;
+                    return;
+                }
+
                 button.FlatStyle = FlatStyle.Flat;
                 button.BackColor = ColorBridge.ButtonBg;
                 button.ForeColor = ColorBridge.TextPrimary;
@@ -392,6 +406,13 @@ namespace Frame_UI.WinForms
         /// 识别并统一样式化“双态按钮”：带有可写 CheckedBackColor / UnCheckedBackColor
         /// 两个 Color 属性的 Button 派生类。命中后完成全部样式下发并返回 true。
         /// </summary>
+        /// <summary>业务侧用 Tag="primary" 声明主按钮，具体颜色由这里决定。</summary>
+        private static bool IsPrimaryTagged(Control control)
+        {
+            string tag = control.Tag as string;
+            return tag != null && string.Equals(tag, "primary", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool TryStyleTwoStateButton(Control control)
         {
             Button button = control as Button;
@@ -502,7 +523,17 @@ namespace Frame_UI.WinForms
                 || control is TextBoxBase || control is ComboBox || control is UpDownBase
                 || control is CheckBox || control is RadioButton)
             {
-                control.ForeColor = ColorBridge.TextHint;
+                // 按钮的禁用文字由 ControlPaint.DrawStringDisabled 绘制：它会把 ForeColor
+                // 往按钮底色上混。深色主题下如果还给偏暗的 Hint 色，混出来就是黑底黑字
+                // （登录页的"账户管理/退出登录"即为此类）。按钮改用可读性更高的次级文字色。
+                if (control is Button)
+                {
+                    control.ForeColor = IsDarkTheme() ? ColorBridge.TextSecondary : ColorBridge.TextHint;
+                }
+                else
+                {
+                    control.ForeColor = ColorBridge.TextHint;
+                }
             }
 
             GrayOutImage(control);

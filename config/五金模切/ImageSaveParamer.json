@@ -1,0 +1,252 @@
+{
+  "filePath": "D:\\TEMP\\Release\\ZSystemConfigurationFile\\ImageSaveParamer",
+  "fileFullPath": "D:\\TEMP\\Release\\ZSystemConfigurationFile\\ImageSaveParamer.json",
+  "ImageSaveConfigItems": [
+    {
+      "SourceImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 0,
+        "IsShow": false
+      },
+      "ScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "EAImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "EAScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "BigImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "BigScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "NGImageSaveParamer": {
+        "ImageFormat": 0,
+        "IsSave": false,
+        "IsShow": true
+      },
+      "Image3DSaveParamer": {
+        "ImageFormat": 0,
+        "IsCompressed": false
+      }
+    },
+    {
+      "SourceImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 0,
+        "IsShow": false
+      },
+      "ScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "EAImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "EAScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "BigImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "BigScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "NGImageSaveParamer": {
+        "ImageFormat": 0,
+        "IsSave": false,
+        "IsShow": true
+      },
+      "Image3DSaveParamer": {
+        "ImageFormat": 0,
+        "IsCompressed": false
+      }
+    },
+    {
+      "SourceImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "ScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "EAImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "EAScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "BigImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "BigScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "NGImageSaveParamer": {
+        "ImageFormat": 0,
+        "IsSave": false,
+        "IsShow": false
+      },
+      "Image3DSaveParamer": {
+        "ImageFormat": 0,
+        "IsCompressed": false
+      }
+    },
+    {
+      "SourceImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 0,
+        "IsShow": true
+      },
+      "ScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "EAImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "EAScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "BigImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "BigScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "NGImageSaveParamer": {
+        "ImageFormat": 0,
+        "IsSave": false,
+        "IsShow": false
+      },
+      "Image3DSaveParamer": {
+        "ImageFormat": 0,
+        "IsCompressed": false
+      }
+    },
+    {
+      "SourceImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 0,
+        "IsShow": true
+      },
+      "ScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "EAImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "EAScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "BigImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "BigScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "NGImageSaveParamer": {
+        "ImageFormat": 0,
+        "IsSave": false,
+        "IsShow": false
+      },
+      "Image3DSaveParamer": {
+        "ImageFormat": 0,
+        "IsCompressed": false
+      }
+    },
+    {
+      "SourceImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 0,
+        "IsShow": true
+      },
+      "ScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "EAImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "EAScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "BigImageSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsShow": true
+      },
+      "BigScreenshotSaveParamer": {
+        "ImageFormat": 1,
+        "SaveMode": 3,
+        "IsHighDefinitionCapture": false
+      },
+      "NGImageSaveParamer": {
+        "ImageFormat": 0,
+        "IsSave": false,
+        "IsShow": false
+      },
+      "Image3DSaveParamer": {
+        "ImageFormat": 0,
+        "IsCompressed": false
+      }
+    }
+  ]
+}

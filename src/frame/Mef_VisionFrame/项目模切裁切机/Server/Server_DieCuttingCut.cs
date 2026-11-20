@@ -70,38 +70,66 @@ namespace Mef_VisionFrame
         {
             Data = _Data;
 
-            //缺陷相机绑定开始回调事件
-            var camObj = Project.Instance.M_CamParam.GetCamObj(0);
-            if (camObj != null)
-            {
-
-                camObj.FrameStartEvent -= DefectCam_FramStartCallback;
-                camObj.FrameStartEvent += DefectCam_FramStartCallback;
-                //camObj.CamCallbackStartEvent -= DefectCam_FramStartCallback;
-                //camObj.CamCallbackStartEvent += DefectCam_FramStartCallback;
-            }
-            Service_Camera.Get_CameraRelevancy(0).m_ImageSimManage.CamCallbackStartEvent -= DefectStation_IOSendResult;
-            Service_Camera.Get_CameraRelevancy(0).m_ImageSimManage.CamCallbackStartEvent += DefectStation_IOSendResult;
+            // 相机绑定按"角色"取下标，不写死数字：激光与五金的物理顺序不同
+            // （激光 0/1 模切、2 纠偏、3~5 尺寸；五金 0/1 模切、2~4 尺寸），
+            // 五金没有裁切纠偏，缺角色时整段绑定跳过。
+            int defectCamIndex = CamIndexOrMinusOne(CamRole.模切主相机);
+            int cutCamIndex = CamIndexOrMinusOne(CamRole.裁切纠偏);
+            int sizeCamIndex = CamIndexOrMinusOne(CamRole.尺寸检测);
 
             //缺陷相机绑定开始回调事件
-            var camObj2 = Project.Instance.M_CamParam.GetCamObj(2);
-            if (camObj2 != null)
+            if (defectCamIndex >= 0)
             {
-                camObj2.CamCallbackStartEvent -= CutCam_CamCallbackStart;
-                camObj2.CamCallbackStartEvent += CutCam_CamCallbackStart;
+                var camObj = Project.Instance.M_CamParam.GetCamObj(defectCamIndex);
+                if (camObj != null)
+                {
+
+                    camObj.FrameStartEvent -= DefectCam_FramStartCallback;
+                    camObj.FrameStartEvent += DefectCam_FramStartCallback;
+                    //camObj.CamCallbackStartEvent -= DefectCam_FramStartCallback;
+                    //camObj.CamCallbackStartEvent += DefectCam_FramStartCallback;
+                }
+                var defectRelevancy = Service_Camera.Get_CameraRelevancy(defectCamIndex);
+                if (defectRelevancy != null && defectRelevancy.m_ImageSimManage != null)
+                {
+                    defectRelevancy.m_ImageSimManage.CamCallbackStartEvent -= DefectStation_IOSendResult;
+                    defectRelevancy.m_ImageSimManage.CamCallbackStartEvent += DefectStation_IOSendResult;
+                }
             }
-            Service_Camera.Get_CameraRelevancy(2).m_ImageSimManage.CamCallbackStartEvent -= CutCam_CamCallbackStart;
-            Service_Camera.Get_CameraRelevancy(2).m_ImageSimManage.CamCallbackStartEvent += CutCam_CamCallbackStart;
+
+            //裁切定位相机（五金机型没有这一路，cutCamIndex = -1）
+            if (cutCamIndex >= 0)
+            {
+                var camObj2 = Project.Instance.M_CamParam.GetCamObj(cutCamIndex);
+                if (camObj2 != null)
+                {
+                    camObj2.CamCallbackStartEvent -= CutCam_CamCallbackStart;
+                    camObj2.CamCallbackStartEvent += CutCam_CamCallbackStart;
+                }
+                var cutRelevancy = Service_Camera.Get_CameraRelevancy(cutCamIndex);
+                if (cutRelevancy != null && cutRelevancy.m_ImageSimManage != null)
+                {
+                    cutRelevancy.m_ImageSimManage.CamCallbackStartEvent -= CutCam_CamCallbackStart;
+                    cutRelevancy.m_ImageSimManage.CamCallbackStartEvent += CutCam_CamCallbackStart;
+                }
+            }
 
             //尺寸相机绑定开始回调事件
-            var camObj3 = Project.Instance.M_CamParam.GetCamObj(3);
-            if (camObj3 != null)
+            if (sizeCamIndex >= 0)
             {
-                camObj3.CamCallbackStartEvent -= SizeCam_CamCallbackStart;
-                camObj3.CamCallbackStartEvent += SizeCam_CamCallbackStart;
+                var camObj3 = Project.Instance.M_CamParam.GetCamObj(sizeCamIndex);
+                if (camObj3 != null)
+                {
+                    camObj3.CamCallbackStartEvent -= SizeCam_CamCallbackStart;
+                    camObj3.CamCallbackStartEvent += SizeCam_CamCallbackStart;
+                }
+                var sizeRelevancy = Service_Camera.Get_CameraRelevancy(sizeCamIndex);
+                if (sizeRelevancy != null && sizeRelevancy.m_ImageSimManage != null)
+                {
+                    sizeRelevancy.m_ImageSimManage.CamCallbackStartEvent -= SizeCam_CamCallbackStart;
+                    sizeRelevancy.m_ImageSimManage.CamCallbackStartEvent += SizeCam_CamCallbackStart;
+                }
             }
-            Service_Camera.Get_CameraRelevancy(3).m_ImageSimManage.CamCallbackStartEvent -= SizeCam_CamCallbackStart;
-            Service_Camera.Get_CameraRelevancy(3).m_ImageSimManage.CamCallbackStartEvent += SizeCam_CamCallbackStart;
 
             ServiceCardManage.Instance.GetIControlCard().Config_Intbitmode(Project.Instance.M_ParamControlCord.CardNo, 2, 1, 1);
             //ServiceCardManage.Instance.GetIControlCard().Config_Intporten(0, 0, 0xffffffff);
@@ -141,6 +169,17 @@ namespace Mef_VisionFrame
             Udpate();
 
             InitThread();
+        }
+
+        /// <summary>
+        /// 按相机角色取物理下标。当前机型没有该角色（如五金的裁切纠偏）时返回 -1，
+        /// 调用方据此整段跳过绑定，而不是拿一个不存在的下标去取对象。
+        /// </summary>
+        private static int CamIndexOrMinusOne(CamRole role)
+        {
+            IDeviceProfile profile = DeviceProfileRegistry.Resolve(Project.Instance.systemInfo.CraftType);
+            int index;
+            return profile.TryIndexOf(role, out index) ? index : -1;
         }
 
         /// <summary>

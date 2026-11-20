@@ -1,0 +1,27 @@
+{
+    "taskType": "Classify",
+    "modelInputChannel": 1,
+    "modelInputHeight": 128,
+    "modelInputWidth": 128,
+    "imagePreproccess": {
+        "dividedBy255": "",
+        "resizeImage": {
+            "interpolationMode": "AREA"
+        }
+    },
+    "labelsName": [
+        "白点",
+        "表面裂纹",
+        "黑点",
+        "划痕",
+        "极片破损",
+        "接带",
+        "漏金属",
+        "气泡",
+        "压痕",
+        "褶皱",
+        "其他"
+    ],
+    "num_classes": 11,
+    "onnxEncryptFileName": "model.onnx"
+}

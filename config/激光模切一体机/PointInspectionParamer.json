@@ -1,0 +1,11 @@
+{
+  "djCaliTimeBaiban": "2018-11-09T08:00:00",
+  "djCaliTimeYeBan": "2018-11-09T20:00:00",
+  "djLastOKTime": "2018-11-09T19:30:00",
+  "djEnabled": false,
+  "filePath": "D:\\彭佳庆\\项目\\1.模切\\8.程序\\0730合并\\combine\\Mef_VisionFrame\\bin\\Release\\ZSystemConfigurationFile\\PointInspectionParamer",
+  "fileFullPath": "D:\\彭佳庆\\项目\\1.模切\\8.程序\\0730合并\\combine\\Mef_VisionFrame\\bin\\Release\\ZSystemConfigurationFile\\PointInspectionParamer.json",
+  "ClearProdct_PerRoll": true,
+  "ClearProdct_PerShift": false,
+  "djFinish": false
+}

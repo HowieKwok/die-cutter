@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <FilePath>E:\模切毛刺检测\副机\2024-04-17\DieCutting001\Mef_VisionFrame\bin\Debug\record\参数修改记录\默认\</FilePath>
+  <filePath>D:\Code\项目代码\模切\die-cutter-main\Mef_VisionFrame\bin\Debug\ZSystemConfigurationFile\\UserParam</filePath>
+  <SchemaVersion>2</SchemaVersion>
+  <LoginOutTime>300</LoginOutTime>
+  <isEncrypt>false</isEncrypt>
+  <AutoLogin>
+    <Enabled>false</Enabled>
+    <UserType>Operator</UserType>
+  </AutoLogin>
+  <OperatorUser>
+    <UserModel>
+      <userType>Operator</userType>
+      <Id>001</Id>
+      <password>001</password>
+    </UserModel>
+    <UserModel>
+      <userType>Operator</userType>
+      <Id>002</Id>
+      <password>002</password>
+    </UserModel>
+  </OperatorUser>
+  <TechnicianUser />
+  <EngineerUser>
+    <UserModel>
+      <userType>Engineer</userType>
+      <Id>003</Id>
+      <password>003</password>
+    </UserModel>
+    <UserModel>
+      <userType>Engineer</userType>
+      <Id>005</Id>
+      <password>005</password>
+    </UserModel>
+  </EngineerUser>
+  <AdminUser>
+    <UserModel>
+      <userType>Admin</userType>
+      <Id>004</Id>
+      <password>004</password>
+    </UserModel>
+  </AdminUser>
+  <SupervisorUser />
+</UserData>

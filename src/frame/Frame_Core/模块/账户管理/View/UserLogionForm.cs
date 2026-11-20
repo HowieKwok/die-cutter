@@ -18,6 +18,8 @@ namespace Frame_Core
         {
             userManage = _UserManage;
             InitializeComponent();
+            // 登录是本界面的主操作：由主题层按 Tag 下发强调色（Frame_Core 不引用颜色令牌）
+            btn_login.Tag = "primary";
             FormStylingHook.Style(this);
         }
 

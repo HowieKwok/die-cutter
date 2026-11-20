@@ -126,6 +126,28 @@ namespace Frame_Core
                     ProcessName.Add(item.process.processInfo.ProcessName);
                 }
 
+                // 相机名缺失或重复时，多条流程会拿到同一个名字（GetCam_Name 越界返回 DefaultCameraName）。
+                // 之后 Save/Load 都按名字保留流程目录（DeleteFoldersExcept），同名目录会互相覆盖，
+                // 模块参数串到一起却不报错。这里必须拦住，且拦住时不能继续往下 Save。
+                List<string> duplicatedNames = ProcessName
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .GroupBy(n => n)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToList();
+                if (ProcessName.Count == 0 || ProcessName.Any(string.IsNullOrWhiteSpace) || duplicatedNames.Count > 0)
+                {
+                    string detail = duplicatedNames.Count > 0
+                        ? "重复的流程名：" + string.Join("、", duplicatedNames.ToArray())
+                        : "存在为空或全部缺失的流程名";
+                    LogError("流程名非法，拒绝加载（" + detail + "）。请检查 AllCamParam 中的相机名称。",
+                        new InvalidOperationException(detail));
+                    return false;
+                }
+
+                // 模块参数已按实例文件装好，此时把配方极性下发给各缺陷检测模块
+                SyncDefectPolarity();
+
                 LogInfo("生成标准流程结构");
                 List<List<ModuleInfo>> stdData = BuildInstanceList();
 
@@ -1168,6 +1190,31 @@ namespace Frame_Core
                     }
                 }
                 catch { } // 非文本文件跳过
+            }
+        }
+
+        /// <summary>
+        /// 缺陷检测极性以配方为唯一来源：把配方的 Electrode 同步到各模块的缺陷参数。
+        ///
+        /// 插件读的是自己参数里的 com_Cathode（两套编号相反，换算集中在 ElectrodePolarity），
+        /// 不在这里同步的话，界面上改了配方极性、缺陷检测仍在用旧的极性模型。
+        /// 启动加载时调用一次；工艺界面保存工艺参数后再调用一次，保证内存里的值立刻一致。
+        /// </summary>
+        public void SyncDefectPolarity()
+        {
+            if (Project.Instance == null || Project.Instance.craftBase == null) return;
+
+            int comCathode = ElectrodePolarity.ToComCathode(Project.Instance.craftBase.Electrode);
+
+            foreach (var item in List)
+            {
+                foreach (var module in item.process.m_ModuleObjList)
+                {
+                    ParamsMQDefects defect = module.PluginParams as ParamsMQDefects;
+                    if (defect == null) continue;
+
+                    defect.com_Cathode = comCathode;
+                }
             }
         }
 

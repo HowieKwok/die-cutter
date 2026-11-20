@@ -111,10 +111,14 @@ namespace Plugin.DefectCoat.Models
                     featureRuleConfig.AiClassifierConfigPath = DefaultConfigPathService.GetDefaultAiClassifierPath(Params.RuleConfigPath);
                 LoadClassifierConfigsFromFeatureRule(featureRuleConfig);
 
-                bool modelOk = modelClassifier.Init(modelClassifierConfig.ModelPath, out string modelMessage);
+                // 配置里允许写相对路径（相对软件根），这样配置 JSON 可以随程序拷到其它机器；
+                // 绝对路径原样使用，老现场配置不受影响。
+                string modelPath = DefaultConfigPathService.ResolvePath(modelClassifierConfig.ModelPath);
+                bool modelOk = modelClassifier.Init(modelPath, out string modelMessage);
                 modelClassifierConfig.ModelClassCount = modelClassifier.Labels != null ? modelClassifier.Labels.Length : 0;
                 modelClassifierConfig.RebuildResolvedLabels();
-                bool aiOk = aiClassifier.Init(aiClassifierConfig.ModelPath, out string aiMessage);
+                string aiPath = DefaultConfigPathService.ResolvePath(aiClassifierConfig.ModelPath);
+                bool aiOk = aiClassifier.Init(aiPath, out string aiMessage);
                 initialized = true;
                 InitMessage = string.Format(
                     "特征值分类参数={0}；分类器模型={1}；AI模型={2}；{3}；{4}",

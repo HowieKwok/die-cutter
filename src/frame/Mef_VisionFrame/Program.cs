@@ -22,6 +22,25 @@ namespace Mef_VisionFrame
             }
             else
             {
+                // 启动自检：配置缺失不阻断启动（各参数会退化到默认值），
+                // 但必须把缺失项告诉操作员，否则会出现"能启动、但什么都不工作"。
+                try
+                {
+                    List<string> problems = Frame_Core.StartupPreflight.Validate();
+                    if (problems.Count > 0)
+                    {
+                        string text = "以下配置缺失，程序将以默认值继续启动："
+                            + Environment.NewLine + Environment.NewLine
+                            + string.Join(Environment.NewLine, problems.ToArray());
+                        MessageBox.Show(text, "配置不完整", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("启动自检异常（不影响启动）：" + ex.Message, "配置检查",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+
                 //注入并激活HSL
                 bool result = HookHSL.HSLAuthorization.SetAuthorizationCode();
                 if (!result)

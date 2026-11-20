@@ -60,8 +60,9 @@ namespace Mef_VisionFrame
             // 装表前先挂容错：任何一格的值与下拉选项不匹配时只记日志，不弹模态框
             绑定表格容错();
 
-            Electrode.Items.Clear();
-            Electrode.Items.AddRange(Enum.GetNames(typeof(ElectrodeEnum)));
+            // 机型在出厂时确定，界面不提供切换；极性属于产品配方属性，可在此修改
+            ElectrodeText.Items.Clear();
+            ElectrodeText.Items.AddRange(Enum.GetNames(typeof(ElectrodeEnum)));
 
             // 相机页签的数量取配方里的相机项数（= 设备画像的槽位数），
             // 不取相机配置文件的数量：配置里多出来的那几路没有配方项，页签会错位。
@@ -88,7 +89,8 @@ namespace Mef_VisionFrame
             if (VM.M_CraftParam == null) return;
             CraftType.Text = VM.M_CraftParam.CraftType.ToString();
             RecipeName.Text = VM.M_CraftParam.RecipeName;
-            Electrode.SelectedIndex = (int)VM.M_CraftParam.Electrode;
+            // 极性属于产品配方属性：此处显示并可修改，保存后写入配方文件
+            ElectrodeText.SelectedIndex = (int)VM.M_CraftParam.Electrode;
             MachineNumber.Text = VM.M_CraftParam.MachineNumber;
 
             CraftItem.SelectIndex = 0;
@@ -103,8 +105,12 @@ namespace Mef_VisionFrame
             if (VM.M_CraftParam == null) return;
 
             VM.M_CraftParam.RecipeName = RecipeName.Text;
-            VM.M_CraftParam.Electrode = (ElectrodeEnum)Electrode.SelectedIndex;
+            VM.M_CraftParam.Electrode = (ElectrodeEnum)ElectrodeText.SelectedIndex;
             VM.M_CraftParam.MachineNumber = MachineNumber.Text;
+
+            // 极性是配方的属性，缺陷检测模块的 com_Cathode 由它派生，
+            // 保存工艺参数时立刻同步，避免要等下次启动才生效。
+            Project.Instance.Process流程插件管理者.SyncDefectPolarity();
 
             ParamAndView_Select(false);
         }

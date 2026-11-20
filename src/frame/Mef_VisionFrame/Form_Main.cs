@@ -56,11 +56,28 @@ namespace Mef_VisionFrame
             };
             menuStrip1.Items.Add(themeItem);
         }
+        /// <summary>
+        /// 配置缺失时在状态 chip 行末尾（与"磁盘剩余/内存"同一个父容器）追加一个红色条目，
+        /// 启动弹窗被点掉后仍然可见，点击可重新查看明细。配置完整时不添加任何控件。
+        /// </summary>
+        private void AppendConfigWarningBar()
+        {
+            List<string> problems = StartupPreflight.LastProblems;
+            if (problems == null || problems.Count == 0) return;
+
+            uC_StateView1.SetWarning("配置不完整（" + problems.Count + " 项）", delegate
+            {
+                MessageBox.Show(string.Join(Environment.NewLine, problems.ToArray()),
+                    "配置不完整", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            });
+        }
+
         public Form_Main()
         {
             InitializeComponent();
             Frame_Core.FormStylingHook.Style(this);
             AppendThemeSwitchMenuItem();
+            AppendConfigWarningBar();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             form_Main = this;
 
@@ -695,8 +712,14 @@ namespace Mef_VisionFrame
                 //==========【】获取最后编译时间：
                 Str_LatestTimeProgram = System.IO.File.GetLastWriteTime(this.GetType().Assembly.Location).ToString("yyyyMMdd-HHmm");
 
-                Str_LatestTimeProgram = "HSVISION_" + Str_LatestTimeProgram + $"({"LaserCutMachine"})";
-                this.Text = Str_LatestTimeProgram;
+                Str_LatestTimeProgram = System.IO.File.GetLastWriteTime(this.GetType().Assembly.Location).ToString("yyyyMMdd-HHmm");
+
+                // 标题统一为「HSVISION - 机型」，机型来自 SystemParam.json 的 CraftType。
+                // 枚举成员名与 Description 一致（激光模切一体机 / 五金模切），也与配置目录同名。
+                MaterialCrafEnum craftType = Project.Instance != null && Project.Instance.systemInfo != null
+                    ? Project.Instance.systemInfo.CraftType
+                    : MaterialCrafEnum.激光模切一体机;
+                this.Text = "HSVISION - " + craftType.ToString();
             }
             catch (Exception ex)
             {

@@ -166,6 +166,9 @@ namespace Mef_VisionFrame
                     };
                     // 必须传相机数：无参 Init() 是空实现，新配方会是空壳
                     craftBaseHW.Init(DeviceProfileRegistry.Resolve(craftType).CameraCount);
+                    // 与缺陷检测参数 com_Cathode 的默认值（0=正极）保持一致，
+                    // 否则新配方"配方显示负极、分类器用正极模型"。
+                    craftBaseHW.Electrode = ElectrodeEnum.正极;
                     craftBaseHW.SaveCraft(CraftBasePath, craftType, recipeName);
                     break;
                 case MaterialCrafEnum.激光模切一体机:
@@ -175,6 +178,8 @@ namespace Mef_VisionFrame
                         RecipeName = recipeName
                     };
                     craftBaseTemp.Init(DeviceProfileRegistry.Resolve(craftType).CameraCount);
+                    // 与缺陷检测参数 com_Cathode 的默认值（0=正极）保持一致
+                    craftBaseTemp.Electrode = ElectrodeEnum.正极;
                     // 自动保存生成json文件（假设CraftBase内部实现Save）                  
                     craftBaseTemp.SaveCraft(CraftBasePath, craftType, recipeName);
                     break;
@@ -279,19 +284,24 @@ namespace Mef_VisionFrame
         /// <summary>
         /// 删除配方（完整实现，带确认弹窗）
         /// </summary>
-        public void DeleteRecipe(MaterialCrafEnum craftType, string recipeName)
+        /// <summary>
+        /// 删除配方文件（含二次确认）。
+        /// 返回 true 表示真的删掉了；用户取消、文件不存在、异常都返回 false，
+        /// 调用方据此决定是否继续删除流程目录、是否提示成功。
+        /// </summary>
+        public bool DeleteRecipe(MaterialCrafEnum craftType, string recipeName)
         {
             if (string.IsNullOrWhiteSpace(recipeName))
             {
                 MessageBox.Show("删除失败：配方名称不能为空");
-                return;
+                return false;
             }
 
             string filePath = CraftExtension.GetRecipeFilePath(CraftBasePath, craftType, recipeName);
             if (!File.Exists(filePath))
             {
                 MessageBox.Show($"删除失败：配方【{recipeName}】不存在");
-                return;
+                return false;
             }
 
             // 二次确认防止误删
@@ -302,16 +312,17 @@ namespace Mef_VisionFrame
                 MessageBoxIcon.Warning
             );
             if (confirm != DialogResult.Yes)
-                return;
+                return false;
 
             try
             {
                 File.Delete(filePath);
-            
+                return true;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"删除配方失败：{ex.Message}");
+                return false;
             }
         }
 

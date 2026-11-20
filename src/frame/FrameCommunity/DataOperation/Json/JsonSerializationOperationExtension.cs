@@ -1,4 +1,4 @@
-﻿using LogTool;
+using LogTool;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -26,7 +26,8 @@ namespace FrameCommunity.DataOperation
             T paramTemp;
             param.filePath = strPath;
             paramTemp = param.Read<T>();
-            if (paramTemp == null)
+            bool isNew = paramTemp == null;
+            if (isNew)
             {
                 paramTemp = new T();
                 //ErrorWorks.ErrorMessageShow(strPath, ErrorWorks.GetErrorInfo((uint)ErrorCodeEnum.参数加载失败));
@@ -35,6 +36,10 @@ namespace FrameCommunity.DataOperation
 
             paramTemp.filePath = strPath;
             paramTemp.Init();
+
+            // 首次生成或文件损坏：把 Init 之后的默认值落盘。
+            // 不落盘的话每次启动都读到同一个空壳，现场永远看不到"缺了什么"。
+            if (isNew) paramTemp.Save();
             return paramTemp;
         }
 
@@ -45,7 +50,8 @@ namespace FrameCommunity.DataOperation
             T paramTemp;
             param.filePath = strPath;
             paramTemp = param.Read<T>();
-            if (paramTemp == null)
+            bool isNew = paramTemp == null;
+            if (isNew)
             {
                 paramTemp = new T();
                 //ErrorWorks.ErrorMessageShow(strPath, ErrorWorks.GetErrorInfo((uint)ErrorCodeEnum.参数加载失败));
@@ -54,6 +60,9 @@ namespace FrameCommunity.DataOperation
 
             paramTemp.filePath = strPath;
             paramTemp.Init(length);
+
+            // 首次生成或文件损坏：把 Init 之后的默认值落盘。
+            if (isNew) paramTemp.Save();
             return paramTemp;
         }
     }

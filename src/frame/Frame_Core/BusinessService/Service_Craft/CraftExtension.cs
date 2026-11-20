@@ -1,4 +1,4 @@
-﻿using NPOI.SS.Formula.Functions;
+using NPOI.SS.Formula.Functions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -64,7 +64,8 @@ namespace Frame_Core
             T craftBase1;
             craftBase.filePath = recipeFilePath;
             craftBase1 = craftBase.Read<T>();
-            if (craftBase1 == null)
+            bool isNew = craftBase1 == null;
+            if (isNew)
             {
                 craftBase1 = new T();
             }
@@ -72,6 +73,13 @@ namespace Frame_Core
             craftBase1.RecipeName = recipeName;
             craftBase1.filePath = recipeFilePath;
             craftBase1.Init(length);
+
+            // 首次读取（配方文件不存在或损坏）：Init 装配出的完整结构必须落盘，
+            // 否则磁盘上只会留下 Read 时那个未 Init 的空壳，配方永远"看起来是空的"。
+            if (isNew)
+            {
+                craftBase1.Save();
+            }
 
             return craftBase1;
         }

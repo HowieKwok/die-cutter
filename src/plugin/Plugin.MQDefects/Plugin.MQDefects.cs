@@ -136,18 +136,12 @@ namespace Plugin.MQDefects
                 {
                     if (!isInitModel)
                     {
-                        string path = Application.StartupPath + "\\AIModel\\";
-                        path += "model.onnx";
-                        ////极性选择 0表示阴极 / 正极 1表示阳极 / 负极
-                        //if (paramsMQDefects.com_Cathode == 0)
-                        //{
-                        //    path += "正极\\model.onnx";
-                        //}
-                        //else
-                        //{
-                        //    path += "负极\\model.onnx";
-
-                        //}
+                        // 极性来源是缺陷检测参数里的「极性选择」（com_Cathode），
+                        // 编号换算统一走 ElectrodePolarity，不在插件里出现裸 0/1。
+                        // 注意：插件不引用 FrameCommunity，无法直接读 Project.Instance.craftBase，
+                        // 配方极性与 com_Cathode 的同步由宿主负责（见 VM_Craft.CreateRecipe）。
+                        string polarityDir = ElectrodePolarity.ModelFolderOf(paramsMQDefects.com_Cathode);
+                        string path = Application.StartupPath + "\\AIModel\\" + polarityDir + "\\model.onnx";
                         int stat = ClassDefect.init(path);
                         if (stat == 0) paramsMQDefects.InitClassifierfinish = true;
                         else paramsMQDefects.InitClassifierfinish = false;

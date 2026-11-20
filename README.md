@@ -17,7 +17,7 @@
 
 ```
 Mef_VisionFrame.sln          解决方案入口（按 frame / infrastructure / plugin / ui 分解决方案文件夹）
-build_debug.bat              Debug 构建入口（vswhere 定位 VS，输出 build_debug.log）
+build.bat                   构建入口（vswhere 定位 VS，输出 build_<配置>.log）
 Directory.Build.props        全局构建约定：x64、al.exe 回退、载入门禁
 build/                       分层与 XAML 门禁（Layer.props / Xaml*Guard.targets）
 src/
@@ -27,6 +27,7 @@ src/
   ui/                        Frame_UI（令牌层）、Frame_UI.Wpf、Frame_UI.WinForms、LightControl、ViewROI
 dll/                         第三方 DLL 汇总（Halcon / 相机 / UI / 其他）
 packages/                    NuGet 包（packages.config 方式，已随仓库提供以便离线还原）
+config/                      机型配置底本（不参与构建，装机/换机型时人工投放，见 docs/机型与配置.md）
 docs/                        设计说明文档（.md）
 ```
 
@@ -37,8 +38,11 @@ docs/                        设计说明文档（.md）
 ## 构建
 
 ```bat
-build_debug.bat            :: Debug|Any CPU
-build_debug.bat rebuild    :: 先清理再构建
+build.bat                  :: Debug|Any CPU，增量
+build.bat debug            :: 同上
+build.bat release          :: Release|Any CPU，增量
+build.bat debug rebuild    :: Debug，先清理再构建
+build.bat release rebuild  :: Release，先清理再构建
 ```
 
 等价的手工命令：

@@ -1,4 +1,4 @@
-﻿using LogTool;
+using LogTool;
 
 using System;
 using System.Collections.Generic;
@@ -46,6 +46,17 @@ namespace Frame_Core
         #endregion
 
         #region 运行路径
+        /// <summary>
+        /// 通用层配置目录（= ZSystemConfigurationFile 根）：日志、用户、权限、PLC 等与机型无关的参数。
+        /// </summary>
+        public string CommonPath { get { return SystemPath; } }
+
+        /// <summary>
+        /// 机型层配置目录：随 CraftType 变化的参数（相机布局、光源、点检、图像保存）。
+        /// 由 UpdateCraftPath 在读到系统参数后设置；未设置前等于通用层。
+        /// </summary>
+        public string MachinePath = System.Environment.CurrentDirectory + "\\ZSystemConfigurationFile\\";
+
         //系统参数
         public string SystemSetPathName;//系统参数
         public string purviewParamPathName;//权限参数
@@ -297,6 +308,20 @@ namespace Frame_Core
             //craftParamPath = CraftPath + _CurrentMaterial.ToString() + "\\" + _currentCraft + ".cfts";
             if (!Directory.Exists(ProcessPath))
                 Directory.CreateDirectory(ProcessPath);
+
+            // 机型层配置目录：与 ZFormulaFile 用同一套命名（GetDescription），避免两处目录名分裂
+            MachinePath = GetMachinePath(_CurrentMaterial);
+            if (!Directory.Exists(MachinePath))
+                Directory.CreateDirectory(MachinePath);
+        }
+
+        /// <summary>
+        /// 某机型的机型层配置目录（只算路径，不创建）。
+        /// 种子补齐与运行时读取都必须走这里，否则会出现"种子进了 A 目录、程序读 B 目录"。
+        /// </summary>
+        public string GetMachinePath(MaterialCrafEnum craftType)
+        {
+            return SystemPath + craftType.GetDescription() + "\\";
         }
         /// <summary>
         /// 刷新生产数据路径

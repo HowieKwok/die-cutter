@@ -1,4 +1,4 @@
-﻿namespace Mef_VisionFrame
+namespace Mef_VisionFrame
 {
     partial class Form_CraftFrame
     {
@@ -34,7 +34,6 @@
             this.pageHeader = new AntdUI.PageHeader();
             this.panelLeft = new AntdUI.Panel();
             this.tableLayoutPanelLeft = new System.Windows.Forms.TableLayoutPanel();
-            this.comb_materialCraf = new AntdUI.Select();
             this.inputSearch = new AntdUI.Input();
             this.labelCraftTime = new AntdUI.Label();
             this.btn_SaveCurrentCraft = new AntdUI.Button();
@@ -119,34 +118,20 @@
             // 
             this.tableLayoutPanelLeft.ColumnCount = 1;
             this.tableLayoutPanelLeft.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanelLeft.Controls.Add(this.comb_materialCraf, 0, 0);
-            this.tableLayoutPanelLeft.Controls.Add(this.inputSearch, 0, 1);
-            this.tableLayoutPanelLeft.Controls.Add(this.labelCraftTime, 0, 2);
-            this.tableLayoutPanelLeft.Controls.Add(this.tableCrafts, 0, 3);
-            this.tableLayoutPanelLeft.Controls.Add(this.btn_SaveCurrentCraft, 0, 4);
+            this.tableLayoutPanelLeft.Controls.Add(this.inputSearch, 0, 0);
+            this.tableLayoutPanelLeft.Controls.Add(this.labelCraftTime, 0, 1);
+            this.tableLayoutPanelLeft.Controls.Add(this.tableCrafts, 0, 2);
+            this.tableLayoutPanelLeft.Controls.Add(this.btn_SaveCurrentCraft, 0, 3);
             this.tableLayoutPanelLeft.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanelLeft.Location = new System.Drawing.Point(12, 12);
             this.tableLayoutPanelLeft.Name = "tableLayoutPanelLeft";
-            this.tableLayoutPanelLeft.RowCount = 5;
-            this.tableLayoutPanelLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 42F));
+            this.tableLayoutPanelLeft.RowCount = 4;
             this.tableLayoutPanelLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 42F));
             this.tableLayoutPanelLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanelLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanelLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 54F));
             this.tableLayoutPanelLeft.Size = new System.Drawing.Size(350, 699);
             this.tableLayoutPanelLeft.TabIndex = 0;
-            // 
-            // comb_materialCraf
-            // 
-            this.comb_materialCraf.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.comb_materialCraf.List = true;
-            this.comb_materialCraf.ListAutoWidth = true;
-            this.comb_materialCraf.Location = new System.Drawing.Point(3, 3);
-            this.comb_materialCraf.Name = "comb_materialCraf";
-            this.comb_materialCraf.PlaceholderText = "选择工艺类型";
-            this.comb_materialCraf.Size = new System.Drawing.Size(344, 36);
-            this.comb_materialCraf.TabIndex = 0;
-            this.comb_materialCraf.SelectedIndexChanged += new AntdUI.IntEventHandler(this.comb_materialCraf_SelectedIndexChanged);
             // 
             // inputSearch
             // 
@@ -225,7 +210,6 @@
         private AntdUI.PageHeader pageHeader;
         private AntdUI.Panel panelLeft;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanelLeft;
-        private AntdUI.Select comb_materialCraf;
         private AntdUI.Input inputSearch;
         private AntdUI.Label labelCraftTime;
         private AntdUI.Button btn_SaveCurrentCraft;

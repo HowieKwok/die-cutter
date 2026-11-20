@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -19,11 +19,23 @@ namespace Frame_Core
         /// <param name="M_CameraRelevancies"></param>
         public static void InitPointInspectionFunction()
         {
+            // 相机未配置时（全新机器或 AllCamParam 为空）没有相机相关性对象，
+            // 这里只是重置点检状态，拿不到就跳过——是否可用由后续流程校验去提示。
+            SetDefectStateIgnored(0);
+            SetDefectStateIgnored(1);
 
-            Service_Camera.Get_CameraRelevancy(0).m_PointInspectionStateParam.PointInspectionState_Defect = (int)PointInspectionStateEnum.已忽略;
-            Service_Camera.Get_CameraRelevancy(1).m_PointInspectionStateParam.PointInspectionState_Defect = (int)PointInspectionStateEnum.已忽略;
+            if (Project.Instance.M_param_PointInspection != null)
+            {
+                Project.Instance.M_param_PointInspection.InitFinishEN = true;
+            }
+        }
 
-            Project.Instance.M_param_PointInspection.InitFinishEN = true;
+        private static void SetDefectStateIgnored(int cameraIndex)
+        {
+            CameraRelevancy relevancy = Service_Camera.Get_CameraRelevancy(cameraIndex);
+            if (relevancy == null || relevancy.m_PointInspectionStateParam == null) return;
+
+            relevancy.m_PointInspectionStateParam.PointInspectionState_Defect = (int)PointInspectionStateEnum.已忽略;
         }
 
         /// <summary>

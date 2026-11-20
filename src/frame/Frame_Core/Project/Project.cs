@@ -307,27 +307,35 @@ namespace Frame_Core
                 }
 
 
-                //【1】加载相机参数
-                M_CamParam = M_CamParam.ReadExtension<CamParam>(paramPathSet.SystemPath, $"AllCamParam");
+                //【1】加载相机参数（机型层：相机布局随机型变化）
+                M_CamParam = M_CamParam.ReadExtension<CamParam>(paramPathSet.MachinePath, $"AllCamParam");
 
-                //【2】加载光源参数
-                M_LightControllerParam = M_LightControllerParam.ReadExtension<LightControllerParam>(paramPathSet.SystemPath, $"AllLightControllerParam");
+                //【2】加载光源参数（机型层）
+                M_LightControllerParam = M_LightControllerParam.ReadExtension<LightControllerParam>(paramPathSet.MachinePath, $"AllLightControllerParam");
 
                 //【3】加载 配方参数
                 craftBase = Craft_ModelService.GetCraft(paramPathSet.CraftPath, systemInfo.CraftType, systemInfo.RecipeName);
 
-                //【4】加载图像保存参数
-                M_NewImageSaveParamer = M_NewImageSaveParamer.ReadExtension<NewImageSaveParamer>(paramPathSet.SystemPath, $"ImageSaveParamer", M_CamParam.l_CameraDevs.Count);
+                //【4】加载图像保存参数（机型层：按相机数生成）
+                M_NewImageSaveParamer = M_NewImageSaveParamer.ReadExtension<NewImageSaveParamer>(paramPathSet.MachinePath, $"ImageSaveParamer", M_CamParam.l_CameraDevs.Count);
 
                 //【5】加载PLC参数：两种机型的协议、地址形式、IP 都可能不同，必须是两份实例 + 两个文件。
                 //     共用一份时，在现场改五金 IP/协议会把激光的参数一起改掉。
-                M_PLCDevParam = M_PLCDevParam.ReadExtension<PLCDevParam>(paramPathSet.SystemPath, $"PLCDevParamr");
-                M_PLCDevParam_五金 = M_PLCDevParam_五金.ReadExtension<PLCDevParam_五金>(paramPathSet.SystemPath, $"PLCDevParamr_五金");
+                //     两种机型各放各的机型目录，只读当前机型那一份：
+                //     都读的话，另一份就是上一台机器的残留，却仍会被后续诊断读到。
+                if (Is五金模切)
+                {
+                    M_PLCDevParam_五金 = M_PLCDevParam_五金.ReadExtension<PLCDevParam_五金>(paramPathSet.MachinePath, $"PLCDevParamr");
+                }
+                else
+                {
+                    M_PLCDevParam = M_PLCDevParam.ReadExtension<PLCDevParam>(paramPathSet.MachinePath, $"PLCDevParamr");
+                }
                 server_DiecuttingCutPLC = new Server_DiecuttingCutPLC(M_PLCDevParam);
                 server_五金模切PLC = new Server_五金模切PLC(M_PLCDevParam_五金);
 
-                //【6】加载点检参数
-                M_param_PointInspection = M_param_PointInspection.ReadExtension<Param_PointInspection>(paramPathSet.SystemPath, $"PointInspectionParamer");
+                //【6】加载点检参数（机型层：工位随相机布局变化）
+                M_param_PointInspection = M_param_PointInspection.ReadExtension<Param_PointInspection>(paramPathSet.MachinePath, $"PointInspectionParamer");
 
                 //【7】加载控制卡参数
                 M_ParamControlCord = M_ParamControlCord.ReadExtension<ParamControlCord>(paramPathSet.SystemPath, $"ControlCordParam");
@@ -394,8 +402,16 @@ namespace Frame_Core
                 //插件管理器初始化
                 Process流程插件管理者.SetPath(paramPathSet.ProcessPath, paramPathSet.InstanceParamPath);
 
-                ReadProject(); // 加载配方后，默认添加一个初始编号为0的产品。
-                SaveProject();
+                // 加载成功才回写：加载失败时保存会把错误的结构写进 Instance.xml，
+                // 下次启动再读到它，问题被固化成"现场配置"。
+                if (ReadProject())
+                {
+                    SaveProject(); // 加载配方后，默认添加一个初始编号为0的产品。
+                }
+                else
+                {
+                    Log4netRecord.ErrorLog.Fatal("流程加载失败，已跳过自动保存，避免写坏 Instance.xml。");
+                }
 
 
                 baseProDevice.INIPro();
