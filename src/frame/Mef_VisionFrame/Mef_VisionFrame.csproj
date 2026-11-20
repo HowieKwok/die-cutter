@@ -459,6 +459,9 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="项目工厂\View\CamDisplayUnit.cs" />
+    <Compile Include="项目工厂\View\UC_SizeCurveBoard.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="项目工厂\View\CollapseRail.cs">
       <SubType>Component</SubType>
     </Compile>

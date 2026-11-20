@@ -1,4 +1,4 @@
-﻿namespace Mef_VisionFrame
+namespace Mef_VisionFrame
 {
     partial class ScotPotUIUser
     {
@@ -13,9 +13,14 @@
         /// <param name="disposing">如果应释放托管资源，为 true；否则为 false。</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                // 离开控件树后仍留在节流脏表里会一直占着共享定时器
+                Unregister(this);
+                if (components != null)
+                {
+                    components.Dispose();
+                }
             }
             base.Dispose(disposing);
         }

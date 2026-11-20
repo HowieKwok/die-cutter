@@ -50,6 +50,9 @@ namespace Mef_VisionFrame
         public BindingList<QualityData> DefectStation_BindingDatas { get; } = new BindingList<QualityData>();
         public BindingList<QualityData> SizeStation_BindingDatas { get; } = new BindingList<QualityData>();
         VM_DieCuttingCut VM;
+
+        /// <summary>曲线页：与五金模切共用的唯一实现。</summary>
+        private UC_SizeCurveBoard chartBoard;
         private readonly List<CamDisplayUnit> displayUnits = new List<CamDisplayUnit>();
 
 
@@ -98,16 +101,21 @@ namespace Mef_VisionFrame
 
             BuildDisplayUnits();
 
-            var sizeName = VM.Data.Craft.Get_Station3_SizeCrafts();
-            foreach (var item in sizeName)
-            {
-                var chart = GetChart(item.Name, item.Describe);
-                if (chart != null)
-                {                           
-                    VM.Data.chartUIUser[item.Name] = chart;
-                }
-            }
+            MountChartBoard();
 
+        }
+
+        /// <summary>
+        /// 曲线页：所有机型共用 UC_SizeCurveBoard（以五金模切那套为准，参数页标签在底部）。
+        /// 设计器里还留着旧的 tabs3 + formsPlot1..14，这里把旧内容整棵摘掉再挂共用控件，
+        /// 避免同一界面出现两套曲线实现。
+        /// </summary>
+        private void MountChartBoard()
+        {
+            chartBoard = new UC_SizeCurveBoard(VM.Data.chartUIUser) { Dock = DockStyle.Fill };
+            tabPage7.Controls.Clear();
+            tabPage7.Controls.Add(chartBoard);
+            chartBoard.Sync(VM.Data.Craft?.Get_Station3_SizeCrafts());
         }
         private void UC_DieCuttingCut_Load(object sender, EventArgs e)
         {
@@ -147,27 +155,8 @@ namespace Mef_VisionFrame
                         }
                     }
 
-                    var sizeName = VM.Data.Craft.Get_Station3_SizeCrafts();
-                    foreach (var item in sizeName)
-                    {
-                        if (VM.Data.chartUIUser.ContainsKey(item.Name))
-                        {
-                            var chart = VM.Data.chartUIUser[item.Name];
-                            if (chart != null)
-                            {
-                                double up = item.StandardValue + item.DBTolUpper;
-                                double down = item.StandardValue - item.DBTolLower;
-                                chart.GetAxess(down, up, out double Min_Value, out double Max_Value);
-                                chart.SetSignalPlotLine(item.StandardValue, Color.White, "当前值");
-                                chart.SetHorizontalLine(item.StandardValue, Color.LimeGreen, "标准值", LineStyle.Dash);
-                                chart.SetHorizontalLine(up, Color.Red, "上限", LineStyle.Dash);
-                                chart.SetHorizontalLine(down, Color.Red, "下限", LineStyle.Dash);
-                                chart.SetYAxisRange(Min_Value, Max_Value);
-                          
-                            }
-                        }
-
-                    }
+                    // 曲线页收起/未建时由共用控件自己按签名建页签与标线，这里无需判断
+                    chartBoard?.Sync(VM.Data.Craft?.Get_Station3_SizeCrafts());
                 });
             });
         }

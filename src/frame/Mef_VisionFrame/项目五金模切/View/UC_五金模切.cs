@@ -473,16 +473,12 @@ namespace Mef_VisionFrame
         private NewDisplayWindowClass[,] ngDisplayWindows = new NewDisplayWindowClass[5, 3];
 
         /// <summary>
-        /// 尺寸曲线：按项的性质分四组页签（与激光模切的极片/极耳/V角/V角一致）。
-        /// 项数由配方决定，每组两列铺开，配方变几项都不会错位。
+        /// 尺寸曲线页：所有机型共用 UC_SizeCurveBoard（两组页签、参数页标签在底部）。
+        /// 本类只负责把它挂进右栏、把配方项喂进去，不再自己建图。
         /// </summary>
-        private readonly Dictionary<string, TableLayoutPanel> chartPanels = new Dictionary<string, TableLayoutPanel>();
-        private AntdUI.Tabs chartTabs;
+        private UC_SizeCurveBoard chartBoard;
 
         private readonly List<Tuple<UC_HalconWindow, int, string>> titledWindows = new List<Tuple<UC_HalconWindow, int, string>>();
-
-        /// <summary>曲线页签顺序，也是分组名的唯一来源。</summary>
-        private static readonly string[] 曲线分组 = { "极片数据", "极耳数据", "V角数据(下)", "V角数据(上)" };
 
         private Timer viewTimer;
 
@@ -506,35 +502,9 @@ namespace Mef_VisionFrame
             dg_DefectStatistics = NewStatisticsGrid(VM.Data.DefectStation_BindingDatas);
             dg_SizeStatistics = NewStatisticsGrid(VM.Data.SizeStation_BindingDatas);
 
-            // 曲线页：四组子页签，每页一个滚动容器 + 两列排版的表格
-            chartTabs = new AntdUI.Tabs { Dock = DockStyle.Fill };
-            foreach (string group in 曲线分组)
-            {
-                TableLayoutPanel panel = new TableLayoutPanel
-                {
-                    Dock = DockStyle.Top,
-                    ColumnCount = 2,
-                    RowCount = 0,
-                    AutoSize = true,
-                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                    Margin = new Padding(0),
-                };
-                panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-                panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-
-                Panel scroll = new Panel
-                {
-                    Dock = DockStyle.Fill,
-                    AutoScroll = true,
-                    Margin = new Padding(0),
-                };
-                scroll.Controls.Add(panel);
-
-                chartPanels[group] = panel;
-                chartTabs.Pages.Add(NewTabPage(group, scroll));
-            }
-            Panel chartScroll = new Panel { Dock = DockStyle.Fill };
-            chartScroll.Controls.Add(chartTabs);
+            // 曲线页：所有机型共用 UC_SizeCurveBoard —— 两级页签由它自己建，
+            // 参数页标签在底部，本类只把配方项喂进去。
+            chartBoard = new UC_SizeCurveBoard(VM.Data.chartUIUser) { Dock = DockStyle.Fill };
 
             dpUpEaDefect = new DynamicGridView { Dock = DockStyle.Fill };
             dpDownEaDefect = new DynamicGridView { Dock = DockStyle.Fill };
@@ -555,7 +525,7 @@ namespace Mef_VisionFrame
                 new[] { "极片尺寸过程数据", "极片缺陷过程数据", "极片尺寸工位通讯数据" },
                 new Control[] { dpSizeResult, dpSizeDefect, dpSizeSend }));
 
-            AddDataPage(tabs, DataPage.曲线图, "曲线图", chartScroll);
+            AddDataPage(tabs, DataPage.曲线图, "曲线图", chartBoard);
             AddDataPage(tabs, DataPage.缺陷图片, "缺陷图片", BuildNgPanel());
 
             // 日志页与激光模切同一套控件（UC_Message 自带定时器，消费 MessageNotify 的报警/调试/错误/通讯队列）
@@ -797,70 +767,12 @@ namespace Mef_VisionFrame
         }
 
         /// <summary>
-        /// 尺寸曲线：每个配方尺寸项一张图，按项的性质落到四组页签里，组内两列铺开。
-        /// 分组只按名字前缀判断，所以配方新增项不用改代码，落到哪个组也一眼能看懂。
+        /// 配方尺寸项：曲线的唯一数据源。建页签、分组、刷标线都在共用控件 UC_SizeCurveBoard 里，
+        /// 本类不再自己建图，也不自己判断分组。
         /// </summary>
-        private void BuildCharts()
+        private IList<SizeCraftStation_DieCuttingCut> SizeItems()
         {
-            foreach (TableLayoutPanel panel in chartPanels.Values)
-            {
-                panel.SuspendLayout();
-                panel.Controls.Clear();
-                panel.RowStyles.Clear();
-                panel.RowCount = 0;
-            }
-
-            VM.Data.chartUIUser.Clear();
-
-            if (VM.Data.Craft == null)
-            {
-                foreach (TableLayoutPanel panel in chartPanels.Values) panel.ResumeLayout();
-                return;
-            }
-
-            Dictionary<string, int> groupIndex = new Dictionary<string, int>();
-
-            foreach (SizeCraftStation_DieCuttingCut item in VM.Data.Craft.Get_Station3_SizeCrafts())
-            {
-                string group = GetCurveGroupName(item.Name);
-                TableLayoutPanel panel = chartPanels[group];
-
-                int index;
-                groupIndex.TryGetValue(group, out index);
-                groupIndex[group] = index + 1;
-
-                FormsPlot plot = new FormsPlot { Dock = DockStyle.Fill, Margin = new Padding(0) };
-                // 6/8 与激光模切一致：上下各留 6/8 个像素的观察余量，曲线不会贴边
-                ScotPotUIUser chart = new ScotPotUIUser(plot, string.IsNullOrEmpty(item.Describe) ? item.Name : item.Describe, 6, 8)
-                {
-                    Dock = DockStyle.Fill,
-                    Margin = new Padding(2),
-                };
-
-                if (index % 2 == 0)
-                {
-                    panel.RowCount++;
-                    panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 170F));
-                }
-
-                panel.Controls.Add(chart, index % 2, index / 2);
-                VM.Data.chartUIUser[item.Name] = chart;
-            }
-
-            foreach (TableLayoutPanel panel in chartPanels.Values) panel.ResumeLayout();
-        }
-
-        /// <summary>
-        /// 曲线项 → 页签。极耳相关（极耳宽度/高度/左肩宽、带料高）归"极耳数据"，
-        /// V角按上下两面分两页，其余整片类尺寸（单片长度/宽度/角度）归"极片数据"。
-        /// </summary>
-        private static string GetCurveGroupName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return "极片数据";
-            if (name.StartsWith("下左") || name.StartsWith("下右")) return "V角数据(下)";
-            if (name.StartsWith("上左") || name.StartsWith("上右")) return "V角数据(上)";
-            if (name.StartsWith("极耳") || name == "带料高") return "极耳数据";
-            return "极片数据";
+            return VM.Data.Craft?.Get_Station3_SizeCrafts();
         }
 
         /// <summary>按路取一格 NG 显示窗口，每显示一次推进一格（轮播）。</summary>
@@ -909,28 +821,6 @@ namespace Mef_VisionFrame
             num.Text = (data?.SumupCount ?? 0).ToString("0");
             ok.Text = (data?.OKCount ?? 0).ToString("0");
             ng.Text = (data?.NGCount ?? 0).ToString("0");
-        }
-
-        /// <summary>按配方刷新曲线标线：标准值 + 上下限。</summary>
-        private void RefreshCharts()
-        {
-            if (VM.Data.Craft == null) return;
-
-            foreach (SizeCraftStation_DieCuttingCut item in VM.Data.Craft.Get_Station3_SizeCrafts())
-            {
-                ScotPotUIUser chart;
-                if (!VM.Data.chartUIUser.TryGetValue(item.Name, out chart) || chart == null) continue;
-
-                double up = item.StandardValue + item.DBTolUpper;
-                double down = item.StandardValue - item.DBTolLower;
-
-                chart.GetAxess(down, up, out double min, out double max);
-                chart.SetSignalPlotLine(item.StandardValue, Color.White, "当前值");
-                chart.SetHorizontalLine(item.StandardValue, Color.LimeGreen, "标准值", LineStyle.Dash);
-                chart.SetHorizontalLine(up, Color.Red, "上限", LineStyle.Dash);
-                chart.SetHorizontalLine(down, Color.Red, "下限", LineStyle.Dash);
-                chart.SetYAxisRange(min, max);
-            }
         }
 
         #endregion
@@ -1006,12 +896,12 @@ namespace Mef_VisionFrame
 
         public override void InitView()
         {
-            // 统计表的行由配方决定（换了配方要重建），曲线同理
+            // 统计表的行由配方决定（换了配方要重建），曲线页签由共用控件按签名自行重建
             VM.Data.Reset_StationStatistics();
-            BuildCharts();
             InitDetailPanels();
             RefreshStatistics();
-            RefreshCharts();
+            chartBoard?.Reset();          // 换卷：清掉上一轮的波形，页签按新配方重建
+            chartBoard?.Sync(SizeItems());
             SyncDataAreaState();
         }
 
@@ -1069,7 +959,8 @@ namespace Mef_VisionFrame
 
             // 每个区域各自过闸门：收起或不在该页时只排空队列，不往界面上写
             if (IsDataAreaVisible(DataPage.良率统计)) RefreshStatistics();
-            if (IsDataAreaVisible(DataPage.曲线图)) RefreshCharts();
+            // 曲线页收起时不建图、不刷标线；点开那一刻签名对不上就一次建好
+            if (IsDataAreaVisible(DataPage.曲线图)) chartBoard?.Sync(SizeItems());
 
             ConsumeDetailPanels();
         }
