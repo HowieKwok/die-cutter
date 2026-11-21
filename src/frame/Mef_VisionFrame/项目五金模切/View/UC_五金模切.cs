@@ -22,7 +22,11 @@ namespace Mef_VisionFrame
     public class UC_五金模切 : UCViewBase
     {
         private readonly VM_五金模切 VM;
-        private readonly List<CamDisplayUnit> displayUnits = new List<CamDisplayUnit>();
+        /// <summary>
+        /// 显示单元只以只读快照的形式发布：界面线程整表建成后一次性换引用，
+        /// 图像线程每轮取一次引用再遍历——绝不能在图像线程里遍历一个会被 Clear/Add 的 List。
+        /// </summary>
+        private volatile CamDisplayUnit[] displayUnits = Array.Empty<CamDisplayUnit>();
 
         // 控件必须留引用：NewDisplayWindowClass 只持有它们的 HWindow，窗体一旦被回收画面就黑掉。
         private UC_HalconWindow winUpMain;
@@ -122,7 +126,18 @@ namespace Mef_VisionFrame
         {
             base.OnHandleCreated(e);
 
-            if (displayUnits.Count == 0)
+            // 句柄可能由图像线程强制创建（ForceHandle）时进到这里，控件操作必须回界面线程
+            if (InvokeRequired)
+            {
+                BeginInvoke((MethodInvoker)(() =>
+                {
+                    if (displayUnits.Length == 0) BuildDisplayUnits();
+                    EnsureNgDisplayWindows();
+                }));
+                return;
+            }
+
+            if (displayUnits.Length == 0)
             {
                 BuildDisplayUnits();
             }
@@ -829,23 +844,25 @@ namespace Mef_VisionFrame
 
         private void BuildDisplayUnits()
         {
-            displayUnits.Clear();
-
             CamImageQueues[] cams = VM.Data.Cams;
             if (cams == null || cams.Length < 5) return;
 
-            AddUnit(0, "线扫", cams[0], winUpMain, winUpEa);
-            AddUnit(1, "线扫", cams[1], winDownMain, winDownEa);
-            AddUnit(2, "面阵", cams[2], winSize1, null);
-            AddUnit(3, "面阵", cams[3], winSize2, null);
-            AddUnit(4, "面阵", cams[4], winSize3, null);
+            // 先在局部表里建满，最后一次性发布：图像线程永远看不到"建了一半"的表
+            var units = new List<CamDisplayUnit>(5);
+            AddUnit(units, 0, "线扫", cams[0], winUpMain, winUpEa);
+            AddUnit(units, 1, "线扫", cams[1], winDownMain, winDownEa);
+            AddUnit(units, 2, "面阵", cams[2], winSize1, null);
+            AddUnit(units, 3, "面阵", cams[3], winSize2, null);
+            AddUnit(units, 4, "面阵", cams[4], winSize3, null);
+
+            displayUnits = units.ToArray();
         }
 
         /// <summary>
         /// 一路相机一行。eaWindow 为 null 表示该路没有 EA 图（尺寸相机）。
         /// NG 缺陷图当前没有产出方（没有缺陷判定算法），先不接，避免界面上出现永远空着的轮播格子。
         /// </summary>
-        private void AddUnit(int camIndex, string tabGroup, CamImageQueues queues,
+        private void AddUnit(List<CamDisplayUnit> units, int camIndex, string tabGroup, CamImageQueues queues,
                              UC_HalconWindow mainWindow, UC_HalconWindow eaWindow)
         {
             CamDisplayUnit unit = new CamDisplayUnit
@@ -873,7 +890,7 @@ namespace Mef_VisionFrame
             // NG 轮播：每路两格轮流显示缺陷小图，池不参与截图（截图会二次取格导致串位）
             unit.Ng = CamStreamUnit.RotateAt(NewNgPool(camIndex), queues.NgShow, queues.NgSave, queues.NgDispose);
 
-            displayUnits.Add(unit);
+            units.Add(unit);
         }
 
         #endregion
@@ -882,10 +899,11 @@ namespace Mef_VisionFrame
 
         public void ImageShowAndSave()
         {
-            // 只读一次快照：折叠/换页由界面线程写，这里不碰控件
+            // 只读一次快照：折叠/换页与显示单元重建都由界面线程写，这里取到的是不可变数组
             bool drawNg = ngDisplayEnabled;
+            CamDisplayUnit[] snapshot = displayUnits;
 
-            foreach (CamDisplayUnit unit in displayUnits)
+            foreach (CamDisplayUnit unit in snapshot)
             {
                 CamStreamUnit.Handle(unit.RawSaveOnly);
                 CamStreamUnit.Handle(unit.Main);
