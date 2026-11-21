@@ -66,9 +66,13 @@ namespace Frame_Core
             // 机型决定机型层目录，读不到就按默认机型检查
             MaterialCrafEnum craftType = MaterialCrafEnum.激光模切一体机;
             string systemParam = Path.Combine(root, "SystemParam.json");
-            if (File.Exists(systemParam) && !TryReadCraftType(systemParam, out craftType))
+            if (File.Exists(systemParam))
             {
-                problems.Add("机型无法解析（CraftType 不是合法值）：" + systemParam);
+                string craftError;
+                if (!TryReadCraftType(systemParam, out craftType, out craftError))
+                {
+                    problems.Add("机型无法解析（" + craftError + "）：" + systemParam);
+                }
             }
 
             string machineName = craftType.GetDescription();
@@ -98,25 +102,63 @@ namespace Frame_Core
             return problems;
         }
 
-        private static bool TryReadCraftType(string path, out MaterialCrafEnum craftType)
+        /// <summary>
+        /// 读 CraftType。失败时给出可与现场沟通的原因（读不出 / JSON 坏 / 字段缺 / 值非法），
+        /// 不要把这四种情况合并成一句"不是合法值"——现场的处置手段完全不同。
+        /// </summary>
+        private static bool TryReadCraftType(string path, out MaterialCrafEnum craftType, out string error)
         {
             craftType = MaterialCrafEnum.激光模切一体机;
+            error = null;
+
+            string raw;
             try
             {
-                JObject json = JObject.Parse(File.ReadAllText(path));
-                JToken token = json["CraftType"];
-                if (token == null) return false;
-
-                int value = token.Value<int>();
-                if (!Enum.IsDefined(typeof(MaterialCrafEnum), value)) return false;
-
-                craftType = (MaterialCrafEnum)value;
-                return true;
+                raw = File.ReadAllText(path);
             }
-            catch
+            catch (Exception ex)
             {
+                error = "文件无法读取，" + ex.GetType().Name;
                 return false;
             }
+
+            JObject json;
+            try
+            {
+                json = JObject.Parse(raw);
+            }
+            catch (Exception ex)
+            {
+                error = "JSON 格式错误，请用 UTF-8 重新保存：" + ex.Message;
+                return false;
+            }
+
+            JToken token = json["CraftType"];
+            if (token == null || token.Type == JTokenType.Null)
+            {
+                error = "缺少 CraftType 字段";
+                return false;
+            }
+
+            int value;
+            if (token.Type == JTokenType.Integer)
+            {
+                value = token.Value<int>();
+            }
+            else if (!int.TryParse(token.ToString(), out value))
+            {
+                error = "CraftType=" + token + " 不是整数";
+                return false;
+            }
+
+            if (!Enum.IsDefined(typeof(MaterialCrafEnum), value))
+            {
+                error = "CraftType=" + value + " 不是合法值（0=激光模切一体机，1=五金模切）";
+                return false;
+            }
+
+            craftType = (MaterialCrafEnum)value;
+            return true;
         }
 
         private static int CountCameras(string path)

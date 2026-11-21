@@ -87,6 +87,37 @@ function Copy-MissingFiles([string]$SourceDir, [string]$TargetDir, [string[]]$Sk
 Copy-MissingFiles (Join-Path $repo 'config\General') $targetRoot
 Copy-MissingFiles $machineSrc $targetMachine
 
+# SystemParam.json 是「机型开关」，不是现场调参数据：输出目录里那份可能被改过
+# 机台号/账号，也可能在第一次投放时就是坏的。这里只保证 CraftType 与仓库一致。
+function Sync-CraftType([string]$Source, [string]$Target) {
+    if (-not (Test-Path $Target)) { return }
+
+    $srcRaw = Get-Content $Source -Raw -Encoding UTF8
+    $srcHit = [regex]::Match($srcRaw, '"CraftType"\s*:\s*(\d+)')
+    if (-not $srcHit.Success) { return }
+    $wanted = [int]$srcHit.Groups[1].Value
+
+    $dst = $null
+    try { $dst = Get-Content $Target -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
+
+    if ($null -eq $dst -or -not ($dst.PSObject.Properties.Name -contains 'CraftType')) {
+        # 读不出来就没法保留现场改动，直接用仓库副本替换
+        Copy-Item -Path $Source -Destination $Target -Force
+        Write-Host "[config] SystemParam.json unreadable, replaced with repo copy (CraftType=$wanted)"
+        return
+    }
+
+    if ([int]$dst.CraftType -eq $wanted) { return }
+
+    $old = [int]$dst.CraftType
+    $dst.CraftType = $wanted
+    $json = $dst | ConvertTo-Json -Depth 8
+    [System.IO.File]::WriteAllText($Target, $json, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "[config] SystemParam.json CraftType $old -> $wanted (repo), other fields kept"
+}
+
+Sync-CraftType $sysParam (Join-Path $targetRoot 'SystemParam.json')
+
 # 缺陷检测模型：按 config\General\SystemParam.json 的 AiPolarity 指定的极性，把对应模型摊平拷到 <OutDir>\AIModel\。
 # 极性只有一份（设备出厂即定），输出根下因此只有一个 AIModel\model.onnx，
 # 而仓库里保留正负极两份，用来切换。
