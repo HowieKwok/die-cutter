@@ -6,7 +6,7 @@
 
 | 项 | 说明 |
 |---|---|
-| IDE | Visual Studio 2022 及以上（需 .NET Framework 4.7.2 开发组件 + WPF 工作负载） |
+| IDE | Visual Studio 2022 或 2026（需 .NET Framework 4.7.2 开发组件 + WPF 工作负载）；`build.bat` 用 vswhere 自动定位，无需手工配环境 |
 | 主框架 | .NET Framework 4.7.2（多数项目，非 SDK 风格，`packages.config` 方式还原） |
 | 其他 | `LightControl`、`ConvexPeakDemo` 为 net6.0(-windows)；`ViewROI` 为 4.5.2 |
 | 平台 | 统一 `PlatformTarget=x64`（`Directory.Build.props` 设），Halcon xl / 相机 SDK / 光源 SDK 均为 AMD64 |
@@ -35,6 +35,10 @@ docs/                        设计说明文档（.md）
 跨层引用为 `..\..\frame\…`、`..\..\infrastructure\…`、`..\..\plugin\…`、`..\..\ui\…`。
 新增工程时按此规律书写，`Directory.Build.props` 会自动生效，无需逐个配置。
 
+> 目录名一律小写（`build/`、`dll/`、`docs/`）。Windows 默认 `core.ignorecase=true`，
+> 大小写改动 git 不会记录，容易造成「本地小写、仓库里大写」。要改大小写必须两步 `git mv`：
+> `git mv Build Build__tmp` 再 `git mv Build__tmp build`，直接 `git mv Build build` 会被当成无操作。
+
 ## 构建
 
 ```bat
@@ -53,6 +57,9 @@ msbuild Mef_VisionFrame.sln /p:Configuration=Release /p:Platform="Any CPU" /m
 
 首次构建建议先还原 NuGet 包（VS 会自动完成，或 `nuget restore Mef_VisionFrame.sln`）。
 `Debug|Any CPU` / `Release|Any CPU` 为当前验证通过的配置。
+
+`build.bat` 通过 vswhere 取最新的 VS 实例并加载 x64 工具链，Visual Studio 2022 / 2026 都能直接用；
+日志写在脚本旁边：`build_Debug.log` / `build_Release.log`（UTF-8），失败时先看 `error [A-Z]+[0-9]+`。
 
 ## 构建门禁
 
