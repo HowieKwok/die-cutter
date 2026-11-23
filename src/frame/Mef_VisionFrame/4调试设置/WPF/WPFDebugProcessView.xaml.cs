@@ -218,14 +218,26 @@ namespace Mef_VisionFrame.调试设置.WPF
         private void BtnDeleteProcess_Click(object sender, RoutedEventArgs e)
         {
             if (currentProcess == null) return;
-            if (Project.Instance.m_ProcessList == null || Project.Instance.m_ProcessList.Count <= 1) return;
 
-            Project.Instance.DeleteProcess(currentProcess);
-            currentProcess = Project.Instance.m_ProcessList.Count > 0
-                ? Project.Instance.m_ProcessList[Project.Instance.m_ProcessList.Count - 1].process
-                : null;
+            if (Project.Instance.m_ProcessList == null || Project.Instance.m_ProcessList.Count <= 1)
+            {
+                SetStatus("至少保留一个流程，无法删除");
+                return;
+            }
+
+            ProcessServices service = Project.Instance.GetProcessService(currentProcess);
+            if (service == null) return;
+
+            if (!Project.Instance.DeleteProcessService(service))
+            {
+                SetStatus("删除失败：流程线程未退出，请先停止运行");
+                return;
+            }
+
+            currentProcess = null;
             selectedModule = null;
             RefreshProcessList(false);
+            SetStatus("流程已删除");
         }
 
         private void BtnRebuild_Click(object sender, RoutedEventArgs e)

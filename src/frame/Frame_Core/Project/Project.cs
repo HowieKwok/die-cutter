@@ -734,22 +734,32 @@ namespace Frame_Core
             return Process流程插件管理者.GetService(name);
         }
         /// <summary>
-        /// 清空指定 Process 下的模块对象。
-        /// 为兼容旧语义，该入口不从流程列表移除 ProcessServices。
+        /// 清空指定 Process 下的模块对象，流程本身保留在流程列表中。
+        /// 需要把流程从列表移除请使用 DeleteProcessService。
         /// </summary>
         /// <param name="proc">需要清空模块的流程对象。</param>
-        public void DeleteProcess(Process proc)
+        public void ClearProcessModules(Process proc)
         {
-            Process流程插件管理者.Delete(proc);
+            Process流程插件管理者.ClearProcessModules(proc);
+        }
+        /// <summary>
+        /// 根据 Process 反查所属的 ProcessServices。
+        /// </summary>
+        /// <param name="proc">流程对象。</param>
+        /// <returns>找到返回 ProcessServices；未找到返回 null。</returns>
+        public ProcessServices GetProcessService(Process proc)
+        {
+            return Process流程插件管理者.GetService(proc);
         }
         /// <summary>
         /// 删除指定 ProcessServices。
         /// 内部会先请求流程线程安全退出，再释放模块并从 Proc.List 移除。
         /// </summary>
         /// <param name="procS">需要删除的流程服务。</param>
-        public void DeleteProcessService(ProcessServices procS)
+        /// <returns>流程已从列表移除返回 true；线程未退出或发生异常返回 false。</returns>
+        public bool DeleteProcessService(ProcessServices procS)
         {
-            Process流程插件管理者.DeleteService(procS);
+            return Process流程插件管理者.DeleteService(procS);
         }
         /// <summary>
         /// 清空所有 ProcessServices 和 Process。

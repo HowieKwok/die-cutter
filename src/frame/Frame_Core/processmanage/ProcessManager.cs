@@ -127,7 +127,7 @@ namespace Frame_Core
                 }
 
                 // 相机名缺失或重复时，多条流程会拿到同一个名字（GetCam_Name 越界返回 DefaultCameraName）。
-                // 之后 Save/Load 都按名字保留流程目录（DeleteFoldersExcept），同名目录会互相覆盖，
+                // 之后 Save/Load 都按名字保留流程目录（SyncProcessFolders），同名目录会互相覆盖，
                 // 模块参数串到一起却不报错。这里必须拦住，且拦住时不能继续往下 Save。
                 List<string> duplicatedNames = ProcessName
                     .Where(n => !string.IsNullOrWhiteSpace(n))
@@ -176,9 +176,6 @@ namespace Frame_Core
                     return false;
                 }
 
-                DeleteFoldersExcept(instancePath, ProcessName);
-
-
                 LogInfo("流程加载成功");
                 return true;
             }
@@ -191,43 +188,31 @@ namespace Frame_Core
 
 
         /// <summary>
-        /// 删除指定路径下所有不在保留列表中的直接子文件夹（含其所有内容）
+        /// 让流程参数根目录下的流程子目录与内存中的流程名集合保持一致。
+        /// 删除流程后若不同步，残留目录会被再次复用的同名流程挂上，新流程凭空继承旧参数。
         /// </summary>
-        /// <param name="rootPath">目标根目录</param>
-        /// <param name="keepNames">要保留的文件夹名称列表</param>
-         void DeleteFoldersExcept(string rootPath, List<string> keepNames)
+        /// <param name="processRoot">流程参数根目录（ProcessPath）。</param>
+        /// <param name="keepNames">需要保留的流程目录名。</param>
+        private void SyncProcessFolders(string processRoot, IEnumerable<string> keepNames)
         {
-            string path = Path.GetDirectoryName(rootPath);
+            if (string.IsNullOrWhiteSpace(processRoot) || !Directory.Exists(processRoot)) return;
 
-            if (!Directory.Exists(path))
+            HashSet<string> keep = new HashSet<string>(
+                keepNames.Where(n => !string.IsNullOrWhiteSpace(n)),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (string dir in Directory.GetDirectories(processRoot))
             {
-                Console.WriteLine("路径不存在：" + rootPath);
-                return;
-            }
+                if (keep.Contains(Path.GetFileName(dir))) continue;
 
-            // 获取根目录下的所有直接子文件夹
-            string[] subDirectories = Directory.GetDirectories(path);
-
-            foreach (string dir in subDirectories)
-            {
-                string folderName = Path.GetFileName(dir); // 只取文件夹名（不含路径）
-
-                // 如果文件夹名不在保留列表中，则删除
-                if (!keepNames.Contains(folderName))
+                try
                 {
-                    try
-                    {
-                        Directory.Delete(dir, true); // true 表示递归删除文件夹及其所有子项
-                        Console.WriteLine($"已删除：{dir}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"删除失败：{dir}，原因：{ex.Message}");
-                    }
+                    Directory.Delete(dir, true);
+                    LogInfo("已清理废弃流程目录：" + dir);
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"保留：{dir}");
+                    LogError("清理废弃流程目录失败：" + dir, ex);
                 }
             }
         }
@@ -266,16 +251,19 @@ namespace Frame_Core
 
                 bool ok = XmlSerialization.ObjectToXml(InstancePath, BuildInstanceList());
 
-                if (ok)
-                {
-                    LogInfo("流程保存成功：" + InstancePath);
-                }
-                else
+                if (!ok)
                 {
                     LogError("流程结构保存失败：" + InstancePath);
+                    return false;
                 }
 
-                return ok;
+                // 结构写盘成功后才让磁盘与内存流程集合对齐，删除/改名的流程目录在这一步回收。
+                SyncProcessFolders(ProcessPath, List
+                    .Where(item => item != null && item.process != null)
+                    .Select(item => item.process.processInfo.ProcessName));
+
+                LogInfo("流程保存成功：" + InstancePath);
+                return true;
             }
             catch (Exception ex)
             {
@@ -336,7 +324,7 @@ namespace Frame_Core
         }
 
         /// <summary>
-        /// 创建一个新的流程服务，并自动生成当前列表中未使用的最小 ProcessID。
+        /// 创建一个新的流程服务，ProcessID 取当前列表中的最大值加一。
         /// 该方法保留给旧的 Project.CreateProcess() 调用，BuildProcessServiceList 仍按原方式创建流程并绑定事件。
         /// </summary>
         /// <returns>新创建流程的 ProcessID。</returns>
@@ -425,11 +413,23 @@ namespace Frame_Core
         }
 
         /// <summary>
-        /// 清空指定 Process 下的全部模块对象。
-        /// 注意：该方法为了兼容旧 DeleteProcess 语义，只释放模块，不会从 List 中移除对应 ProcessServices。
+        /// 根据 Process 实例反查所属的 ProcessServices。
+        /// UI 层只持有 Process，删除流程前必须映射回带线程的服务对象。
+        /// </summary>
+        /// <param name="proc">流程对象。</param>
+        /// <returns>找到返回 ProcessServices；未找到返回 null。</returns>
+        public ProcessServices GetService(Process proc)
+        {
+            if (proc == null) return null;
+            return List.FirstOrDefault(c => c != null && c.process == proc);
+        }
+
+        /// <summary>
+        /// 清空指定 Process 下的全部模块对象，流程本身仍保留在 List 中。
+        /// 需要把流程从列表移除请使用 DeleteService。
         /// </summary>
         /// <param name="proc">需要清空模块的流程对象。</param>
-        public void Delete(Process proc)
+        public void ClearProcessModules(Process proc)
         {
             if (proc == null) return;
             proc.DeleteAllModuleObj();
@@ -441,9 +441,12 @@ namespace Frame_Core
         /// 删除前会先停止运行、请求线程退出，线程确认退出后才释放模块并从 List 移除，避免运行中释放插件对象。
         /// </summary>
         /// <param name="service">需要删除的流程服务。</param>
-        public void DeleteService(ProcessServices service)
+        /// <returns>流程线程已退出并从 List 移除返回 true；线程未退出或发生异常返回 false。</returns>
+        public bool DeleteService(ProcessServices service)
         {
-            if (service == null) return;
+            if (service == null) return false;
+
+            bool removed = false;
 
             try
             {
@@ -452,7 +455,7 @@ namespace Frame_Core
                 if (!closed)
                 {
                     LogError("流程线程未正常退出，取消删除流程服务，避免运行中模块被释放：" + GetProcessName(service));
-                    return;
+                    return false;
                 }
 
                 if (service.process != null)
@@ -460,7 +463,7 @@ namespace Frame_Core
                     service.process.DeleteAllModuleObj();
                 }
 
-                List.Remove(service);
+                removed = List.Remove(service);
             }
             catch (Exception ex)
             {
@@ -470,6 +473,8 @@ namespace Frame_Core
             {
                 GC.Collect();
             }
+
+            return removed;
         }
 
         /// <summary>
@@ -570,17 +575,24 @@ namespace Frame_Core
         }
 
         /// <summary>
-        /// 生成当前流程列表中未使用的最小 ProcessID。
-        /// 例如已有 0、1、3，则返回 2，保持旧 Project.CreateProcess 的编号规则。
+        /// 生成下一个可用 ProcessID，取当前列表最大值加一，已删除的编号不回收。
+        /// 流程名由 ID 派生（"流程N"），复用已删除的编号会让新流程拿到同名目录，
+        /// 从而继承上一个同名流程留在磁盘上的模块参数。
         /// </summary>
         /// <returns>可用的新流程 ID。</returns>
         private int GetNewProcessId()
         {
             int id = 0;
 
-            while (List.Any(c => c != null && c.process != null && c.process.processInfo.ProcessID == id))
+            foreach (ProcessServices service in List)
             {
-                id++;
+                if (service == null || service.process == null) continue;
+
+                int used = service.process.processInfo.ProcessID;
+                if (used >= id)
+                {
+                    id = used + 1;
+                }
             }
 
             return id;
