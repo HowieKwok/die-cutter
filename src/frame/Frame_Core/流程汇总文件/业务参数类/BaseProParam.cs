@@ -124,6 +124,21 @@ namespace Frame_Core
         }
 
         /// <summary>
+        /// 为新到的图分配业务帧号。返回 false 表示这一帧不要（无效图 / 重复触发 /
+        /// 帧号校验失败），调用方不入队；被拒绝的图由拒绝方负责释放。
+        ///
+        /// 默认实现保持各机型原有语义：每相机独立自增，激光走的就是这段。
+        /// 五金由专属子类覆写为工位级序号，基类行为不变。
+        /// </summary>
+        protected virtual bool TryAssignFrameId(ImageInfo image)
+        {
+            if (image.image_ID == 0) return false;
+            image.image_ID = nCurProImgId;
+            nCurProImgId++;
+            return true;
+        }
+
+        /// <summary>
         /// 回调数据处理
         /// </summary>
         public virtual void CallBackImgDataDeal()
@@ -147,11 +162,9 @@ namespace Frame_Core
                     {
                         if (InfoImgInfo != null)
                         {
-                            if (InfoImgInfo.image_ID != 0)
+                            if (TryAssignFrameId(InfoImgInfo))
                             {
-                                InfoImgInfo.image_ID = nCurProImgId;
                                 alreadyDealGrabImage.Enqueue(InfoImgInfo);
-                                nCurProImgId++;
                                 semaphoreSlimCam.Release();
                             }
                         }

@@ -27,6 +27,32 @@ namespace Frame_Simulation.Config
         /// <summary>仿真记录保留条数（内存环形）。</summary>
         public int RecorderCapacity { get; set; } = 5000;
 
+        /// <summary>
+        /// 相机名 → 触发偏移（毫秒）。语义是<b>固定物理距离</b>：offset = 相机间距 / 线速，常量。
+        /// 落后片数 = offset / FrameIntervalMs，随产能变化——这是物理事实，不是错位。
+        ///
+        /// 为什么按名字而不按相机 ID：实测 ID 是 1/2/8/9/10（持久化 ID，不等于工位顺序），
+        /// 按 ID 索引会让上线扫拿到尺寸的偏移、尺寸三路拿到 0，表现就是所有工位同刻出图。
+        /// 名字由调试日志核实过：「上线扫 / 下线扫 / 左上 / 左下 / 右下」。
+        ///
+        /// 未配置的相机按 0 放行并留记录（激光只有一台相机，不需要偏移）；
+        /// 静默 0 会让"某台相机漏配"表现成"所有工位同刻出图"，很难反推。
+        /// </summary>
+        public Dictionary<string, int> TriggerOffsetMs { get; set; } = new Dictionary<string, int>
+        {
+            { "上线扫", 0 },
+            { "下线扫", 500 },
+            { "左上", 10000 },
+            { "左下", 10000 },
+            { "右下", 10000 },
+        };
+
+        /// <summary>上线扫（产品进入产线）。每放行一次发一个产品令牌。</summary>
+        public List<string> ProductProducerCameras { get; set; } = new List<string> { "上线扫" };
+
+        /// <summary>尺寸工位（产品到达下游）。每个组窗口领一个产品令牌当帧号。</summary>
+        public List<string> ProductConsumerCameras { get; set; } = new List<string> { "左上", "左下", "右下" };
+
         /// <summary>帧延时（毫秒）。产能非法时回退到 200ms，避免 0 延时打满 CPU。</summary>
         [JsonIgnore]
         public int FrameIntervalMs

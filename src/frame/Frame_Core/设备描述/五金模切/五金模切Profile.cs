@@ -51,12 +51,14 @@ namespace Frame_Core
             return new[]
             {
                 // 下标 0/1：模切主、从相机（与激光模切同角色）
-                new CamSlotDef(CamRole.模切主相机, CamName(0), name => new 业务参数类.DieCutParam(name)),
-                new CamSlotDef(CamRole.模切从相机, CamName(1), name => new 业务参数类.DieCutParam(name)),
+                // 帧号由工位序号统一分配：上线是源头，下线与上线对齐，二者共用一个序号器
+                new CamSlotDef(CamRole.模切主相机, CamName(0), name => new 业务参数类.五金模切LineScanParam(name, 业务参数类.线扫安装位.上线)),
+                new CamSlotDef(CamRole.模切从相机, CamName(1), name => new 业务参数类.五金模切LineScanParam(name, 业务参数类.线扫安装位.下线)),
                 // 下标 2~4：尺寸检测（没有裁切纠偏，所以尺寸从下标 2 开始）
-                new CamSlotDef(CamRole.尺寸检测, CamName(2), name => new 业务参数类.SizeDetectParam(name)),
-                new CamSlotDef(CamRole.尺寸检测, CamName(3), name => new 业务参数类.SizeDetectParam(name)),
-                new CamSlotDef(CamRole.尺寸检测, CamName(4), name => new 业务参数类.SizeDetectParam(name)),
+                // 三路共用一个组窗口取号，保证同组同号
+                new CamSlotDef(CamRole.尺寸检测, CamName(2), name => new 业务参数类.五金模切SizeParam(name)),
+                new CamSlotDef(CamRole.尺寸检测, CamName(3), name => new 业务参数类.五金模切SizeParam(name)),
+                new CamSlotDef(CamRole.尺寸检测, CamName(4), name => new 业务参数类.五金模切SizeParam(name)),
             };
         }
 

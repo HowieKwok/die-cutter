@@ -523,7 +523,9 @@
 
                     <TabItem Header="算法调试">
                         <Border Background="{StaticResource PanelBg2}" Padding="10">
-                            <ListBox ItemsSource="{Binding DebugLogs}" FontFamily="Consolas" Background="WhiteSmoke" Foreground="{DynamicResource Text.Secondary}"/>
+                            <!-- 不要写死背景色：ListBox / ListBoxItem 的隐式样式已经给出主题配色，
+                                 本地硬编码浅色背景 + 主题浅色前景 = 深色主题下文字看不见。 -->
+                            <ListBox ItemsSource="{Binding DebugLogs}" FontFamily="Consolas"/>
                         </Border>
                     </TabItem>
                 </TabControl>

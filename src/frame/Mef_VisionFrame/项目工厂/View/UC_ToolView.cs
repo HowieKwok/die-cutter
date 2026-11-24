@@ -35,6 +35,7 @@ namespace Mef_VisionFrame
 
             ApplyToolGlyphs();
             ApplyToolTips();
+            ApplyAutoModeVisibility();
             Frame_UI.ThemeService.ThemeChanged += OnThemeChanged;
             // 设计器已重写 Dispose(bool)，这里不再重复重写，用 Disposed 事件解订阅。
             Disposed += delegate
@@ -45,6 +46,19 @@ namespace Mef_VisionFrame
 
             VM.BaseServer.RefreshToolView -= RefreshView;
             VM.BaseServer.RefreshToolView += RefreshView;
+        }
+
+        /// <summary>
+        /// 五金自动模式不提供人工启停：按钮留着会让人以为可以手动停，
+        /// 实际停机只能由复位/换卷/停线等入口触发。
+        ///
+        /// 仿真保留按钮——仿真本来就要人为开始和观察。
+        /// </summary>
+        private void ApplyAutoModeVisibility()
+        {
+            bool metalAuto = Project.Instance.systemInfo.CraftType == MaterialCrafEnum.五金模切
+                             && !Project.Instance.Is_simulation;
+            if (metalAuto) btn_run.Visible = false;
         }
 
         /// <summary>

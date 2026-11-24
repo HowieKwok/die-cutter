@@ -258,6 +258,10 @@ namespace Frame_Core
             target.AddVariableByOrder(loaded, "BackSideCount", "背面片数", DataTypeEnum.Int, "0");
             target.AddVariableByOrder(loaded, "尺寸相机返回结果片数", "尺寸相机返回结果片数", DataTypeEnum.Int, "0");
 
+            // 上下线两台线扫相机之间隔几片：0 = 看同一片（不隔片），N = 下线比上线晚 N 片。
+            // 稳态下 下线帧号 = 上线帧号 - 该值；仿真的下线触发偏移也按它计算。
+            target.AddVariableByOrder(loaded, "下线片距", "上下线相机之间隔几片，0=同一片；下线帧号=上线帧号-该值", DataTypeEnum.Int, "0");
+
             target.AddVariableByOrder(loaded, "PieWidth", "(缺陷相机)极片宽度(mm)", DataTypeEnum.Double, "0");
             target.AddVariableByOrder(loaded, "PieHeight", "(缺陷相机)极片高度(mm)", DataTypeEnum.Double, "0");
             target.AddVariableByOrder(loaded, "CropCenterOffset", "居中裁图偏移距离(px)", DataTypeEnum.Double, "0");

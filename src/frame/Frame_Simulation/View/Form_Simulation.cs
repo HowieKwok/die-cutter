@@ -1,31 +1,35 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using Frame_Simulation;
-using Frame_Simulation.Log;
 
 namespace Frame_Simulation.View
 {
     /// <summary>
     /// 仿真监控界面。非模态，可与主界面同时操作。
-    /// 只做两件事：调产能、看记录。所有数据都来自 SimulationRuntime，
-    /// 界面本身不持有任何采集状态，关掉窗口也不影响仿真运行。
+    ///
+    /// 布局：单页三列（上线扫 / 下线扫 / 尺寸），每列上方是该工位的帧ID处理状态，
+    /// 下方是它对应的 PLC 发送队列状态。三列同屏是为了横向对比——
+    /// 分页时只能看到一路，"上线第 12 片、下线第 12 片、尺寸第 10 片"这种对照做不出来。
+    ///
+    /// 心跳不再写日志：顶部一个闪烁点，收包计数一变就翻转一次；
+    /// 长时间不翻转即通讯断开，比翻滚动日志快得多。
     /// </summary>
-    public class Form_Simulation : Form
+    public partial class Form_Simulation : Form
     {
         private readonly SimulationRuntime _runtime;
 
         private NumericUpDown _numCapacity;
         private Label _labInterval;
         private Label _labPlc;
-        private ListBox _listCam;
-        private ListBox _listPlc;
-        private Timer _flushTimer;
+        private Panel _heartbeat;
+        private Label _labCommon;
 
-        private readonly List<SimRecordItem> _pendingCam = new List<SimRecordItem>();
-        private readonly List<SimRecordItem> _pendingPlc = new List<SimRecordItem>();
-        private readonly object _sync = new object();
+        // 三列固定顺序：0=上线 1=下线 2=尺寸
+        private readonly Label[] _stageLabels = new Label[3];
+        private readonly Label[] _queueLabels = new Label[3];
+        private readonly Label[] _titleLabels = new Label[3];
+        private readonly string[] _fallbackTitles = { "上线扫", "下线扫", "尺寸工位" };
 
         public Form_Simulation(SimulationRuntime runtime)
         {
@@ -33,8 +37,8 @@ namespace Frame_Simulation.View
 
             Text = "仿真监控";
             StartPosition = FormStartPosition.CenterParent;
-            Width = 900;
-            Height = 560;
+            Width = 1040;
+            Height = 620;
             MinimizeBox = false;
             ShowInTaskbar = false;
 
@@ -44,149 +48,140 @@ namespace Frame_Simulation.View
 
         private void BuildLayout()
         {
-            Panel top = new Panel { Dock = DockStyle.Top, Height = 56, Padding = new Padding(12, 16, 12, 8) };
+            Controls.Add(BuildStationGrid());
+            Controls.Add(BuildTopBar());
+            Controls.Add(BuildBottomBar());
+        }
 
-            Label labCap = new Label { Text = "仿真产能（片/分）：", AutoSize = true, Location = new Point(12, 20) };
+        private Panel BuildTopBar()
+        {
+            Panel top = new Panel { Dock = DockStyle.Top, Height = 50, Padding = new Padding(12, 12, 12, 6) };
+
+            Label labCap = new Label { Text = "仿真产能（片/分）：", AutoSize = true, Location = new Point(12, 17) };
             _numCapacity = new NumericUpDown
             {
-                Location = new Point(150, 16),
+                Location = new Point(150, 13),
                 Width = 90,
                 Minimum = 1,
                 Maximum = 6000,
                 Value = _runtime == null ? 30 : Math.Max(1, _runtime.Config.CapacityPerMinute)
             };
 
-            Button btnApply = new Button { Text = "应用", Location = new Point(250, 15), Width = 70 };
+            Button btnApply = new Button { Text = "应用", Location = new Point(250, 12), Width = 70 };
             btnApply.Click += (s, e) => ApplyCapacity();
 
-            _labInterval = new Label { AutoSize = true, Location = new Point(336, 20), ForeColor = Color.DimGray };
-            _labPlc = new Label { AutoSize = true, Location = new Point(560, 20), ForeColor = Color.DimGray };
+            _labInterval = new Label { AutoSize = true, Location = new Point(336, 17), ForeColor = Color.DimGray };
+            _labPlc = new Label { AutoSize = true, Location = new Point(480, 17), ForeColor = Color.DimGray };
+
+            Label labBeat = new Label { Text = "心跳", AutoSize = true, Location = new Point(700, 17), ForeColor = Color.DimGray };
+            _heartbeat = new Panel
+            {
+                Location = new Point(744, 12),
+                Size = new Size(16, 16),
+                BackColor = Color.Gainsboro,
+                BorderStyle = BorderStyle.FixedSingle,
+            };
 
             UpdateIntervalLabel();
             UpdatePlcLabel();
 
-            top.Controls.AddRange(new Control[] { labCap, _numCapacity, btnApply, _labInterval, _labPlc });
-
-            SplitContainer split = new SplitContainer
+            top.Controls.AddRange(new Control[]
             {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
-                SplitterDistance = 440
-            };
-
-            _listCam = CreateList("相机仿真记录");
-            _listPlc = CreateList("PLC 仿真记录");
-
-            split.Panel1.Controls.Add(WrapWithTitle("相机仿真记录", _listCam));
-            split.Panel2.Controls.Add(WrapWithTitle("PLC 仿真记录", _listPlc));
-
-            Controls.Add(split);
-            Controls.Add(top);
+                labCap, _numCapacity, btnApply, _labInterval, _labPlc, labBeat, _heartbeat
+            });
+            return top;
         }
 
-        private static Control WrapWithTitle(string title, Control body)
+        private Control BuildStationGrid()
         {
-            Panel panel = new Panel { Dock = DockStyle.Fill };
-            Label lab = new Label
+            TableLayoutPanel grid = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 2,
+                Padding = new Padding(8, 2, 8, 2),
+            };
+            grid.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+            grid.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+
+            for (int i = 0; i < 3; i++)
+            {
+                grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 3));
+
+                _stageLabels[i] = CreateBody("—");
+                _queueLabels[i] = CreateBody("—");
+
+                // 列标题必须跟"状态源"一致，不能拿 Cameras[i] 的名字当标题：
+                // 相机创建顺序是 下线→上线→尺寸，而状态数组固定是 上线/下线/尺寸，
+                // 按创建顺序取名字会让两列标题互换（实测下线列显示的是上线帧号）。
+                // 这里标题先给相机名兜底，RefreshStations 再用状态源自报的 Name 覆盖。
+                _titleLabels[i] = CreateTitle(CamNameAt(i, _fallbackTitles[i]) + " · 帧处理");
+                grid.Controls.Add(WrapWithTitle(_titleLabels[i], _stageLabels[i]), i, 0);
+                grid.Controls.Add(WrapWithTitle(CreateTitle("PLC 发送队列"), _queueLabels[i]), i, 1);
+            }
+
+            return grid;
+        }
+
+        private Panel BuildBottomBar()
+        {
+            Panel bottom = new Panel { Dock = DockStyle.Bottom, Height = 26, Padding = new Padding(12, 4, 12, 4) };
+            _labCommon = new Label
+            {
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Color.DimGray,
+                Text = "等待仿真运行…",
+            };
+            bottom.Controls.Add(_labCommon);
+            return bottom;
+        }
+
+        private static Label CreateBody(string text)
+        {
+            return new Label
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                Font = new Font("Consolas", 10F),
+                Padding = new Padding(10),
+                TextAlign = ContentAlignment.TopLeft,
+                Text = text,
+            };
+        }
+
+        private static Label CreateTitle(string title)
+        {
+            return new Label
             {
                 Text = title,
                 Dock = DockStyle.Top,
-                Height = 26,
+                Height = 24,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(8, 0, 0, 0),
-                ForeColor = Color.FromArgb(64, 64, 64)
+                BackColor = Color.FromArgb(240, 240, 240),
+                ForeColor = Color.FromArgb(64, 64, 64),
             };
+        }
+
+        private static Control WrapWithTitle(Label lab, Control body)
+        {
+            Panel panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4) };
+
             body.Dock = DockStyle.Fill;
             panel.Controls.Add(body);
             panel.Controls.Add(lab);
             return panel;
         }
 
-        private static ListBox CreateList(string name)
+        private string CamNameAt(int index, string fallback)
         {
-            return new ListBox
+            if (_runtime != null && _runtime.Cameras != null && _runtime.Cameras.Count > index)
             {
-                Name = name,
-                IntegralHeight = false,
-                HorizontalScrollbar = true,
-                Font = new Font("Consolas", 9f)
-            };
-        }
-
-        private void BindEvents()
-        {
-            if (_runtime == null) return;
-
-            // 记录可能来自采集线程：只入待处理队列，UI 线程定时批量刷，
-            // 否则高产能下每帧一次 Invoke 会把界面拖死。
-            _runtime.Recorder.Recorded += OnRecorded;
-
-            _flushTimer = new Timer { Interval = 200 };
-            _flushTimer.Tick += (s, e) => Flush();
-            _flushTimer.Start();
-        }
-
-        private void OnRecorded(SimRecordItem item)
-        {
-            if (item == null) return;
-            lock (_sync)
-            {
-                if (item.Channel == SimRecordChannel.Camera) _pendingCam.Add(item);
-                else _pendingPlc.Add(item);
+                string name = _runtime.Cameras[index].CameraName;
+                if (!string.IsNullOrEmpty(name)) return name;
             }
-        }
-
-        private void Flush()
-        {
-            List<SimRecordItem> cam = null, plc = null;
-            lock (_sync)
-            {
-                if (_pendingCam.Count > 0) { cam = new List<SimRecordItem>(_pendingCam); _pendingCam.Clear(); }
-                if (_pendingPlc.Count > 0) { plc = new List<SimRecordItem>(_pendingPlc); _pendingPlc.Clear(); }
-            }
-
-            if (cam != null) Append(_listCam, cam);
-            if (plc != null) Append(_listPlc, plc);
-            UpdatePlcLabel();
-        }
-
-        private static void Append(ListBox list, List<SimRecordItem> items)
-        {
-            list.BeginUpdate();
-            foreach (SimRecordItem item in items) list.Items.Add(item.ToString());
-            while (list.Items.Count > 2000) list.Items.RemoveAt(0);
-            list.TopIndex = Math.Max(0, list.Items.Count - 1);
-            list.EndUpdate();
-        }
-
-        private void ApplyCapacity()
-        {
-            if (_runtime == null) return;
-            _runtime.SetCapacity((int)_numCapacity.Value);
-            UpdateIntervalLabel();
-        }
-
-        private void UpdateIntervalLabel()
-        {
-            if (_runtime == null) { _labInterval.Text = ""; return; }
-            _labInterval.Text = string.Format("≈ 每 {0} ms 一张", _runtime.Pacer.IntervalMs);
-        }
-
-        private void UpdatePlcLabel()
-        {
-            if (_runtime == null || _runtime.PlcServer == null) { _labPlc.Text = "PLC：未启动"; return; }
-
-            _labPlc.Text = _runtime.PlcServer.IsStarted
-                ? string.Format("PLC：监听 {0}", _runtime.PlcServer.Port)
-                : "PLC：未启动";
-            _labPlc.ForeColor = _runtime.PlcServer.IsStarted ? Color.SeaGreen : Color.Firebrick;
-        }
-
-        protected override void OnFormClosed(FormClosedEventArgs e)
-        {
-            if (_flushTimer != null) _flushTimer.Stop();
-            if (_runtime != null) _runtime.Recorder.Recorded -= OnRecorded;
-            base.OnFormClosed(e);
+            return fallback;
         }
     }
 }

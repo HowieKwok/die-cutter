@@ -673,7 +673,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.imageHeight = EAImageInfo.nLastLineEncoderCount - EAImageInfo.nFirstLineEncoderCount;
                                 EAImageInfo.ImageDescription = $"第{EAImageInfo.EAID}片EA";
 
-                                ProParam相机模切业务.imageEAInfos.Add(EAImageInfo);
+                                EnqueueEAImage(ProParam相机模切业务, EAImageInfo);
                                 ProParam相机模切业务.semaphoreSlim.Release();
 
                                 ProParam相机模切业务.nEAId++;
@@ -724,7 +724,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.imageHeight = EAImageInfo.nLastLineEncoderCount - EAImageInfo.nFirstLineEncoderCount;
                                 EAImageInfo.ImageDescription = $"第{EAImageInfo.EAID}片EA";
 
-                                ProParam相机模切业务.imageEAInfos.Add(EAImageInfo);
+                                EnqueueEAImage(ProParam相机模切业务, EAImageInfo);
                                 ProParam相机模切业务.semaphoreSlim.Release();
 
                             }
@@ -741,7 +741,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.imageHeight = EAImageInfo.nLastLineEncoderCount - EAImageInfo.nFirstLineEncoderCount;
                                 EAImageInfo.ImageDescription = $"第{EAImageInfo.EAID}片EA";
 
-                                ProParam相机模切业务.imageEAInfos.Add(EAImageInfo);
+                                EnqueueEAImage(ProParam相机模切业务, EAImageInfo);
                                 ProParam相机模切业务.semaphoreSlim.Release();
 
                                 ShowHalconWindow2.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = "拼小图模块失败", m_stuGetColor = HalconColor.red });
@@ -826,7 +826,7 @@ namespace Frame_Core.业务类
                         InfoImgInfo.NgType = 2;
                         InfoImgInfo.ImageDescription = "首片NG";
 
-                        ProParam相机模切业务.imageEAInfos.Add(InfoImgInfo);
+                        EnqueueEAImage(ProParam相机模切业务, InfoImgInfo);
                         ProParam相机模切业务.semaphoreSlim.Release();
 
 
@@ -871,6 +871,8 @@ namespace Frame_Core.业务类
         public void RunEaProcess(Process process)
         {
             int ProcessID = process.processInfo.ProcessID;
+            // 本帧帧号：catch 里要用它补一条 NG，必须声明在 try 外
+            int currentFrameId = 0;
             try
             {
 
@@ -940,10 +942,9 @@ namespace Frame_Core.业务类
                 //通过信号量把控线程
                 ProParm模切业务.semaphoreSlim.Wait(30);
 
-                if (ProParm模切业务.imageEAInfos.Count > 0)
+                if (TryTakeEAImage(ProParm模切业务, out ImageInfo EAimageInfo))
                 {
-                    ImageInfo EAimageInfo = ProParm模切业务.imageEAInfos[0];
-                    ProParm模切业务.imageEAInfos.RemoveAt(0);
+                    currentFrameId = (int)EAimageInfo.image_ID;
                     DieCutEAProduct Product极片EA = new DieCutEAProduct();
                     HOperatorSet.CountSeconds(out Product极片EA.detectionTime.Image_StartTime);
                     Product极片EA.showHalconGroup = new System.Collections.ObjectModel.ObservableCollection<ShowHalconWindow>();
@@ -1290,7 +1291,21 @@ namespace Frame_Core.业务类
             catch (Exception ee)
             {
                 MessageNotify.AddErrorLog($"流程{ProcessID}ProProcessEACam():" + ee.ToString());
-                System.Windows.Forms.MessageBox.Show("ProProcessEACam():" + ee.ToString(), "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                // 异常必须给出结论：少一条结论 = PLC 少一拍，外部表现是机构停在等结果，
+                // 比判错更严重。正常分支都已回调过，这里只补没走完的那一帧。
+                业务参数类.五金模切帧序号.Abandon(currentFrameId,
+                    process.processInfo.CameraID == 0 ? 业务参数类.五金模切帧序号.FrameStation.上线扫
+                                                      : 业务参数类.五金模切帧序号.FrameStation.下线扫,
+                    "EA 流程异常：" + ee.Message);
+
+                // 模态弹窗会卡住流程线程直到有人点确认：跑料时触发一次，整条线就停在那儿。
+                // 异常已由上方 Abandon 补一条 NG 回传，这里只需要留下可追查的记录。
+                // 用独立 key，避免与 Abandon 那条被去重掉。
+                五金模切告警.Raise(
+                    "EA流程异常",
+                    "EA 流程异常",
+                    $"流程{ProcessID}：{ee.Message}");
                 // throw;
             }
         }

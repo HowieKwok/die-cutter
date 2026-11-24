@@ -63,6 +63,10 @@ namespace Frame_Core.业务类
                 {
                     item.Value?.Dispose();
                 }
+
+                // 复位等于"重新数片"：序号归 1，并放行下线首帧。
+                // 不归零的话，复位后第一片下线会和上线永久错位一整卷。
+                业务参数类.五金模切帧序号.Reset();
                 return true;
             }
             catch (Exception ee)

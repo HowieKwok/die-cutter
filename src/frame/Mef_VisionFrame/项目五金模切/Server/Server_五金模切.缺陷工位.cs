@@ -265,16 +265,16 @@ namespace Mef_VisionFrame
         /// 与激光模切 Station1_StatisticalData 的口径一致：一片只记一项，
         /// 所以各缺陷占比之和不会超过 100%，"占比"读起来才是"这一类缺陷占了多少片"。
         /// </summary>
-        private void CountDefectDistribution(Station1Product product)
+        private void CountDefectDistribution(ProductDataResult aLine, ProductDataResult bLine)
         {
             List<DefectSummary> candidates = new List<DefectSummary>();
-            if (product?.ALine_DieCutEAProduct?.highestPriorityNgDefect != null)
+            if (aLine?.highestPriorityNgDefect != null)
             {
-                candidates.Add(product.ALine_DieCutEAProduct.highestPriorityNgDefect);
+                candidates.Add(aLine.highestPriorityNgDefect);
             }
-            if (product?.BLine_DieCutEAProduct?.highestPriorityNgDefect != null)
+            if (bLine?.highestPriorityNgDefect != null)
             {
-                candidates.Add(product.BLine_DieCutEAProduct.highestPriorityNgDefect);
+                candidates.Add(bLine.highestPriorityNgDefect);
             }
 
             if (candidates.Count == 0) return;

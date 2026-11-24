@@ -108,7 +108,7 @@ namespace Frame_Core
         /// <param name="ip"></param>
         /// <param name="port"></param>
         /// <returns></returns>
-        public bool Connect(bool isConnect, PLCTypeEnum pLCTypeEnum, CommunicationProtocolEnum protocolEnum, string ip, int port,emDataFormat dataFormat=emDataFormat.ABCD)
+        public bool Connect(bool isConnect, PLCTypeEnum pLCTypeEnum, CommunicationProtocolEnum protocolEnum, string ip, int port,emDataFormat dataFormat=emDataFormat.ABCD,int resultWriteTimeoutMs=0)
         {
             try
             {
@@ -157,6 +157,16 @@ namespace Frame_Core
                 
 
                 if (networkDeviceBase == null) return false;
+
+                // 结果发布要求"单次写不阻塞超过 300ms"：一次 2000ms 的写会跨过两个心跳周期（1s），
+                // "心跳优先"只在取下一个任务时生效，救不了正在阻塞的这次调用，PLC 必然判通讯断开。
+                // 库默认 5000/10000，只能在实例上收紧。
+                // 默认 0 = 不干预，激光等其它机型保持库默认行为。
+                if (resultWriteTimeoutMs > 0)
+                {
+                    networkDeviceBase.ReceiveTimeOut = resultWriteTimeoutMs;
+                    networkDeviceBase.ConnectTimeOut = System.Math.Max(resultWriteTimeoutMs, 1000);
+                }
 
                 networkDeviceBase.IpAddress = ip;
                 networkDeviceBase.Port = port;
@@ -316,6 +326,52 @@ namespace Frame_Core
                 Log4netRecord.ErrorLog.Debug(message, ex);
             }
         }
+
+        private volatile bool _resultWriteTimedOut;
+
+        /// <summary>
+        /// 结果专用写入：返回真实成败，且**不参与**"写失败次数过多"停机报警。
+        ///
+        /// 为什么必须另开一个入口：现有 Write 是同步 void，把 OperateResult 吞掉了，
+        /// 调用方拿不到成败，无法做"失败重试 3 次"。而它的失败计数一旦累加，
+        /// 第 3 次就会触发停机报警——与"3 次失败只提示、不停机"的业务决策直接冲突。
+        ///
+        /// 停机报警的语义是"通讯链路坏了"，结果重试是业务层策略，两者不能共用一个计数。
+        ///
+        /// 失败后下次调用会先断开连接再写：超时的那次写即使已返回，
+        /// 底层连接也可能处于半死状态，继续在同一个 socket 上发下一条会让报文穿插。
+        /// 断开后由库在下一次写时自动重连，代价是一次 TCP 握手，远小于错配风险。
+        /// </summary>
+        public bool TryWriteWithoutAlarm(CommunicationData<short> data, log4net.ILog log)
+        {
+            if (!InitState || data == null) return false;
+
+            // 上一次写失败过：先断开，让本次写在干净连接上发生
+            if (_resultWriteTimedOut)
+            {
+                _resultWriteTimedOut = false;
+                try { networkDeviceBase.ConnectClose(); }
+                catch (Exception ex) { Log4netRecord.ErrorLog.Debug("结果写重连前断开失败", ex); }
+            }
+
+            try
+            {
+                OperateResult result = networkDeviceBase.Write(data.Address, data.Value);
+                if (!result.IsSuccess)
+                {
+                    _resultWriteTimedOut = true;
+                    Log4netRecord.ErrorLog.Debug($"{data.Name} 写入失败：{result.Message}");
+                }
+                return result.IsSuccess;
+            }
+            catch (Exception ex)
+            {
+                _resultWriteTimedOut = true;
+                Log4netRecord.ErrorLog.Debug(data.Name, ex);
+                return false;
+            }
+        }
+
         public void Write(CommunicationData<short[]> data, bool isSaveLog, log4net.ILog log)
         {
             if (!InitState) return;

@@ -57,12 +57,16 @@
     <Compile Include="Config\StartupChecker.cs" />
     <Compile Include="Capture\FramePacer.cs" />
     <Compile Include="Capture\SimCamera.cs" />
+    <Compile Include="Capture\SimTriggerOrchestrator.cs" />
     <Compile Include="Log\SimRecorder.cs" />
     <Compile Include="Plc\SimPlcServerBase.cs" />
     <Compile Include="Plc\SimPlcServerFins.cs" />
     <Compile Include="Plc\SimPlcServerCip.cs" />
     <Compile Include="SimulationRuntime.cs" />
     <Compile Include="View\Form_Simulation.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\Form_Simulation.刷新.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />

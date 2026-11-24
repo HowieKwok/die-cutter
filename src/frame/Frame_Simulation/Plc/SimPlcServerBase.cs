@@ -21,6 +21,19 @@ namespace Frame_Simulation.Plc
         private readonly object _sync = new object();
         private readonly List<string> _watch = new List<string>();
         private readonly Dictionary<string, int> _lastValue = new Dictionary<string, int>();
+        private long _receivedCount;
+
+        /// <summary>
+        /// 累计收包次数。仿真界面的心跳点用它驱动闪烁：计数变化即"通讯还活着"。
+        /// 在 OnDataReceived 里自增，不加锁——界面只关心"有没有变"，不关心精确值。
+        /// </summary>
+        public long ReceivedCount
+        {
+            get { return System.Threading.Interlocked.Read(ref _receivedCount); }
+        }
+
+        /// <summary>最近一次收包时刻；从未收到过时为默认值。</summary>
+        public DateTime LastReceivedAt { get; private set; }
 
         protected DeviceServer Server;
         protected readonly SimulationConfig Config;
@@ -111,6 +124,9 @@ namespace Frame_Simulation.Plc
 
         private void OnDataReceived(object sender, PipeSession session, byte[] data)
         {
+            System.Threading.Interlocked.Increment(ref _receivedCount);
+            LastReceivedAt = DateTime.Now;
+
             string hex = data == null ? "" : BitConverter.ToString(data).Replace("-", " ");
             Record(SimRecordKind.Write, string.Format("收包 {0} 字节：{1}", data == null ? 0 : data.Length, hex));
             RecordWatchedValues();

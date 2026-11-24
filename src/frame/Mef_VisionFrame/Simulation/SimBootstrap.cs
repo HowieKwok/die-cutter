@@ -168,6 +168,14 @@ namespace Mef_VisionFrame.Simulation
 
                 // 仿真触发源 = 流程是否在运行；未点运行不产图，与真机"无触发不开采"一致。
                 Runtime.TriggerWhen = () => Project.Instance.Is_Run;
+
+                // 五金：把三路工位的帧序号与发送队列做成只读快照给界面。
+                // 激光不注入，界面显示"未接入"，与改造前行为一致。
+                if (Project.Instance.systemInfo.CraftType == MaterialCrafEnum.五金模切)
+                {
+                    Runtime.StationStateProvider = Build五金StationStates;
+                }
+
                 CameraDevExtensions.SimCameraFactory = Runtime.BuildCameraFactory(ResolveSpec);
 
                 // 控制卡：仿真提供自己的实现，替掉画像里的 0640 板卡。
@@ -175,6 +183,25 @@ namespace Mef_VisionFrame.Simulation
                 // 换完画像后"卡是否可用"就不再取决于这台机器有没有插板卡。
                 IDeviceProfile realProfile = DeviceProfileRegistry.Resolve(Project.Instance.systemInfo.CraftType);
                 DeviceProfileRegistry.Override(new SimDeviceProfile(realProfile, new SimControlCard(Runtime.Recorder)));
+
+                // 五金：尺寸帧号改从"产品令牌"取（上线放行时发出）。
+                // 于是"尺寸落后于线扫"由输送延时自然产生，落后几片 = 队列深度，不计算片数。
+                // 激光不注入，Size.NextFrameIdProvider 保持 null，行为不变。
+                if (Project.Instance.systemInfo.CraftType == MaterialCrafEnum.五金模切)
+                {
+                    Frame_Core.业务参数类.五金模切帧序号.Size.NextFrameIdProvider =
+                        () => Runtime.Orchestrator.TakeSizeFrameId();
+
+                    // 令牌逐级传递：上线 → 下线 → 尺寸。
+                    // 尺寸只能领"已过下线"的产品号，所以界面必然满足 size ≤ down ≤ up，
+                    // 不会出现"产品刚到上线就直接到了尺寸"。
+                    Frame_Core.业务参数类.LineScanFrameSequencer.DownFrameAssigned =
+                        id => Runtime.Orchestrator.EnqueueDownProduct(id);
+
+                    // 换卷/复位时丢掉在途产品，避免换卷前的那几片被当成新片送进尺寸。
+                    Frame_Core.业务参数类.五金模切帧序号.OnProductsCleared =
+                        () => Runtime.Orchestrator.ClearProducts();
+                }
 
                 Runtime.Start();
                 return true;
@@ -184,6 +211,46 @@ namespace Mef_VisionFrame.Simulation
                 Block("仿真初始化异常", ex.Message);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 五金仿真界面的三列状态：帧号来自序号器，队列状态来自三条结果通道。
+        /// 只读快照，不做任何处置——界面不能成为第二个能改运行时状态的地方。
+        /// </summary>
+        private static IReadOnlyList<Frame_Simulation.SimStationState> Build五金StationStates()
+        {
+            var lineScan = Frame_Core.业务参数类.五金模切帧序号.LineScan;
+            var size = Frame_Core.业务参数类.五金模切帧序号.Size;
+
+            return new[]
+            {
+                MakeState("上线扫", lineScan.UpFrameId, "上线源头，自增",
+                    Server_五金模切.UpResultChannel),
+                MakeState("下线扫", lineScan.DownFrameId, "下线偏移 " + lineScan.DownOffset,
+                    Server_五金模切.DownResultChannel),
+                MakeState("尺寸工位", size.CurrentFrameId, "上组缺帧 " + size.LastWindowMissing,
+                    Server_五金模切.SizeResultChannel),
+            };
+        }
+
+        private static Frame_Simulation.SimStationState MakeState(
+            string name, int frameId, string stage, PlcResultChannel channel)
+        {
+            PlcResultItem head;
+            bool hasHead = channel.TryPeek(out head);
+
+            return new Frame_Simulation.SimStationState
+            {
+                Name = name,
+                FrameId = frameId,
+                Stage = stage,
+                QueueDepth = channel.Count,
+                QueueCapacity = channel.Capacity,
+                QueueState = channel.IsPaused ? "已暂停" : (hasHead ? "发送中" : "空闲"),
+                QueueHeadFrameId = hasHead ? head.FrameId : 0,
+                QueueHeadAttempts = hasHead ? head.Attempts : 0,
+                LastSentFrameId = channel.LastCompletedFrameId,
+            };
         }
 
         /// <summary>仿真下 PLC 客户端连本地回环，端口与刚刚启动的服务端保持一致。</summary>
@@ -247,11 +314,69 @@ namespace Mef_VisionFrame.Simulation
         {
             if (dev == null || dev.CameraParameter == null) return null;
 
+            string name = dev.CameraParameter.CameraName;
+            int offsetMs = ResolveTriggerOffset(name);
+
+            // 偏移必须留在记录里：帧号会因校验推迟，光看帧号无法判断"图像到底晚没晚"。
+            var recorder = Runtime == null ? null : Runtime.Recorder;
+            if (recorder != null)
+                recorder.Cam(Frame_Simulation.Log.SimRecordKind.Info, "编排",
+                    string.Format("触发偏移 {0}(#{1}) → {2}ms", name, dev.CameraParameter.ID, offsetMs));
+
             return new SimCameraSpec
             {
-                Name = dev.CameraParameter.CameraName,
-                ImageDir = ResolveImageDir(dev.CameraParameter)
+                Name = name,
+                ImageDir = ResolveImageDir(dev.CameraParameter),
+                OffsetMs = offsetMs,
+                Role = ResolveRole(name)
             };
+        }
+
+        /// <summary>
+        /// 相机在产品流里的角色。由配置名单决定，不再从名字里猜偏移之外的含义：
+        /// 上线发放产品令牌，尺寸领取令牌，其余不参与。
+        /// </summary>
+        private static Frame_Simulation.Capture.SimTriggerOrchestrator.SlotRole ResolveRole(string cameraName)
+        {
+            SimulationConfig cfg = Runtime == null ? null : Runtime.Config;
+            if (cfg == null || string.IsNullOrEmpty(cameraName)) return Frame_Simulation.Capture.SimTriggerOrchestrator.SlotRole.None;
+
+            if (cfg.ProductProducerCameras != null && cfg.ProductProducerCameras.Contains(cameraName))
+                return Frame_Simulation.Capture.SimTriggerOrchestrator.SlotRole.ProduceProduct;
+
+            if (cfg.ProductConsumerCameras != null && cfg.ProductConsumerCameras.Contains(cameraName))
+                return Frame_Simulation.Capture.SimTriggerOrchestrator.SlotRole.ConsumeProduct;
+
+            return Frame_Simulation.Capture.SimTriggerOrchestrator.SlotRole.None;
+        }
+
+        /// <summary>
+        /// 触发偏移按相机名从仿真配置取（SimulationConfig.TriggerOffsetMs）。
+        ///
+        /// 语义是固定物理距离：offset = 相机间距 / 线速，常量毫秒。
+        /// 落后片数 = offset / 节拍，随产能变化——产线加速，同一段距离被更少的产品时间覆盖。
+        ///
+        /// 三条曾经的错法，一并记录，别再走回去：
+        ///   1. 按相机名 contains("上线"/"下线"/"尺寸") 猜：现场名字确实叫「上线扫/左上」，
+        ///      但猜法对改名和新增工位都没防御，改为精确查配置表；
+        ///   2. 按相机 ID 索引表：实测 ID 是 1/2/8/9/10，顺序不等于工位，
+        ///      结果上线扫拿到 5000、尺寸三路拿到 0，所有工位同刻出图；
+        ///   3. 用「下线片距 × 节拍」当延时：那是逻辑编号，产能一变偏移就漂。
+        /// </summary>
+        public static int ResolveTriggerOffset(string cameraName)
+        {
+            Dictionary<string, int> table = Runtime == null ? null : Runtime.Config.TriggerOffsetMs;
+
+            int offset;
+            if (table != null && !string.IsNullOrEmpty(cameraName) && table.TryGetValue(cameraName, out offset))
+                return Math.Max(0, offset);
+
+            var recorder = Runtime == null ? null : Runtime.Recorder;
+            if (recorder != null)
+                recorder.Cam(Frame_Simulation.Log.SimRecordKind.Warning, "编排",
+                    string.Format("相机「{0}」未配置触发偏移，按 0 处理", cameraName));
+
+            return 0;
         }
 
         /// <summary>

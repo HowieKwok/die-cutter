@@ -115,7 +115,9 @@ namespace Frame_Core
             PLCDevParam_五金 p = project.M_PLCDevParam_五金;
             if (p == null) return;
             Service.Connect(p.IsConnect, p.GetPLCType(), (CommunicationProtocolEnum)p.ComType,
-                p.PLC_IP, p.DevPort, (emDataFormat)p.nByteTrans);
+                p.PLC_IP, p.DevPort, (emDataFormat)p.nByteTrans,
+                // 结果发布的重试窗口：300ms 写完、失败再试，合计 ≤900ms 仍在一个产品节拍内
+                resultWriteTimeoutMs: 300);
         }
 
         public void Disconnect(Project project)

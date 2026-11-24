@@ -245,7 +245,7 @@ namespace Mef_VisionFrame
         public QueuePackage<ProductDataResult> BLine_DieCutEAProduct { get; } = new QueuePackage<ProductDataResult>();
 
         /// <summary>合片完成的产品队列。只用于统计与界面，PLC 结果在判定时已回传，不等这里。</summary>
-        public QueuePackage<Station1Product> Station1_Product { get; } = new QueuePackage<Station1Product>();
+
 
         public string Station1_ALineCamPath_Defect = "";
         public string Station1_BLineCamPath_Defect = "";
@@ -340,7 +340,7 @@ namespace Mef_VisionFrame
         {
             while (ALine_DieCutEAProduct.Count > 0) ALine_DieCutEAProduct.Dequeue();
             while (BLine_DieCutEAProduct.Count > 0) BLine_DieCutEAProduct.Dequeue();
-            while (Station1_Product.Count > 0) Station1_Product.Dequeue();
+
 
 
             UpCamDefectShowQueue.Clear();

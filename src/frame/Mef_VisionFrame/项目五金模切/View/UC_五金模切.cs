@@ -50,7 +50,7 @@ namespace Mef_VisionFrame
 
         // ── 数据区折叠 ────────────────────────────────────────────────────────
         // 右侧数据区会挤压相机画面，所以放进可折叠区域：收起后只剩一条窄条，
-        // 相机拿到整幅宽度。默认收起，且不持久化——开机就是看画面的状态。
+        // 相机拿到整幅宽度。默认展开，且不持久化——开机就是左右分栏的状态。
         // 宽度只够画一个箭头：这条紧贴相机画面，越窄越不抢视野（文案放 ToolTip）。
         private const int RailWidth = 16;
 
@@ -65,7 +65,8 @@ namespace Mef_VisionFrame
         /// <summary>展开态下左右两栏各自的最小宽度，拖动时不会把任何一边挤没。</summary>
         private const int MinPaneWidth = 320;
 
-        private bool dataExpanded;
+        /// <summary>开机即展开：首屏要能同时看到相机与过程数据，收起是用户主动动作。</summary>
+        private bool dataExpanded = true;
         private TableLayoutPanel root;
         private Control dataHost;
         private CollapseRail rail;

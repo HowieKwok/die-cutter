@@ -64,6 +64,9 @@ namespace Mef_VisionFrame
             /// <summary>建组时刻，用来清理"有一路根本没出图"的残留组。</summary>
             public readonly DateTime CreatedAt = DateTime.Now;
 
+            /// <summary>本组帧号。三路必须同号，否则这三份数据不是同一片的。</summary>
+            public int FrameId;
+
             public readonly Dictionary<int, SizeDectectProduct> Products = new Dictionary<int, SizeDectectProduct>();
 
             /// <summary>三路里任何一路检出缺陷，这一片就是缺陷 NG（与尺寸超规一起决定工位结论）。</summary>
@@ -136,7 +139,9 @@ namespace Mef_VisionFrame
                     Data.Station3_DefectShowQueue.Enqueue(row, 200);
                 }
 
-                AddToSizeGroup(camIndex, product, defect.IsNG);
+                // 帧号是本片的唯一身份：三路同号才进同一组
+                int frameId = (int)window.m_nImageFrameID;
+                AddToSizeGroup(camIndex, product, defect.IsNG, frameId);
 
                 // 只有第一路尺寸相机负责等齐与判工位。
                 // 三路都等的时候，同一个"到齐"信号只能唤醒一个等待者，另外两路必然超时；
@@ -144,7 +149,7 @@ namespace Mef_VisionFrame
                 if (occurrence != 0) return;
 
                 SizeStationGroup group;
-                ProcessExecutionResult result = WaitForSizeGroup(product.SN, ReadSizeWaitMs(), out group);
+                ProcessExecutionResult result = WaitForSizeGroup(frameId, ReadSizeWaitMs(), out group);
 
                 if (result == ProcessExecutionResult.Success)
                 {
@@ -152,9 +157,11 @@ namespace Mef_VisionFrame
                     bool ok = sizeOk && !group.IsDefectNG;
                     window.m_bIsNG = !ok;
 
-                    // 三路到齐即本片成立：结论立刻回传，一个 SN 只写一次。
-                    // 与外观不同，尺寸三路共用 Size 一个点位，所以必须等到齐才写。
-                    WriteSizeResult(!ok);
+                    // 三路到齐即本片成立：结论入队，一个 SN 只入一次。
+                    // 与外观不同，尺寸三路共用 Size 一个点位，所以必须等到齐才入队。
+                    // 帧号暂取本路 window：三路同属一个组窗口，取哪一路都相等；
+                    // 待合并槽改按帧号配对后可改用 group 的帧号。
+                    EnqueueSizeResult((int)window.m_nImageFrameID, !ok);
                     WriteSizeSendLog(window.m_nImageFrameID, !ok);
 
                     DieCutJudge.DataStatistical(Data.Station3_StatisticalData, (long)window.m_nProductID, !ok);
@@ -174,10 +181,10 @@ namespace Mef_VisionFrame
 
                     // 这一片已按 NG 结案：清掉残留组并打废弃标记，
                     // 迟到的那几路图不再入组，否则会在字典里留下一个永远没人消费的孤儿组
-                    AbandonSizeGroup(product.SN);
+                    AbandonSizeGroup(frameId);
 
-                    // 等不齐也算一片 NG，立即回传给 PLC，机构不会一直等
-                    WriteSizeResult(true);
+                    // 等不齐也算一片 NG，立即入队，机构不会一直等
+                    EnqueueSizeResult((int)window.m_nImageFrameID, true);
                     WriteSizeSendLog(window.m_nImageFrameID, true);
 
                     // 界面这一片不能丢：良率、分布、过程数据三处都要留痕，
@@ -231,9 +238,11 @@ namespace Mef_VisionFrame
 
         #region 等齐
 
-        private void AddToSizeGroup(int camIndex, SizeDectectProduct product, bool isDefectNG)
+        private void AddToSizeGroup(int camIndex, SizeDectectProduct product, bool isDefectNG, int frameId)
         {
-            string key = product.SN ?? string.Empty;
+            // 用帧号作键：三路同号才进同一组。原先用 SN，而 SN 从未赋值、恒为空串，
+            // 等于"任意三路各来一帧就凑齐一片"，这正是需求第 5 条要拦住的错配。
+            string key = frameId.ToString();
 
             lock (SizeSyncLock)
             {
@@ -243,10 +252,24 @@ namespace Mef_VisionFrame
                 // 这一片已经按超时/异常结案，迟到的图不再入组
                 if (IsAbandonedSize(key)) return;
 
+                // 已有别的帧号在凑组：说明三路处理的不是同一片。
+                // 不收这一帧——收进来会把两片的数据拼成一个"看起来正常"的结论。
+                foreach (KeyValuePair<string, SizeStationGroup> item in _sizePendingGroups)
+                {
+                    if (item.Value.FrameId == frameId) continue;
+
+                    Frame_Core.业务类.五金模切告警.Raise(
+                        Frame_Core.业务类.五金模切告警.尺寸帧号错位,
+                        "尺寸帧号错位",
+                        $"尺寸相机帧号不一致：正在凑组帧 {item.Value.FrameId}，新到帧 {frameId}。" +
+                        "该帧不入组，请检查三路触发时序与帧号计数。");
+                    return;
+                }
+
                 SizeStationGroup group;
                 if (!_sizePendingGroups.TryGetValue(key, out group))
                 {
-                    group = new SizeStationGroup();
+                    group = new SizeStationGroup { FrameId = frameId };
                     _sizePendingGroups.Add(key, group);
                 }
 
@@ -262,9 +285,9 @@ namespace Mef_VisionFrame
         /// 本片已按超时/组异常结案：移除残留组并打废弃标记，挡住之后迟到的帧。
         /// 由等待方（第一路尺寸流程）在 else 分支调用。
         /// </summary>
-        private void AbandonSizeGroup(string sn)
+        private void AbandonSizeGroup(int frameId)
         {
-            string key = sn ?? string.Empty;
+            string key = frameId.ToString();
 
             lock (SizeSyncLock)
             {
@@ -339,9 +362,9 @@ namespace Mef_VisionFrame
         /// 用"检查是否到齐 → 等信号 → 再看一遍"的循环，而不是单次 WaitOne：
         /// 到齐信号是共享的，可能被上一片残留的信号提前唤醒，单次等待会拿不完整的三路去合算。
         /// </summary>
-        private ProcessExecutionResult WaitForSizeGroup(string sn, int timeoutMs, out SizeStationGroup group)
+        private ProcessExecutionResult WaitForSizeGroup(int frameId, int timeoutMs, out SizeStationGroup group)
         {
-            string key = sn ?? string.Empty;
+            string key = frameId.ToString();
             System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
 
             while (true)

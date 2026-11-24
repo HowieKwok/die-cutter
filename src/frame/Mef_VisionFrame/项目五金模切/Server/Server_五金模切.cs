@@ -83,6 +83,26 @@ namespace Mef_VisionFrame
                     MessageNotify.AddErrorLog("五金模切：正面/背面片数均为 0，缺陷工位只能靠 A/B 同号合片，配不上时良率不会增长");
                 }
 
+                // 下线对齐量 = 两台线扫相机之间隔的片数，来自配方变量「下线片距」。
+                // 0 表示两台相机看同一片（不隔片）；N 表示下线比上线晚 N 片，
+                // 稳态下 下线帧号 = 上线帧号 - N。未配置该变量时按 0 处理并在日志里写明，
+                // 避免"配了却没生效"——旧实现读的是 FrontSideCount/BackSideCount（累计片数），
+                // 那两项不是片距，当成偏移会让 expected 恒定差 2、每片都被判超前/滞后。
+                if (Data.Craft != null)
+                {
+                    bool hasItem = Data.Craft.Get_GlobalVariableItem("下线片距") != null;
+                    int gap = Frame_Core.业务参数类.五金模切帧序号.LoadDownOffsetFromCraft();
+
+                    MessageNotify.AddCommLog(
+                        $"[五金帧号] 下线片距 = {gap}（配方变量「下线片距」" +
+                        $"{(hasItem ? "已生效" : "不存在，按 0 处理")}）；" +
+                        $"稳态下线帧号 = 上线帧号 - {gap}");
+                }
+
+                // 发布器先起：第一帧的结论进来时必须有消费者，
+                // 否则只能排队等溢出（视觉不等 PLC，但也不该把结果堆在队列里）
+                StartResultPublisher();
+
                 foreach (ProcessServices item in Project.Instance.m_ProcessList)
                 {
                     Project.Instance.StartRun(item.process.processInfo.ProcessID);
@@ -106,8 +126,24 @@ namespace Mef_VisionFrame
 
                 // 停机立刻把三路结果写 0，PLC 靠这个值判断这一片还在不在检。
                 // 放在 StopRun 之后，确保所有流程已停，不会再有帧开始写"待检"。
+                // 先停发布器再清队列：反过来的话，清空与写入会竞争，
+                // 刚清空的队列可能又被投递进一条旧结论
+                StopResultPublisher();
+
                 // 心跳不在这里停：它只跟 PLC 通讯状态有关，停机仍继续翻转。
                 ResetAllResults();
+
+                // 代际 +1：停机瞬间已出队、随后才判完的帧会在结算时被丢弃，
+                // 不会把刚写下去的 0 覆盖成 OK/NG。
+                // 序号刻意不动：再启动要接着原来的片序跑，从 1 重数会让下线永久错位。
+                Frame_Core.业务参数类.五金模切帧序号.Stop();
+
+                // 停机丢弃未发布结论是刻意的：继续补发会把停机后的 PLC 状态改回 OK/NG
+                foreach (PlcResultChannel channel in AllResultChannels) channel.Clear();
+
+                // 停机时未凑齐的尺寸组一并作废：再启动时若还留着，
+                // 新卷第一片会把上一停机的残留槽凑成一组，拼出一片不存在的产品
+                ClearSizeGroups();
 
                 RefreshToolView?.Invoke();
                 return true;
@@ -123,6 +159,10 @@ namespace Mef_VisionFrame
                 ResetAllResults();
                 ClearSizeGroups();
                 Data.Reset_DefectStation();
+
+                // 自动模式下复位即恢复生产：五金没有启停按钮，
+                // 复位后不自动重启，现场就只能重启软件才能继续跑。
+                EnsureAutoRunning();
             });
         }
 
@@ -222,12 +262,58 @@ namespace Mef_VisionFrame
         /// <summary>极片 EA：裁图流程切出的 EA 图，进"EA图"窗口。</summary>
         public void DieCutMainCamEaProcess(ProductBase productBase)
         {
-            ProcessEaImage(CamRole.模切主相机, 0, productBase);
+            SafeProcessEaImage(CamRole.模切主相机, 0, productBase);
         }
 
         public void DieCutSubCamEaProcess(ProductBase productBase)
         {
-            ProcessEaImage(CamRole.模切从相机, 0, productBase);
+            SafeProcessEaImage(CamRole.模切从相机, 0, productBase);
+        }
+
+        /// <summary>
+        /// 外观判定的统一结算出口。
+        ///
+        /// 这里不是"记录异常"，而是"异常也必须给出结论"：
+        /// 少一条结论 = PLC 少一拍，外部表现就是机构停在等结果，比判错更严重。
+        /// 所以异常一律结算为 NG。
+        /// </summary>
+        private void SafeProcessEaImage(CamRole role, int occurrence, ProductBase productBase)
+        {
+            DieCutEAProduct ea = productBase as DieCutEAProduct;
+            int frameId = (int)(ea?.showHalconGroup?.FirstOrDefault()?.m_nImageFrameID ?? 0);
+
+            try
+            {
+                ProcessEaImage(role, occurrence, productBase);
+            }
+            catch (Exception ex)
+            {
+                Log4netRecord.ErrorLog.Error($"五金外观判定异常，按 NG 结算：{ex}");
+
+                bool isUp = role == CamRole.模切主相机;
+                PlcResultChannel channel = isUp ? UpResultChannel : DownResultChannel;
+
+                // 已经入过结论就不能再补：重复入队会让 PLC 把两片的结论错位。
+                // 判定异常多发生在入队之后的落盘/界面环节，必须判重。
+                if (frameId > 0 && !HasConclusion(channel, frameId))
+                {
+                    EnqueueAppearanceResult(isUp, frameId, true);
+                    Frame_Core.业务类.五金模切告警.Raise(
+                        Frame_Core.业务类.五金模切告警.帧结算异常,
+                        "帧结算异常",
+                        $"帧 {frameId} 判定抛出异常，已按 NG 结算并回传。{ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>队列里是否已有该帧的结论（不含待检）。仅异常路径调用，队列深度上限 64。</summary>
+        private static bool HasConclusion(PlcResultChannel channel, int frameId)
+        {
+            foreach (PlcResultItem item in channel.Snapshot())
+            {
+                if (item.FrameId == frameId && item.Value != PlcResult.Pending) return true;
+            }
+            return false;
         }
 
         // 尺寸三路的回调在 Server_五金模切.尺寸工位.cs：它们要等齐三路再判，
@@ -275,7 +361,7 @@ namespace Mef_VisionFrame
             // 本片外观结论直接回传 PLC：上线/下线各写各的，不需要等合片、也不需要 PLC 请求。
             // 宁可先给结论再落盘，机构在等这个值。
             bool isUp = role == CamRole.模切主相机;
-            WriteAppearanceResult(isUp, result.IsNG);
+            EnqueueAppearanceResult(isUp, (int)window.m_nImageFrameID, result.IsNG);
             WriteAppearanceSendLog(isUp, result.IsNG, window.m_nImageFrameID);
 
             // 明细落盘：这一帧检出的每个缺陷一行（没有缺陷时为空表，与激光一致）
@@ -488,35 +574,31 @@ namespace Mef_VisionFrame
         {
             if (Data.Craft == null) return false;
 
-            int FrontSideCount = Data.Craft.Get_GlobalVariableItem("FrontSideCount")?.Value.ToInt() ?? 0;
-            int BackSideCount = Data.Craft.Get_GlobalVariableItem("BackSideCount")?.Value.ToInt() ?? 0;
-            int slice = BackSideCount - FrontSideCount;
+            long AFrame = 0;
+            long BFrame = 0;
 
-            long AProductID = 0;
-            long BProductID = 0;
+            if (Data.ALine_DieCutEAProduct.Count > 0) AFrame = Data.ALine_DieCutEAProduct.Peek().m_nImageFrameID;
+            if (Data.BLine_DieCutEAProduct.Count > 0) BFrame = Data.BLine_DieCutEAProduct.Peek().m_nImageFrameID;
 
-            if (Data.ALine_DieCutEAProduct.Count > 0) AProductID = Data.ALine_DieCutEAProduct.Peek().m_nProductID;
-            if (Data.BLine_DieCutEAProduct.Count > 0) BProductID = Data.BLine_DieCutEAProduct.Peek().m_nProductID;
+            if (AFrame == 0 || BFrame == 0) return false;
 
-            if (AProductID == 0 || BProductID == 0) return false;
-
-            if (AProductID == BProductID - slice)
+            // 同一片在上线与下线拿到的是同一个帧号，所以直接相等配对。
+            // 不再用 m_nProductID + 片差：那是两条线各自独立计数年代的补偿，
+            // 帧号统一后这个偏移已由 LineScanFrameSequencer 保证，再算一遍必然错配。
+            if (AFrame == BFrame)
             {
-                Station1Product product = new Station1Product();
-                product.ProductID = AProductID;
-                product.ALine_DieCutEAProduct = Data.ALine_DieCutEAProduct.Dequeue();
-                product.BLine_DieCutEAProduct = Data.BLine_DieCutEAProduct.Dequeue();
-                product.IsNG = product.ALine_DieCutEAProduct.IsNG || product.BLine_DieCutEAProduct.IsNG;
+                ProductDataResult aLine = Data.ALine_DieCutEAProduct.Dequeue();
+                ProductDataResult bLine = Data.BLine_DieCutEAProduct.Dequeue();
+                bool isNG = aLine.IsNG || bLine.IsNG;
 
-                Data.Station1_Product.Enqueue(product, 100);
-                MessageNotify.AddCommLog($"缺陷工位——合片完成，产品ID{AProductID}");
+                MessageNotify.AddCommLog($"缺陷工位——合片完成，帧号{AFrame}");
 
                 // 统计按“一片”计：A/B 任一面 NG 即这一片 NG
-                DieCutJudge.DataStatistical(Data.Station1_StatisticalData, AProductID, product.IsNG);
+                DieCutJudge.DataStatistical(Data.Station1_StatisticalData, AFrame, isNG);
 
                 // 分布同样按“一片”计：取 A/B 两面中优先级最高的那一个 NG 项，
                 // 不逐缺陷累加——否则一片上有 3 个缺陷就记 3 次，占比会超过 100%。
-                CountDefectDistribution(product);
+                CountDefectDistribution(aLine, bLine);
 
                 Data.DefectStation_BindingDatasSave.Enqueue(
                     Model_五金模切.Snapshot(Data.DefectCounts, Data.Station1_StatisticalData), 1);
@@ -524,14 +606,15 @@ namespace Mef_VisionFrame
                 return true;
             }
 
-            if (AProductID > BProductID - slice)
+            // 下线落后：丢掉落后的那一帧等它追上，与原先"移除 B 线扫"同一语义
+            if (AFrame > BFrame)
             {
                 var dropped = Data.BLine_DieCutEAProduct.Dequeue();
-                MessageNotify.AddErrorLog($"缺陷工位——A线扫产品ID大于B线扫，移除B线扫产品{dropped?.m_nProductID}");
+                MessageNotify.AddErrorLog($"缺陷工位——上线帧号大于下线，移除下线帧{dropped?.m_nImageFrameID}");
                 return true;
             }
 
-            MessageNotify.AddErrorLog($"缺陷工位——A线扫产品ID小于B线扫产品ID（A{AProductID}, B{BProductID}, 片差{slice}）");
+            MessageNotify.AddErrorLog($"缺陷工位——上线帧号小于下线（A{AFrame}, B{BFrame}），等待上线追上");
             return false;
         }
 

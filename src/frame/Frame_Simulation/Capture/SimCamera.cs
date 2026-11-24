@@ -81,6 +81,15 @@ namespace Frame_Simulation.Capture
         /// </summary>
         public Func<bool> TriggerWhen { get; set; }
 
+        /// <summary>
+        /// 编排器登记：阻塞到本轮该本相机触发。为 null 时退回固定节拍。
+        /// 接入编排后，"什么时候触发"由编排器决定，不再由本相机自己的间隔决定。
+        /// </summary>
+        public Func<WaitHandle, bool> WaitTurn { get; set; }
+
+        /// <summary>本相机在编排器里的下标，-1 表示未登记。</summary>
+        public int SlotIndex { get; set; } = -1;
+
         /// <summary>重新扫描图片目录。相机设置里改了仿真路径后调用，无需重启。</summary>
         public void ReloadImageSet(string imageDir = null)
         {
@@ -172,7 +181,7 @@ namespace Frame_Simulation.Capture
 
             while (!stop.WaitOne(0))
             {
-                if (!_pacer.WaitNextFrame(stop)) break;
+                if (!WaitForTurn(stop)) break;
 
                 // 未运行时不产图：等价于真机"没有触发信号"，自然不会进队列、不会记录。
                 Func<bool> trigger = TriggerWhen;
@@ -187,6 +196,17 @@ namespace Frame_Simulation.Capture
                     Record(Log.SimRecordKind.Error, "取图异常：" + ex.Message);
                 }
             }
+        }
+
+        /// <summary>
+        /// 两种节拍二选一：已接入编排器就等编排器发令，否则退回固定间隔。
+        /// 不能两者都等——同时等会让实际节拍变成两者之和。
+        /// </summary>
+        private bool WaitForTurn(ManualResetEvent stop)
+        {
+            Func<WaitHandle, bool> gate = WaitTurn;
+            if (gate != null && SlotIndex >= 0) return gate(stop);
+            return _pacer.WaitNextFrame(stop);
         }
 
         private void PushOneFrame()

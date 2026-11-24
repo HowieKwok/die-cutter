@@ -86,47 +86,38 @@ namespace Mef_VisionFrame
 
         #region 结果：帧开始写待检，判定完写 OK/NG
 
-        /// <summary>
-        /// 上线扫（模切主相机）本片已触发、结论未出。
-        /// 与写结果同一个闸门：停机后相机若仍出一帧，不能把停机写的 0 抹成 3。
-        /// </summary>
-        public void WriteAppearancePending(bool isUp)
-        {
-            if (!Project.Instance.Is_Run) return;
-            WriteResult(isUp ? Addr?.UpLineScanResult : Addr?.DownLineScanResult, PlcResult.Pending);
-        }
+        #region 结果：入队，不直写
 
         /// <summary>
-        /// 上线/下线本片外观结论。上线与下线各自独立，互不影响。
+        /// 上线/下线本片外观结论入队。发布时机由发布器决定，视觉侧不再等 PLC。
         ///
-        /// 停止后写 1/2 是被禁止的：停机瞬间可能有帧正在判定，
-        /// 让它把刚写下去的 0 覆盖成 1/2，PLC 会以为机器还在跑。
+        /// 两道闸门都必须保留：
+        /// 1. 停机后不再入队——停机已把点位写回 0，再发一条会把 0 覆盖成 OK/NG；
+        /// 2. 代际校验——停机/换卷瞬间已出队、随后才判完的帧属于旧代际，必须丢弃。
+        ///
+        /// 待检（Pending）不在这里投递：它在帧号分配时随 FrameAssigned 事件入队，
+        /// 这样被去抖或帧号校验丢弃的帧不会留下多余的 Pending。
         /// </summary>
-        public void WriteAppearanceResult(bool isUp, bool isNG)
+        public void EnqueueAppearanceResult(bool isUp, int frameId, bool isNG)
         {
             if (!Project.Instance.Is_Run) return;
-            WriteResult(isUp ? Addr?.UpLineScanResult : Addr?.DownLineScanResult, isNG ? PlcResult.Ng : PlcResult.Ok);
+            if (!Frame_Core.业务参数类.五金模切帧序号.IsLive(frameId)) return;
+
+            EnqueueResult(isUp ? UpResultChannel : DownResultChannel,
+                frameId,
+                isNG ? PlcResult.Ng : PlcResult.Ok);
         }
 
-        /// <summary>
-        /// 三路尺寸相机已触发、组结论未出。
-        /// 与写结果同一个闸门：停机后不能再往点位写 3。
-        /// </summary>
-        public void WriteSizePending()
+        /// <summary>三路尺寸合成后的本片结论入队。与外观同理，过同样的两道闸门。</summary>
+        public void EnqueueSizeResult(int frameId, bool isNG)
         {
             if (!Project.Instance.Is_Run) return;
-            WriteResult(Addr?.SizeResult, PlcResult.Pending);
+            if (!Frame_Core.业务参数类.五金模切帧序号.IsLive(frameId)) return;
+
+            EnqueueResult(SizeResultChannel, frameId, isNG ? PlcResult.Ng : PlcResult.Ok);
         }
 
-        /// <summary>
-        /// 三路尺寸合成后的本片结论，一个 SN 只写一次。
-        /// 与外观同理：停止后不再写 1/2，避免覆盖停机写的 0。
-        /// </summary>
-        public void WriteSizeResult(bool isNG)
-        {
-            if (!Project.Instance.Is_Run) return;
-            WriteResult(Addr?.SizeResult, isNG ? PlcResult.Ng : PlcResult.Ok);
-        }
+        #endregion
 
         /// <summary>
         /// 停机/复位/换卷：三路结果回 0，多次NG 清回 0。
