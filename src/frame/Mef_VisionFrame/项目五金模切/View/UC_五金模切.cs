@@ -131,16 +131,13 @@ namespace Mef_VisionFrame
             {
                 BeginInvoke((MethodInvoker)(() =>
                 {
-                    if (displayUnits.Length == 0) BuildDisplayUnits();
+                    EnsureCameraDisplayUnits();
                     EnsureNgDisplayWindows();
                 }));
                 return;
             }
 
-            if (displayUnits.Length == 0)
-            {
-                BuildDisplayUnits();
-            }
+            EnsureCameraDisplayUnits();
 
             // NG 格子默认在折叠的数据区里、而且只有切到"缺陷图片"页才可见，
             // 等它自然显形再建来不及，所以这里主动把句柄建出来再挂显示对象
@@ -372,69 +369,90 @@ namespace Mef_VisionFrame
             return selected == index;
         }
         /// <summary>
-        /// 相机区：左 2×2 四宫格放四路线扫画面（模切主/从 × 大图/EA），右竖排三路尺寸画面。
-        /// 展开数据区只是把整块相机区压窄，这个结构不变。
+        /// 相机区：与激光模切一致——「线扫」页放四路线扫画面（模切主/从 × 大图/EA）2×2，
+        /// 「尺寸」页放三路尺寸画面（同样 2×2，第四格留空）。
+        ///
+        /// 原来左右并排，两组画面互相挤宽度：线扫只剩 66%，尺寸只有 34%。
+        /// 换页后当前在看的那一组拿满整个宽度，另一组只是不显示，控件本身不重建。
         /// </summary>
         private Control BuildCameraPanel()
         {
-            TableLayoutPanel panel = new TableLayoutPanel
+            // 七个画面先全部建好再分页：显示单元只认控件引用，页签只决定它们此刻显示在哪一页
+            winUpMain = NewWindow(0, "大图");
+            winUpEa = NewWindow(0, "EA图");
+            winDownMain = NewWindow(1, "大图");
+            winDownEa = NewWindow(1, "EA图");
+            winSize1 = NewWindow(2, null);
+            winSize2 = NewWindow(3, null);
+            winSize3 = NewWindow(4, null);
+
+            AntdUI.Tabs tabs = new AntdUI.Tabs
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 1,
                 // 右边留 4px 空隙：折叠条与相机画面隔开一条窗口底色，
                 // 否则那条窄栏贴在图边上，看起来像压在画面上。
                 Margin = new Padding(0, 0, 4, 0),
             };
-            // 线扫四宫格是主视野，尺寸三路只占右侧一条
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66F));
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
+            // 页签内容可能延迟建句柄：换页时补一次显示单元与主题（都幂等）
+            tabs.SelectedIndexChanged += CameraTabs_SelectedIndexChanged;
 
-            TableLayoutPanel diePanel = new TableLayoutPanel
+            // 页序与激光模切 tabs1 一致：线扫在前
+            tabs.Pages.Add(NewTabPage("线扫", BuildDieScanPage()));
+            tabs.Pages.Add(NewTabPage("尺寸", BuildSizePage()));
+            return tabs;
+        }
+
+        /// <summary>线扫页：2×2，左列大图（主/从）、右列 EA 图，与激光模切 tabPage1 同序。</summary>
+        private Control BuildDieScanPage()
+        {
+            TableLayoutPanel page = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 2,
                 Margin = new Padding(0),
             };
-            diePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            diePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            diePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            diePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            page.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            page.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-            winUpMain = NewWindow(0, "大图");
-            winUpEa = NewWindow(0, "EA图");
-            winDownMain = NewWindow(1, "大图");
-            winDownEa = NewWindow(1, "EA图");
+            page.Controls.Add(winUpMain, 0, 0);
+            page.Controls.Add(winUpEa, 1, 0);
+            page.Controls.Add(winDownMain, 0, 1);
+            page.Controls.Add(winDownEa, 1, 1);
+            return page;
+        }
 
-            diePanel.Controls.Add(winUpMain, 0, 0);
-            diePanel.Controls.Add(winUpEa, 1, 0);
-            diePanel.Controls.Add(winDownMain, 0, 1);
-            diePanel.Controls.Add(winDownEa, 1, 1);
-
-            TableLayoutPanel sizePanel = new TableLayoutPanel
+        /// <summary>
+        /// 尺寸页：2×2，与激光那一页同结构，按行填满前三格：
+        /// 尺寸1 尺寸2 / 尺寸3 空。第四格留给激光的「裁切定位」，五金没有纠偏工位，留空不摆控件。
+        /// </summary>
+        private Control BuildSizePage()
+        {
+            TableLayoutPanel page = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 3,
+                ColumnCount = 2,
+                RowCount = 2,
                 Margin = new Padding(0),
             };
-            for (int i = 0; i < 3; i++)
-            {
-                sizePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F / 3));
-            }
+            page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            page.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            page.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-            winSize1 = NewWindow(2, null);
-            winSize2 = NewWindow(3, null);
-            winSize3 = NewWindow(4, null);
+            page.Controls.Add(winSize1, 0, 0);
+            page.Controls.Add(winSize2, 1, 0);
+            page.Controls.Add(winSize3, 0, 1);
+            return page;
+        }
 
-            sizePanel.Controls.Add(winSize1, 0, 0);
-            sizePanel.Controls.Add(winSize2, 0, 1);
-            sizePanel.Controls.Add(winSize3, 0, 2);
-
-            panel.Controls.Add(diePanel, 0, 0);
-            panel.Controls.Add(sizePanel, 1, 0);
-            return panel;
+        private void CameraTabs_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
+        {
+            // 尺寸页第一次露出来，那一页的窗口句柄这时才建得出来，这里补建；已建过直接返回
+            EnsureCameraDisplayUnits();
+            Frame_UI.WinForms.WinFormsThemeApplier.Apply(this);
         }
 
         /// <summary>标题 = 相机名（+ 画面后缀）。相机名来自配置，换相机不用改界面。</summary>
@@ -842,8 +860,36 @@ namespace Mef_VisionFrame
 
         #region 显示单元
 
+        /// <summary>
+        /// 相机画面现在住在页签里，非当前页的控件句柄建得晚；
+        /// 而 HWndCtrl 在构造时就把句柄缓存走了 —— 句柄晚建等于那一格永远黑屏。
+        /// 所以先逐个把句柄逼出来，七格全就绪才建显示单元。
+        ///
+        /// 幂等，且 RefreshView 的 500ms 节拍也会调：句柄是随页签首次显示才出现的，
+        /// 一次没凑齐就等下一个节拍，不在界面上留半张表。
+        /// </summary>
+        private void EnsureCameraDisplayUnits()
+        {
+            if (!IsHandleCreated || displayUnits.Length != 0) return;
+
+            UC_HalconWindow[] windows =
+            {
+                winUpMain, winUpEa, winDownMain, winDownEa, winSize1, winSize2, winSize3,
+            };
+
+            foreach (UC_HalconWindow window in windows)
+            {
+                // 取一次 Handle 才会走 HWindowControl.OnHandleCreated，Halcon 窗口那时才打开
+                if (window == null || !ForceHandle(window)) return;
+            }
+
+            BuildDisplayUnits();
+        }
+
         private void BuildDisplayUnits()
         {
+            if (displayUnits.Length != 0) return;
+
             CamImageQueues[] cams = VM.Data.Cams;
             if (cams == null || cams.Length < 5) return;
 
@@ -973,6 +1019,7 @@ namespace Mef_VisionFrame
 
         public override void RefreshView()
         {
+            EnsureCameraDisplayUnits();   // 句柄随页签显示才就绪，凑齐了才建显示单元
             RefreshTitles();    // 相机标题跟折叠无关，照刷
 
             // 每个区域各自过闸门：收起或不在该页时只排空队列，不往界面上写
