@@ -49,6 +49,8 @@ namespace Plugin.MeasureLine.Models
         private double currentColumn;
         private double currentAngle;
         private bool currentPoseValid;
+        private double minLength = -1;
+        private double maxLength = -1;
 
         public event EventHandler ParameterChanged;
 
@@ -81,6 +83,8 @@ namespace Plugin.MeasureLine.Models
                 SharpenSigma = frameParams.hv_SharpenSigma;
                 PeakValleySelect = frameParams.hv_PeakValleySelect;
                 DefaultLine = frameParams.bl_DefaultLine;
+                MinLength = frameParams.hv_MinLength;
+                MaxLength = frameParams.hv_MaxLength;
                 RoiMoveIndex = frameParams.str_RoiMoveIndex;
                 RoiStandardRow = frameParams.hv_RoiStandardRow;
                 RoiStandardColumn = frameParams.hv_RoiStandardColumn;
@@ -131,6 +135,8 @@ namespace Plugin.MeasureLine.Models
             frameParams.hv_SharpenSigma = SharpenSigma;
             frameParams.hv_PeakValleySelect = PeakValleySelect;
             frameParams.bl_DefaultLine = DefaultLine;
+            frameParams.hv_MinLength = MinLength;
+            frameParams.hv_MaxLength = MaxLength;
             frameParams.str_RoiMoveIndex = RoiMoveIndex;
             frameParams.hv_RoiStandardRow = RoiStandardRow;
             frameParams.hv_RoiStandardColumn = RoiStandardColumn;
@@ -192,6 +198,8 @@ namespace Plugin.MeasureLine.Models
         public double SharpenSigma { get { return sharpenSigma; } set { SetValue(ref sharpenSigma, value); } }
         public string PeakValleySelect { get { return peakValleySelect; } set { SetValue(ref peakValleySelect, value); } }
         public bool DefaultLine { get { return defaultLine; } set { SetValue(ref defaultLine, value); } }
+        public double MinLength { get { return minLength; } set { SetValue(ref minLength, value); } }
+        public double MaxLength { get { return maxLength; } set { SetValue(ref maxLength, value); } }
         public string RoiMoveIndex { get { return roiMoveIndex; } set { SetValue(ref roiMoveIndex, value); } }
         public double RoiStandardRow { get { return roiStandardRow; } set { SetValue(ref roiStandardRow, value); } }
         public double RoiStandardColumn { get { return roiStandardColumn; } set { SetValue(ref roiStandardColumn, value); } }

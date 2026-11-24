@@ -1,4 +1,4 @@
-﻿using Frame_Core;
+using Frame_Core;
 using HalconDotNet;
 using System;
 using System.Collections.Generic;
@@ -117,13 +117,13 @@ namespace Mef_VisionFrame
             {
                 if (sizeDirectionEnum == SizeDirectionEnum.X)
                 {
-                    Val = pointInfo2.Col - pointInfo1.Col;
+                    Val = Math.Abs(pointInfo2.Col - pointInfo1.Col);
                     Val = Val * coefficient + RealFixOffset;
                 }
 
                 else if (sizeDirectionEnum == SizeDirectionEnum.Y)
                 {
-                    Val = pointInfo2.Row - pointInfo1.Row;
+                    Val = Math.Abs(pointInfo2.Row - pointInfo1.Row);
                     Val = Val * coefficient + RealFixOffset;
                 }
 
@@ -158,13 +158,13 @@ namespace Mef_VisionFrame
 
                 if (sizeDirectionEnum == SizeDirectionEnum.X)
                 {
-                    Val = line2midcol - line1midcol;
+                    Val = Math.Abs(line2midcol - line1midcol);
                     Val = Val * coefficient + RealFixOffset;
                 }
 
                 else if (sizeDirectionEnum == SizeDirectionEnum.Y)
                 {
-                    Val = line2midrow - line1midrow;
+                    Val = Math.Abs(line2midrow - line1midrow);
                     Val = Val * coefficient + RealFixOffset;
                 }
 

@@ -50,6 +50,12 @@ namespace Mef_VisionFrame
         /// <summary>废弃标记的存活时间，覆盖最慢一路的迟到窗口。</summary>
         private const int SizeAbandonTtlMs = 5000;
 
+        /// <summary>等齐失败在统计表里的归类项。配方没有这项时 ApplyCounts 会追加到表尾，占比看得见。</summary>
+        private const string SizeAbnormalName = "等齐超时/组异常";
+
+        /// <summary>曲线未建页签的尺寸项名，每项只报一次，避免每片刷一条错误日志。</summary>
+        private readonly HashSet<string> ChartMissReported = new HashSet<string>();
+
         /// <summary>
         /// 一个 SN 的三路产品。Products 的键是物理相机下标，所以机型换下标不用改这里。
         /// </summary>
@@ -173,6 +179,18 @@ namespace Mef_VisionFrame
                     // 等不齐也算一片 NG，立即回传给 PLC，机构不会一直等
                     WriteSizeResult(true);
                     WriteSizeSendLog(window.m_nImageFrameID, true);
+
+                    // 界面这一片不能丢：良率、分布、过程数据三处都要留痕，
+                    // 否则 PLC 已经判了这一片 NG，界面良率却比实际高。
+                    // SumupCount 的口径是 productID，超时那路的 ID 可能比已记账的小，
+                    // 直接写会让总数回退，所以取一次单调递增值。
+                    long timeoutProductId = Math.Max((long)window.m_nProductID,
+                        (long)Data.Station3_StatisticalData.SumupCount + 1);
+                    DieCutJudge.DataStatistical(Data.Station3_StatisticalData, timeoutProductId, true);
+                    Data.SizeDefectCounts.AddOrUpdate(SizeAbnormalName, 1, (k, v) => v + 1);
+                    Data.SizeStation_BindingDatasSave.Enqueue(
+                        Model_五金模切.Snapshot(Data.SizeDefectCounts, Data.Station3_StatisticalData), 1);
+                    EnqueueInvalidSizeRow(window);
                 }
             }
             catch (Exception ex)
@@ -188,6 +206,27 @@ namespace Mef_VisionFrame
                 WriteDetectionTime(camIndex, 0, window, product.detectionTime);
                 DeliverImage(camIndex, window, "原图", Data.Cams[camIndex].MainShow);
             }
+        }
+
+        /// <summary>
+        /// 等不齐也要在"极片尺寸结果"面板占一行：列数与配方一致，值全写 -999，
+        /// 这样切到该页看得出来"这一片没检成"，而不是表格里凭空少一行。
+        /// </summary>
+        private void EnqueueInvalidSizeRow(ShowHalconWindow window)
+        {
+            List<string> titles = Data.Station3_Title_Size;
+            List<RowData> row = new List<RowData>
+            {
+                new RowData { dataStr = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff"), resultType = ResultType.NG },
+                new RowData { dataStr = (window?.m_nImageFrameID ?? 0).ToString(), resultType = ResultType.NG },
+            };
+
+            for (int i = 2; i < titles.Count; i++)
+            {
+                row.Add(new RowData { dataStr = "-999", resultType = ResultType.NG });
+            }
+
+            Data.Station3_SizeShowQueue.Enqueue(row, 200);
         }
 
         #region 等齐
@@ -434,6 +473,7 @@ namespace Mef_VisionFrame
                 ? DieCutJudge.GetHighestPriority(sizeItems.ToArray()) : null;
 
             string name = topDefect?.T_Name ?? topSize?.Name;
+
             if (string.IsNullOrEmpty(name)) return;
 
             Data.SizeDefectCounts.AddOrUpdate(name, 1, (key, count) => count + 1);
@@ -557,6 +597,18 @@ namespace Mef_VisionFrame
             if (Data.chartUIUser.TryGetValue(sizeInfo.Name, out chart) && chart != null)
             {
                 chart.UpdateCurve("当前值", sizeInfo.DataResult);
+            }
+            else
+            {
+                // 曲线页签没建（配方为空 / 项名对不上）时数据会被静默丢弃，
+                // 界面上只看到一条标准值平线，不报出来根本查不到。
+                lock (ChartMissReported)
+                {
+                    if (ChartMissReported.Add(sizeInfo.Name))
+                    {
+                        Log4netRecord.ErrorLog.Error($"五金模切曲线未建立页签，尺寸项[{sizeInfo.Name}]的曲线数据被丢弃");
+                    }
+                }
             }
         }
 

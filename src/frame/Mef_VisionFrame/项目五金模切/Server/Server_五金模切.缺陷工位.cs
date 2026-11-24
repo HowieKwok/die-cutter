@@ -280,6 +280,7 @@ namespace Mef_VisionFrame
             if (candidates.Count == 0) return;
 
             DefectSummary top = DieCutJudge.GetHighestPriority(candidates.ToArray());
+
             if (top == null || string.IsNullOrEmpty(top.T_Name)) return;
 
             Data.DefectCounts.AddOrUpdate(top.T_Name, 1, (k, v) => v + 1);

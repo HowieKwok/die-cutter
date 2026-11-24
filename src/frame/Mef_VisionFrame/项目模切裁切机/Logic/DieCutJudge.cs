@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+
 namespace Mef_VisionFrame
 {
     /// <summary>
@@ -42,7 +43,6 @@ namespace Mef_VisionFrame
                 string dataSource1_ModeOutName = DataSource1?.Count() > 1 ? DataSource1[1] : "";
                 string dataSource2_ModelName = DataSource2?.Count() > 0 ? DataSource2[0] : "";
                 string dataSource2_ModeOutName = DataSource2?.Count() > 1 ? DataSource2[1] : "";
-
 
                 if (CalcFormula == CalcFormulaEnum.点线)
                 {

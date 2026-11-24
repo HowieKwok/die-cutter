@@ -639,6 +639,22 @@ namespace Frame_Core.业务类
                             //这里进行位置推算
                             //第一步，判断位置是否满足裁图条件
                             HOperatorSet.GetImageSize(CropPartParams.Image_part, out HTuple width, out HTuple height);
+
+                            // 精定位测出来的裁断位不一定可信：cam1 上它会锁到拼接图里一个固定特征，
+                            // 每片都给出近似恒定的行号（实测 5162，而工艺配置 DefCutPos=3178），
+                            // 按它裁图必然越出图像高度、整片 EA 直接判 NG。越界时退回 DefCutPos。
+                            double defCutPos = (m_craft.Get_GlobalVariableItem(process.processInfo.CameraID, "DefCutPos")?.Value.ToDouble() ?? 0);
+                            double cropHalf = (PieHeight * CropHeightScale) / 2;
+                            if (defCutPos > 0)
+                            {
+                                bool measuredBad = CutLine + midLine - cropHalf < 0 || CutLine + midLine + cropHalf > height;
+                                bool defOk = defCutPos + midLine - cropHalf >= 0 && defCutPos + midLine + cropHalf <= height;
+                                if (measuredBad && defOk)
+                                {
+                                    CutLine = defCutPos;
+                                }
+                            }
+
                             midLineTemp = midLine + CutLine;
                             topLineTemp = midLineTemp - (PieHeight * CropHeightScale) / 2;
                             bottomLineTemp = midLineTemp + (PieHeight * CropHeightScale) / 2;
@@ -952,7 +968,9 @@ namespace Frame_Core.业务类
                         ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时:{end2.D.ToString("0.00")}" });
                        
                         NgDefectResult ngDefect = new NgDefectResult();
-                        ngDefect.ClassName = "涂布不良";
+                        // 拼接/裁图没成功时这里只是占位结果：不能再借"涂布不良"这个名字，
+                        // 否则良率表里"涂布不良"会恒等于总数，真正的原因被埋掉。
+                        ngDefect.ClassName = EAimageInfo.NgType == 2 ? "首片NG" : "裁图异常";
                         ngDefect.Area =999999;
                         ngDefect.HeightPx = 999999;
                         ngDefect.WidthPx = 999999;

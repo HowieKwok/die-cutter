@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -78,7 +78,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\dll\CamDLL\MvCameraControl.Net.dll</HintPath>
     </Reference>
-    <Reference Include="MvFGCtrlC.Net, Version=1.0.0.0, Culture=neutral, PublicKeyToken=52fddfb3f94be800, processorArchitecture=x86">
+    <Reference Include="MvFGCtrlC.Net, Version=1.0.0.0, Culture=neutral, PublicKeyToken=52fddfb3f94be800">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\dll\CamDLL\MvFGCtrlC.Net.dll</HintPath>
     </Reference>
@@ -204,4 +204,10 @@
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+  <PropertyGroup>
+    <!-- MvFGCtrlC.Net 只有 x64 原生实现，本工程按 Any CPU 编译，架构必然不匹配。
+         宿主进程固定 x64，这里只关掉这条注定出现的检查，不改编译输出。 -->
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+  </PropertyGroup>
 </Project>

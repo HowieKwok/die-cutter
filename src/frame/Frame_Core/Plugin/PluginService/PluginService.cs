@@ -22,6 +22,7 @@ namespace Frame_Core
         //private IEnumerable<IPlugin> Plugins1;
 
         private  static string PlugInsPath = Path.Combine(System.Environment.CurrentDirectory, "Plugins\\");
+        private static bool assemblyProbeInstalled;
         private  static CompositionContainer container;
         public   static Dictionary<string, PluginsInfo> pluginsDictionary = new Dictionary<string, PluginsInfo>();
        // public List<IPlugin> list = new List<IPlugin>();
@@ -75,8 +76,48 @@ namespace Frame_Core
         /// 获取所有插件类别。
         /// </summary>
         /// <returns></returns>
+        /// <summary>
+        /// 插件私有依赖的兜底探测。
+        ///
+        /// 插件用 LoadFile / UnsafeLoadFrom 载入，CLR 不会回看插件所在目录，
+        /// 而 BAML 解析 xmlns 里的 assembly= 走的是"按名加载"，
+        /// 只探测宿主目录与 GAC。于是出现"Plugins 里明明有 dll，运行期仍报找不到"，
+        /// 典型表现是 XamlParseException + FileNotFoundException(Microsoft.Xaml.Behaviors)。
+        ///
+        /// 这里把 Plugins 目录补成最后一级探测点：只有常规探测全部失败才会触发，
+        /// 因此不会抢在宿主自带同名程序集前面。
+        /// </summary>
+        private static void EnsurePluginAssemblyProbe()
+        {
+            if (assemblyProbeInstalled) return;
+            assemblyProbeInstalled = true;
+            AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+        }
+
+        private static Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            try
+            {
+                string simpleName = new AssemblyName(args.Name).Name;
+
+                // 插件之间互相引用时，避免同一程序集被 LoadFile 二次载入导致类型身份分裂。
+                Assembly loaded = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => string.Equals(a.GetName().Name, simpleName, StringComparison.OrdinalIgnoreCase));
+                if (loaded != null) return loaded;
+
+                string candidate = Path.Combine(PlugInsPath, simpleName + ".dll");
+                return File.Exists(candidate) ? LoadPluginAssembly(candidate) : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static void InitializPlugin()
-        {          
+        {
+            // 必须先装探测钩子：插件里的 XAML/BAML 在按名解析依赖时才会找到 Plugins 目录。
+            EnsurePluginAssemblyProbe();
             if (Directory.Exists(PlugInsPath) == false) return;
             foreach (var file in Directory.GetFiles(PlugInsPath))
             {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -233,6 +233,25 @@ namespace Frame_Core
         /// </summary>
         [Description("测量结果验证")]
         public bool bl_DefaultLine = false;
+
+        #region 长度约束
+
+        [ShowTextAttribute("最小长度")]
+        [Description("抓边结果线长下限，单位像素；-1 表示不校验")]
+        public double hv_MinLength = -1;
+
+        [ShowTextAttribute("最大长度")]
+        [Description("抓边结果线长上限，单位像素；-1 表示不校验")]
+        public double hv_MaxLength = -1;
+
+        /// <summary>
+        /// 输出变量：本次抓边结果线长（像素），仅用于显示与日志
+        /// </summary>
+        [NonSerialized]
+        [System.Xml.Serialization.XmlIgnore]
+        public double hv_LineLength = -1;
+
+        #endregion
 
         #region 位置跟随
 

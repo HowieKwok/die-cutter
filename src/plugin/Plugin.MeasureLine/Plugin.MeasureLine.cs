@@ -66,6 +66,7 @@ namespace Plugin.MeasureLine
             measLineParams.hv_LineColumnEnd = null;
             measLineParams.m_bRunSuccess = false;
             measLineParams.bl_FitSuccess = false;
+            measLineParams.m_strRunMessage = string.Empty;
             measLineParams.m_strRunMessage = "";
             // HOperatorSet.CountSeconds(out Stime2);
 
@@ -288,7 +289,25 @@ namespace Plugin.MeasureLine
                                 //+ "--" + measLineParams.hv_LineRowEnd.D.ToString() + "--" + measLineParams.hv_LineColumnEnd.D.ToString());
                             }
                         }
-                        measLineParams.bl_FitSuccess = true;
+                        // 长度约束：-1 不启用；此处端点已过峰谷/剔值修正，量的是最终输出的线
+                        double lineLen = Math.Sqrt(
+                            Math.Pow(measLineParams.hv_LineRowEnd.D - measLineParams.hv_LineRowBegin.D, 2) +
+                            Math.Pow(measLineParams.hv_LineColumnEnd.D - measLineParams.hv_LineColumnBegin.D, 2));
+                        measLineParams.hv_LineLength = lineLen;
+
+                        bool tooShort = measLineParams.hv_MinLength > 0 && lineLen < measLineParams.hv_MinLength;
+                        bool tooLong = measLineParams.hv_MaxLength > 0 && lineLen > measLineParams.hv_MaxLength;
+
+                        if (tooShort || tooLong)
+                        {
+                            measLineParams.m_strRunMessage =
+                                $"抓边长度超限: {lineLen:0.0}px (允许 {measLineParams.hv_MinLength:0}-{measLineParams.hv_MaxLength:0})";
+                            measLineParams.bl_FitSuccess = false;
+                        }
+                        else
+                        {
+                            measLineParams.bl_FitSuccess = true;
+                        }
 
                         //HOperatorSet.GenRegionLine(out ResultLine , measLineParams.hv_LineRowBegin, measLineParams.hv_LineColumnBegin, measLineParams.hv_LineRowEnd, measLineParams.hv_LineColumnEnd);
                         //Console.WriteLine("----抓边膜宽执行成功---！");

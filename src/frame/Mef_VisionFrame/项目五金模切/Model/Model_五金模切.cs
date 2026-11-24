@@ -265,21 +265,20 @@ namespace Mef_VisionFrame
         public List<string> Station1_Title_Statistics { get; } = new List<string> { "检测项", "数量", "占比" };
         public List<string> Station3_Title_Statistics { get; } = new List<string> { "检测项", "数量", "占比" };
 
-        private readonly List<string> _Station3_Title_Size = new List<string>();
-
         /// <summary>
         /// 尺寸结果表的列：时间 + 帧号 + 配方里的尺寸项名。
-        /// 每次取都按当前配方重算，换配方后列不会对不上。
+        ///
+        /// 每次取都新建一份：判定线程（写 CSV、出表）与界面线程（建列、消费队列）会同时取它，
+        /// 共用一个 List 实例并原地 Clear/AddRange，会在换配方那一瞬间读到半张表。
+        /// 调用方一律 ToArray() 即取即用，不持有引用，所以每次分配没有副作用。
         /// </summary>
         public List<string> Station3_Title_Size
         {
             get
             {
-                _Station3_Title_Size.Clear();
-                _Station3_Title_Size.Add("时间");
-                _Station3_Title_Size.Add("帧号");
-                if (Craft != null) _Station3_Title_Size.AddRange(Craft.Get_Station3_SizeNames());
-                return _Station3_Title_Size;
+                List<string> titles = new List<string> { "时间", "帧号" };
+                if (Craft != null) titles.AddRange(Craft.Get_Station3_SizeNames());
+                return titles;
             }
         }
 

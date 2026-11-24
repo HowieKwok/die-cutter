@@ -30,6 +30,13 @@ if (-not $hit.Success) {
 $key = $hit.Groups[1].Value
 Write-Host "[config] CraftType=$key"
 
+# RunMode 与 CraftType 同源：0=自动、1=仿真。缺这个键时按 0 处理——
+# 旧配置文件反序列化出来也是 0，不能因为升级就悄悄把现场机器切成仿真。
+$runHit = [regex]::Match($raw, '"RunMode"\s*:\s*(\d+)')
+$runMode = if ($runHit.Success) { [int]$runHit.Groups[1].Value } else { 0 }
+$runModeText = if ($runMode -eq 1) { 'Simulation' } else { 'Auto' }
+Write-Host "[config] RunMode=$runMode ($runModeText)"
+
 $mapFile = Join-Path $repo 'build\machine-types.txt'
 if (-not (Test-Path $mapFile)) {
     throw "[config] missing machine type map: $mapFile"
@@ -87,15 +94,16 @@ function Copy-MissingFiles([string]$SourceDir, [string]$TargetDir, [string[]]$Sk
 Copy-MissingFiles (Join-Path $repo 'config\General') $targetRoot
 Copy-MissingFiles $machineSrc $targetMachine
 
-# SystemParam.json 是「机型开关」，不是现场调参数据：输出目录里那份可能被改过
-# 机台号/账号，也可能在第一次投放时就是坏的。这里只保证 CraftType 与仓库一致。
-function Sync-CraftType([string]$Source, [string]$Target) {
+# SystemParam.json 是「机型/模式开关」，不是现场调参数据：输出目录里那份可能被改过
+# 机台号/账号，也可能在第一次投放时就是坏的。这里只保证 CraftType 与 RunMode 与仓库一致。
+function Sync-SystemSwitch([string]$Source, [string]$Target) {
     if (-not (Test-Path $Target)) { return }
 
     $srcRaw = Get-Content $Source -Raw -Encoding UTF8
     $srcHit = [regex]::Match($srcRaw, '"CraftType"\s*:\s*(\d+)')
     if (-not $srcHit.Success) { return }
-    $wanted = [int]$srcHit.Groups[1].Value
+    $wantedCraft = [int]$srcHit.Groups[1].Value
+    $wantedRun = $runMode
 
     $dst = $null
     try { $dst = Get-Content $Target -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
@@ -103,20 +111,40 @@ function Sync-CraftType([string]$Source, [string]$Target) {
     if ($null -eq $dst -or -not ($dst.PSObject.Properties.Name -contains 'CraftType')) {
         # 读不出来就没法保留现场改动，直接用仓库副本替换
         Copy-Item -Path $Source -Destination $Target -Force
-        Write-Host "[config] SystemParam.json unreadable, replaced with repo copy (CraftType=$wanted)"
+        Write-Host "[config] SystemParam.json unreadable, replaced with repo copy (CraftType=$wantedCraft, RunMode=$wantedRun)"
         return
     }
 
-    if ([int]$dst.CraftType -eq $wanted) { return }
+    $changed = $false
 
-    $old = [int]$dst.CraftType
-    $dst.CraftType = $wanted
+    if ([int]$dst.CraftType -ne $wantedCraft) {
+        Write-Host "[config] SystemParam.json CraftType $($dst.CraftType) -> $wantedCraft (repo), other fields kept"
+        $dst.CraftType = $wantedCraft
+        $changed = $true
+    }
+
+    # 旧版本没有 RunMode 键：必须补上，否则现场那份永远按 0(自动) 跑，
+    # 改仓库里的配置不会生效——运行期读的是输出目录这份。
+    if ($dst.PSObject.Properties.Name -contains 'RunMode') {
+        if ([int]$dst.RunMode -ne $wantedRun) {
+            Write-Host "[config] SystemParam.json RunMode $($dst.RunMode) -> $wantedRun (repo), other fields kept"
+            $dst.RunMode = $wantedRun
+            $changed = $true
+        }
+    }
+    else {
+        $dst | Add-Member -NotePropertyName 'RunMode' -NotePropertyValue $wantedRun
+        Write-Host "[config] SystemParam.json RunMode added = $wantedRun (repo)"
+        $changed = $true
+    }
+
+    if (-not $changed) { return }
+
     $json = $dst | ConvertTo-Json -Depth 8
     [System.IO.File]::WriteAllText($Target, $json, (New-Object System.Text.UTF8Encoding($false)))
-    Write-Host "[config] SystemParam.json CraftType $old -> $wanted (repo), other fields kept"
 }
 
-Sync-CraftType $sysParam (Join-Path $targetRoot 'SystemParam.json')
+Sync-SystemSwitch $sysParam (Join-Path $targetRoot 'SystemParam.json')
 
 # 缺陷检测模型：按 config\General\SystemParam.json 的 AiPolarity 指定的极性，把对应模型摊平拷到 <OutDir>\AIModel\。
 # 极性只有一份（设备出厂即定），输出根下因此只有一个 AIModel\model.onnx，

@@ -73,6 +73,15 @@ namespace Mef_VisionFrame
         {
             return ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
             {
+                // 合片靠"背面片数 - 正面片数"这个片差配对；两项都是 0 时只能靠 A/B 同号，
+                // 一旦配不上，右侧缺陷工位的良率与统计表会一直停在原值，界面上没有任何提示。
+                // 开机先喊一声，比事后再翻日志省事。
+                int frontSide = Data.Craft?.Get_GlobalVariableItem("FrontSideCount")?.Value.ToInt() ?? 0;
+                int backSide = Data.Craft?.Get_GlobalVariableItem("BackSideCount")?.Value.ToInt() ?? 0;
+                if (frontSide == 0 && backSide == 0)
+                {
+                    MessageNotify.AddErrorLog("五金模切：正面/背面片数均为 0，缺陷工位只能靠 A/B 同号合片，配不上时良率不会增长");
+                }
 
                 foreach (ProcessServices item in Project.Instance.m_ProcessList)
                 {

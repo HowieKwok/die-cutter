@@ -233,6 +233,14 @@
                                         <TextBlock Text="最大迭代"/>
                                         <ctrl:NumericBox Value="{Binding Params.Line1MaxIterations, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="-1" Increment="1" DecimalPlaces="0"/>
                                     </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="最小长度"/>
+                                        <ctrl:NumericBox Value="{Binding Params.MinLength, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="-1" Increment="50" DecimalPlaces="1"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="最大长度"/>
+                                        <ctrl:NumericBox Value="{Binding Params.MaxLength, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="-1" Increment="50" DecimalPlaces="1"/>
+                                    </StackPanel>
                                 </UniformGrid>
 
                                 <TextBlock Text="明暗方向"/>

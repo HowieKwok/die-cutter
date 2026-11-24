@@ -162,6 +162,8 @@ namespace Frame_Core
             if (l_SizeCraftStation_3 == null) l_SizeCraftStation_3 = new List<SizeCraftStation_DieCuttingCut>();
             if (sizeCams.Count == 0) return;
 
+            AlignLaserSizeCamIndexes(l_SizeCraftStation_3, sizeCams);
+
             int camIndexLeft = sizeCams[0];
             int camIndexRight = sizeCams.Count > 1 ? sizeCams[1] : camIndexLeft;
 
@@ -184,6 +186,36 @@ namespace Frame_Core
             l_SizeCraftStation_3.AppVariableByOrder("单片宽度", CalcFormulaEnum.线线X, camIndexLeft, "粗定位工具.抓边1", camIndexLeft, "极片右侧抓边");
 
             Reindex(l_SizeCraftStation_3);
+        }
+
+        /// <summary>
+        /// 把沿用激光模切编号（3/4/5）的尺寸项相机下标平移到五金槽位（2/3/4）。
+        /// 激光与五金只差一个下标，从激光拷过来的配方会让所有尺寸项指着不存在的相机，
+        /// 表现就是每片都"数据源未找到"、值恒为 -999。只在检测到越界下标时才动手。
+        /// </summary>
+        private static void AlignLaserSizeCamIndexes(List<SizeCraftStation_DieCuttingCut> items, IReadOnlyList<int> sizeCams)
+        {
+            if (items == null || items.Count == 0) return;
+
+            int min = sizeCams[0];
+            int max = sizeCams[sizeCams.Count - 1];
+            bool outOfRange = false;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i].CameraId1 > max || items[i].CameraId2 > max)
+                {
+                    outOfRange = true;
+                    break;
+                }
+            }
+            if (!outOfRange) return;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                SizeCraftStation_DieCuttingCut item = items[i];
+                item.CameraId1 = Math.Max(min, item.CameraId1 - 1);
+                item.CameraId2 = Math.Max(min, item.CameraId2 - 1);
+            }
         }
 
         private void InitStation3Defects()
