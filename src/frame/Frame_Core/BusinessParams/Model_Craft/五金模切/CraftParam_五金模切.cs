@@ -28,7 +28,12 @@ namespace Frame_Core
             if (Crafts.Count > slots.Count) Crafts.RemoveRange(slots.Count, Crafts.Count - slots.Count);
             InitCameraCrafts(slots);
             InitStation1Defects();
-            InitStation3Sizes(SizeCamIndexes(slots));
+
+            // 尺寸项按"角色"装，不按第几路：带极耳那一路可能是中间也可是最后一路，
+            // 按位置装会把极耳类项指到只建了 V角凸点 的那一路上（恒 -999，不报错）。
+            SizeSlotPlan sizePlan = SizeSlotPlan.Resolve(slots, ReadTabIsLeft());
+            InitStation3Sizes(sizePlan, ReadCraftVersion() < SizeCraftVersion);
+
             InitStation3Defects();
             InitGlobalVariables();
         }
@@ -153,45 +158,66 @@ namespace Frame_Core
         }
 
         /// <summary>
-        /// 工位3尺寸项。参考相机下标来自画像的尺寸槽位，左/右两侧各取第一、第二路尺寸相机，
-        /// 不写死 3/4/5——否则五金模切（2~4）会把尺寸1的工艺指到一台不存在的相机上。
-        /// TODO：默认测量项沿用激光模切，上机后按五金工艺调整。
+        /// 工位3尺寸项。装项依据只有两个：哪一路跑"带极耳"流程（<paramref name="plan"/>），
+        /// 以及那一路建了哪些模块——不按"第几路"装。
+        ///
+        /// 模块名是硬约束（见 五金模切ProDevice.流程内容.cs）：
+        /// 极耳左侧交点 / 极片右侧抓边 / 极片AT抓边 / 极耳右侧组合交点 / 左侧与右侧V角凸点
+        /// 只在带极耳侧建；不带极耳侧只有 粗定位工具 / V角凸点1 / V角凸点2。
+        /// 挂错的唯一表现是该项恒 -999（数据源未找到），界面上看不出来，所以按流程分派。
+        ///
+        /// 第三路尺寸相机没有默认测量项：它的流程与另一路 plain 完全相同，只做缺陷检测。
+        /// 要让它参与测量，得先给它独立的流程模块，再在这里补项。
         /// </summary>
-        private void InitStation3Sizes(IReadOnlyList<int> sizeCams)
+        private void InitStation3Sizes(SizeSlotPlan plan, bool upgrade)
         {
             if (l_SizeCraftStation_3 == null) l_SizeCraftStation_3 = new List<SizeCraftStation_DieCuttingCut>();
-            if (sizeCams.Count == 0) return;
+            if (plan.SizeCams.Count == 0) return;
 
-            AlignLaserSizeCamIndexes(l_SizeCraftStation_3, sizeCams);
+            AlignLaserSizeCamIndexes(l_SizeCraftStation_3, plan.SizeCams);
 
-            int camIndexLeft = sizeCams[0];
-            int camIndexRight = sizeCams.Count > 1 ? sizeCams[1] : camIndexLeft;
-
-            l_SizeCraftStation_3.AppVariableByOrder("下左V宽X", CalcFormulaEnum.点线, camIndexLeft, "左侧V角凸点2", camIndexLeft, "粗定位工具.抓边1");
-            l_SizeCraftStation_3.AppVariableByOrder("下左V深Y", CalcFormulaEnum.点线, camIndexLeft, "左侧V角凸点1", camIndexLeft, "粗定位工具.抓边2");
-
-            l_SizeCraftStation_3.AppVariableByOrder("下右V宽X", CalcFormulaEnum.点线, camIndexLeft, "右侧V角凸点2", camIndexLeft, "极片右侧抓边");
-            l_SizeCraftStation_3.AppVariableByOrder("下右V深Y", CalcFormulaEnum.点线, camIndexLeft, "右侧V角凸点1", camIndexLeft, "粗定位工具.抓边2");
-
-            l_SizeCraftStation_3.AppVariableByOrder("上左V宽X", CalcFormulaEnum.点线, camIndexRight, "V角凸点1", camIndexRight, "粗定位工具.抓边1");
-            l_SizeCraftStation_3.AppVariableByOrder("上左V深Y", CalcFormulaEnum.点线, camIndexRight, "V角凸点2", camIndexRight, "粗定位工具.抓边2");
-
-            l_SizeCraftStation_3.AppVariableByOrder("极耳宽度", CalcFormulaEnum.点点, camIndexLeft, "极耳左侧交点.交点", camIndexLeft, "极耳右侧组合交点");
-            l_SizeCraftStation_3.AppVariableByOrder("极耳高度", CalcFormulaEnum.线线Y, camIndexLeft, "粗定位工具.抓边2", camIndexLeft, "极耳左侧交点.抓边2");
-            l_SizeCraftStation_3.AppVariableByOrder("极耳左肩宽", CalcFormulaEnum.线线X, camIndexLeft, "粗定位工具.抓边1", camIndexLeft, "极耳左侧交点.抓边1");
-            l_SizeCraftStation_3.AppVariableByOrder("带料高", CalcFormulaEnum.线线Y, camIndexLeft, "极片AT抓边", camIndexLeft, "极耳左侧交点.抓边2");
-            l_SizeCraftStation_3.AppVariableByOrder("极片角度", CalcFormulaEnum.角度, camIndexLeft, "粗定位工具.抓边1", camIndexLeft, "粗定位工具.抓边2");
-
-            l_SizeCraftStation_3.AppVariableByOrder("单片长度", CalcFormulaEnum.线线Y, camIndexLeft, "粗定位工具.抓边2", camIndexRight, "粗定位工具.抓边2");
-            l_SizeCraftStation_3.AppVariableByOrder("单片宽度", CalcFormulaEnum.线线X, camIndexLeft, "粗定位工具.抓边1", camIndexLeft, "极片右侧抓边");
+            // 先追加缺失项（不动已存的绑定），再按版本决定是否把已知默认项改到正确相机。
+            ApplySizeDefaults(plan, false);
+            if (upgrade) ApplySizeDefaults(plan, true);
 
             Reindex(l_SizeCraftStation_3);
         }
 
         /// <summary>
+        /// 装尺寸默认项。<paramref name="overwrite"/> = false 时只补缺失项；
+        /// = true 时连同相机/公式/数据源一起覆盖（配方升级用，只对这张已知默认清单生效）。
+        /// </summary>
+        private void ApplySizeDefaults(SizeSlotPlan plan, bool overwrite)
+        {
+            int tab = plan.TabCam;
+            int plain = plan.FirstPlainCam;
+
+            // 带极耳侧
+            l_SizeCraftStation_3.AppVariableByOrder("下左V宽X", CalcFormulaEnum.点线, tab, "左侧V角凸点2", tab, "粗定位工具.抓边1", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("下左V深Y", CalcFormulaEnum.点线, tab, "左侧V角凸点1", tab, "粗定位工具.抓边2", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("下右V宽X", CalcFormulaEnum.点线, tab, "右侧V角凸点2", tab, "极片右侧抓边", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("下右V深Y", CalcFormulaEnum.点线, tab, "右侧V角凸点1", tab, "粗定位工具.抓边2", overwrite);
+
+            l_SizeCraftStation_3.AppVariableByOrder("极耳宽度", CalcFormulaEnum.点点, tab, "极耳左侧交点.交点", tab, "极耳右侧组合交点", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("极耳高度", CalcFormulaEnum.线线Y, tab, "粗定位工具.抓边2", tab, "极耳左侧交点.抓边2", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("极耳左肩宽", CalcFormulaEnum.线线X, tab, "粗定位工具.抓边1", tab, "极耳左侧交点.抓边1", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("带料高", CalcFormulaEnum.线线Y, tab, "极片AT抓边", tab, "极耳左侧交点.抓边2", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("单片宽度", CalcFormulaEnum.线线X, tab, "粗定位工具.抓边1", tab, "极片右侧抓边", overwrite);
+
+            // 不带极耳侧
+            l_SizeCraftStation_3.AppVariableByOrder("上左V宽X", CalcFormulaEnum.点线, plain, "V角凸点1", plain, "粗定位工具.抓边1", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("上左V深Y", CalcFormulaEnum.点线, plain, "V角凸点2", plain, "粗定位工具.抓边2", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("极片角度", CalcFormulaEnum.角度, plain, "粗定位工具.抓边1", plain, "粗定位工具.抓边2", overwrite);
+
+            // 跨相机项：粗定位工具两边都有，一端 plain、一端 tab
+            l_SizeCraftStation_3.AppVariableByOrder("单片长度", CalcFormulaEnum.线线Y, plain, "粗定位工具.抓边2", tab, "粗定位工具.抓边2", overwrite);
+        }
+
+        /// <summary>
         /// 把沿用激光模切编号（3/4/5）的尺寸项相机下标平移到五金槽位（2/3/4）。
-        /// 激光与五金只差一个下标，从激光拷过来的配方会让所有尺寸项指着不存在的相机，
-        /// 表现就是每片都"数据源未找到"、值恒为 -999。只在检测到越界下标时才动手。
+        /// 判定条件是本机最大尺寸下标之上的恰好一位（激光 5 / 五金 4），
+        /// 不能用"有没有越界"——那会把本就正确的 2/3/4 也一起 -1。
+        /// 已知局限：只有 +1 偏移能识别；来源配方若只用了 3/4（缺 5）则不会平移。
         /// </summary>
         private static void AlignLaserSizeCamIndexes(List<SizeCraftStation_DieCuttingCut> items, IReadOnlyList<int> sizeCams)
         {
@@ -199,16 +225,14 @@ namespace Frame_Core
 
             int min = sizeCams[0];
             int max = sizeCams[sizeCams.Count - 1];
-            bool outOfRange = false;
+
+            int maxUsed = min;
             for (int i = 0; i < items.Count; i++)
             {
-                if (items[i].CameraId1 > max || items[i].CameraId2 > max)
-                {
-                    outOfRange = true;
-                    break;
-                }
+                if (items[i].CameraId1 > maxUsed) maxUsed = items[i].CameraId1;
+                if (items[i].CameraId2 > maxUsed) maxUsed = items[i].CameraId2;
             }
-            if (!outOfRange) return;
+            if (maxUsed != max + 1) return;
 
             for (int i = 0; i < items.Count; i++)
             {
@@ -248,6 +272,10 @@ namespace Frame_Core
             List<GlobalVariableItem> loaded = M_GlobalVariable.l_GlobalVariableItems;
             List<GlobalVariableItem> target = new List<GlobalVariableItem>();
 
+            // 配方结构版本：尺寸项改为按角色装配后，旧配方里错绑的相机需要一次性纠正。
+            // 装项只增不覆盖（见 AppVariableByOrder），所以这件事必须靠版本号驱动，且只跑一次。
+            target.AddVariableByOrder(loaded, CraftVersionKey, "配方结构版本（勿手改）", DataTypeEnum.Int, SizeCraftVersion.ToString());
+
             target.AddVariableByOrder(loaded, "极耳在左侧", "左侧为1右侧为0", DataTypeEnum.Int, "1");
             target.AddVariableByOrder(loaded, "带AT", "带AT（true）", DataTypeEnum.Bool, "false");
             target.AddVariableByOrder(loaded, "防抖时间", "防抖时间(ms)", DataTypeEnum.Int, "10");
@@ -269,12 +297,36 @@ namespace Frame_Core
             target.AddVariableByOrder(loaded, "AtWidth", "(缺陷相机)AT宽度(mm)", DataTypeEnum.Double, "0");
 
             M_GlobalVariable.l_GlobalVariableItems = target;
+
+            // 走到这里说明本版本的装配已经应用完（含上面的旧配方纠正），版本号可以落到当前值。
+            GlobalVariableItem version = target.Find(p => p.Name == CraftVersionKey);
+            if (version != null) version.Value = SizeCraftVersion.ToString();
+
             Reindex(M_GlobalVariable.l_GlobalVariableItems);
         }
 
         #endregion
 
         #region 工具
+
+        /// <summary>配方结构版本：2 = 尺寸项按"带极耳/plain 角色"装配（此前按第几路装）。</summary>
+        private const int SizeCraftVersion = 2;
+
+        private const string CraftVersionKey = "CraftVersion";
+
+        /// <summary>读配方里保存的"极耳在左侧"；新配方（没有该项）按默认左侧处理。</summary>
+        private bool ReadTabIsLeft()
+        {
+            GlobalVariableItem item = this.Get_GlobalVariableItem("极耳在左侧");
+            return item == null || item.Value.ToInt() == 1;
+        }
+
+        /// <summary>读配方结构版本；老配方没有这个键，返回 0 触发一次纠正。</summary>
+        private int ReadCraftVersion()
+        {
+            GlobalVariableItem item = this.Get_GlobalVariableItem(CraftVersionKey);
+            return item == null ? 0 : item.Value.ToInt();
+        }
 
         #endregion
     }

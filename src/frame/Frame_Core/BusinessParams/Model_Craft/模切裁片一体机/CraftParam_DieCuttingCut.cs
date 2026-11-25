@@ -12,6 +12,11 @@ namespace Frame_Core
     [Serializable]
     public class CraftParam_DieCuttingCut : CraftParam_DieCutBase
     {
+        /// <summary>配方结构版本：2 = 尺寸项按"带极耳/plain 角色"装配（此前按第几路装）。</summary>
+        private const int SizeCraftVersion = 2;
+
+        private const string CraftVersionKey = "CraftVersion";
+
         // 相机工艺、各工位检测项集合都由 CraftParam_DieCutBase 提供（Crafts / l_DefectCraftStation_1 / l_SizeCraftStation_3 / l_DefectCraftStation_3）。
         // 本机型只负责按"画像里的相机角色"装配：标准 6 路是 0/1 模切、2 纠偏、3~5 尺寸；
         // 少一路纠偏的机器由 LaserDieCuttingProfile 自动裁成 0/1 模切 + 2~4 尺寸。
@@ -119,33 +124,42 @@ namespace Frame_Core
             #endregion
             //【】极片尺寸工位3
             #region  
-            // 尺寸项引用的相机下标必须按画像取：激光 6 路是 3/4/5，少一路纠偏时是 2/3/4。
-            // 取不到的（本机尺寸相机不足两路）退回第一路，避免把项指向不存在的相机。
-            List<int> sizeCamIndexes = SizeCamIndexes(DeviceProfileRegistry.Resolve(CraftType).CamSlots);
-            int camIndex4 = sizeCamIndexes.Count > 0 ? sizeCamIndexes[0] : 0;
-            int camIndex5 = sizeCamIndexes.Count > 1 ? sizeCamIndexes[1] : camIndex4;
+            // 尺寸项按"角色"装，不按第几路：激光第 4 路是带极耳还是普通，取决于"极耳在左侧"，
+            // 而两条流程建的模块名完全不同（带极耳侧才有 极耳左侧交点/极片右侧抓边/左右侧V角凸点）。
+            // 按位置装会把极耳类项指到只有 V角凸点 的那一路上，恒 -999 且不报错。
+            SizeSlotPlan sizePlan = SizeSlotPlan.Resolve(DeviceProfileRegistry.Resolve(CraftType).CamSlots, ReadTabIsLeft());
 
-            l_SizeCraftStation_3.AppVariableByOrder("下左V宽X", CalcFormulaEnum.点线, camIndex4, "左侧V角凸点2", camIndex4, "粗定位工具.抓边1");
-            l_SizeCraftStation_3.AppVariableByOrder("下左V深Y", CalcFormulaEnum.点线, camIndex4, "左侧V角凸点1", camIndex4, "粗定位工具.抓边2");
+            void ApplySizeDefaults(bool overwrite)
+            {
+                int tab = sizePlan.TabCam;
+                int plain = sizePlan.FirstPlainCam;
 
-            l_SizeCraftStation_3.AppVariableByOrder("下右V宽X", CalcFormulaEnum.点线, camIndex4, "右侧V角凸点2", camIndex4, "极片右侧抓边");       
-            l_SizeCraftStation_3.AppVariableByOrder("下右V深Y", CalcFormulaEnum.点线, camIndex4, "右侧V角凸点1", camIndex4, "粗定位工具.抓边2");
+                // 带极耳侧
+                l_SizeCraftStation_3.AppVariableByOrder("下左V宽X", CalcFormulaEnum.点线, tab, "左侧V角凸点2", tab, "粗定位工具.抓边1", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("下左V深Y", CalcFormulaEnum.点线, tab, "左侧V角凸点1", tab, "粗定位工具.抓边2", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("下右V宽X", CalcFormulaEnum.点线, tab, "右侧V角凸点2", tab, "极片右侧抓边", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("下右V深Y", CalcFormulaEnum.点线, tab, "右侧V角凸点1", tab, "粗定位工具.抓边2", overwrite);
 
-            l_SizeCraftStation_3.AppVariableByOrder("上左V宽X", CalcFormulaEnum.点线, camIndex5, "V角凸点1", camIndex5, "粗定位工具.抓边1");
-            l_SizeCraftStation_3.AppVariableByOrder("上左V深Y", CalcFormulaEnum.点线, camIndex5, "V角凸点2", camIndex5, "粗定位工具.抓边2");
+                l_SizeCraftStation_3.AppVariableByOrder("极耳宽度", CalcFormulaEnum.点点, tab, "极耳左侧交点.交点", tab, "极耳右侧组合交点", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("极耳高度", CalcFormulaEnum.线线Y, tab, "粗定位工具.抓边2", tab, "极耳左侧交点.抓边2", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("极耳左肩宽", CalcFormulaEnum.线线X, tab, "粗定位工具.抓边1", tab, "极耳左侧交点.抓边1", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("带料高", CalcFormulaEnum.线线Y, tab, "极片AT抓边", tab, "极耳左侧交点.抓边2", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("单片宽度", CalcFormulaEnum.线线X, tab, "粗定位工具.抓边1", tab, "极片右侧抓边", overwrite);
 
-            //l_SizeCraftStation_3.AppVariableByOrder("上右V宽X", CalcFormulaEnum.点线, camIndex6, "V角凸点1", camIndex6, "粗定位工具.抓边1");
-            //l_SizeCraftStation_3.AppVariableByOrder("上右V深Y", CalcFormulaEnum.点线, camIndex6, "V角凸点2", camIndex6, "粗定位工具.抓边2");
+                // 不带极耳侧
+                l_SizeCraftStation_3.AppVariableByOrder("上左V宽X", CalcFormulaEnum.点线, plain, "V角凸点1", plain, "粗定位工具.抓边1", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("上左V深Y", CalcFormulaEnum.点线, plain, "V角凸点2", plain, "粗定位工具.抓边2", overwrite);
+                l_SizeCraftStation_3.AppVariableByOrder("极片角度", CalcFormulaEnum.角度, plain, "粗定位工具.抓边1", plain, "粗定位工具.抓边2", overwrite);
 
-            l_SizeCraftStation_3.AppVariableByOrder("极耳宽度", CalcFormulaEnum.点点, camIndex4, "极耳左侧交点.交点", camIndex4, "极耳右侧组合交点");
-            l_SizeCraftStation_3.AppVariableByOrder("极耳高度", CalcFormulaEnum.线线Y, camIndex4, "粗定位工具.抓边2", camIndex4, "极耳左侧交点.抓边2");
-            l_SizeCraftStation_3.AppVariableByOrder("极耳左肩宽", CalcFormulaEnum.线线X, camIndex4, "粗定位工具.抓边1", camIndex4, "极耳左侧交点.抓边1");
-            l_SizeCraftStation_3.AppVariableByOrder("带料高", CalcFormulaEnum.线线Y, camIndex4, "极片AT抓边", camIndex4, "极耳左侧交点.抓边2");
-            l_SizeCraftStation_3.AppVariableByOrder("极片角度", CalcFormulaEnum.角度, camIndex4, "粗定位工具.抓边1", camIndex4, "粗定位工具.抓边2");
+                // 跨相机项：粗定位工具两边都有，一端 plain、一端 tab
+                l_SizeCraftStation_3.AppVariableByOrder("单片长度", CalcFormulaEnum.线线Y, plain, "粗定位工具.抓边2", tab, "粗定位工具.抓边2", overwrite);
+            }
 
-            l_SizeCraftStation_3.AppVariableByOrder("单片长度", CalcFormulaEnum.线线Y, camIndex4, "粗定位工具.抓边2", camIndex5, "粗定位工具.抓边2");
-            l_SizeCraftStation_3.AppVariableByOrder("单片宽度", CalcFormulaEnum.线线X, camIndex4, "粗定位工具.抓边1", camIndex4, "极片右侧抓边");
+            // 先补缺失项，再按版本把旧配方里错绑的默认项改到正确相机（只跑一次，见 CraftVersion）
+            ApplySizeDefaults(false);
+            if (ReadCraftVersion() < SizeCraftVersion) ApplySizeDefaults(true);
 
+            // 第三路尺寸相机没有默认测量项：它与另一路 plain 跑完全相同的流程，只做缺陷检测。
 
             for (int j = 0; j < l_SizeCraftStation_3.Count; j++)
             {
@@ -171,6 +185,12 @@ namespace Frame_Core
             if (M_GlobalVariable == null) M_GlobalVariable = new GlobalVariable();
             List<GlobalVariableItem> targetList = new List<GlobalVariableItem>();
             // 第一次添加，不存在直接新增
+            // 配方结构版本：尺寸项改为按角色装配后，旧配方里错绑的相机需要一次性纠正。
+            // 装项只增不覆盖（见 AppVariableByOrder），所以这件事必须靠版本号驱动。
+            targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, CraftVersionKey, "配方结构版本（勿手改）", DataTypeEnum.Int, SizeCraftVersion.ToString());
+            GlobalVariableItem versionItem = targetList.Find(p => p.Name == CraftVersionKey);
+            if (versionItem != null) versionItem.Value = SizeCraftVersion.ToString();
+
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "极耳在左侧", "左侧为1右侧为0", DataTypeEnum.Int, "1");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "带AT", "带AT（true）", DataTypeEnum.Bool, "false");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "HeartbeatPollingTime", "心跳轮询时间(ms)", DataTypeEnum.Int, "500");
@@ -314,6 +334,20 @@ namespace Frame_Core
         {
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CamBaseCol", "极片尺寸右侧相机定位基准点Col(px)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CamBaseRow", "极片尺寸右侧相机定位基准点Row(px)", DataTypeEnum.Double, "0");
+        }
+
+        /// <summary>读配方里保存的"极耳在左侧"；新配方（没有该项）按默认左侧处理。</summary>
+        private bool ReadTabIsLeft()
+        {
+            GlobalVariableItem item = this.Get_GlobalVariableItem("极耳在左侧");
+            return item == null || item.Value.ToInt() == 1;
+        }
+
+        /// <summary>读配方结构版本；老配方没有这个键，返回 0 触发一次纠正。</summary>
+        private int ReadCraftVersion()
+        {
+            GlobalVariableItem item = this.Get_GlobalVariableItem(CraftVersionKey);
+            return item == null ? 0 : item.Value.ToInt();
         }
     }
 

@@ -83,24 +83,26 @@ namespace Frame_Core
             GlobalVariableItem tabItem = craft.Get_GlobalVariableItem("极耳在左侧");
             bool tabIsLeft = tabItem != null && tabItem.Value.ToInt() == 1;
 
-            ProcessSpec size1 = new ProcessSpec(2, ProcessName(2), ProcessKind.极片尺寸检测);
-            ProcessSpec size2 = tabIsLeft
-                ? new ProcessSpec(3, ProcessName(3), ProcessKind.极片尺寸带极耳检测)
-                : new ProcessSpec(3, ProcessName(3), ProcessKind.极片尺寸检测);
-            ProcessSpec size3 = tabIsLeft
-                ? new ProcessSpec(4, ProcessName(4), ProcessKind.极片尺寸检测)
-                : new ProcessSpec(4, ProcessName(4), ProcessKind.极片尺寸带极耳检测);
+            // 谁跑"带极耳"流程由 SizeSlotPlan 统一决定，配方装尺寸项用的是同一份结论。
+            // 这里再自己算一遍（以前是 tabIsLeft ? 中间 : 最后）就会出现两处真相，改一处必然分叉。
+            SizeSlotPlan sizePlan = SizeSlotPlan.Resolve(CamSlots, tabIsLeft);
 
-            return new[]
+            ProcessSpec[] specs = new ProcessSpec[4 + sizePlan.SizeCams.Count];
+            specs[0] = new ProcessSpec(0, ProcessName(0), ProcessKind.相机裁图);
+            specs[1] = new ProcessSpec(1, ProcessName(1), ProcessKind.相机裁图);
+            specs[2] = new ProcessSpec(0, ProcessName(0) + "_极片EA", ProcessKind.极片EA);
+            specs[3] = new ProcessSpec(1, ProcessName(1) + "_极片EA", ProcessKind.极片EA);
+
+            for (int i = 0; i < sizePlan.SizeCams.Count; i++)
             {
-                new ProcessSpec(0, ProcessName(0), ProcessKind.相机裁图),
-                new ProcessSpec(1, ProcessName(1), ProcessKind.相机裁图),
-                new ProcessSpec(0, ProcessName(0) + "_极片EA", ProcessKind.极片EA),
-                new ProcessSpec(1, ProcessName(1) + "_极片EA", ProcessKind.极片EA),
-                size1,
-                size2,
-                size3,
-            };
+                int camIndex = sizePlan.SizeCams[i];
+                ProcessKind kind = camIndex == sizePlan.TabCam
+                    ? ProcessKind.极片尺寸带极耳检测
+                    : ProcessKind.极片尺寸检测;
+                specs[4 + i] = new ProcessSpec(camIndex, ProcessName(camIndex), kind);
+            }
+
+            return specs;
         }
 
         /// <summary>流程名取配置里的相机名，与激光模切保持同一套约定。</summary>

@@ -406,6 +406,8 @@
     <Compile Include="设备描述\IoPoint.cs" />
     <Compile Include="设备描述\DieCuttingCutIoPoints.cs" />
     <Compile Include="设备描述\ProcessSpec.cs" />
+    <Compile Include="设备描述\SizeSlotPlan.cs" />
+    <Compile Include="设备描述\SizeSlotPlan.cs" />
     <Compile Include="设备描述\DeviceProfileBase.cs" />
     <Compile Include="设备描述\DeviceProfileRegistry.cs" />
     <Compile Include="设备描述\激光模切一体机\LaserDieCuttingProfile.cs" />

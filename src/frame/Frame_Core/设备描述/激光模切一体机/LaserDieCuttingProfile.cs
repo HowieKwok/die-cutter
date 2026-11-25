@@ -114,24 +114,26 @@ namespace Frame_Core
             }
             bool tabIsLeft = craft.Get_GlobalVariableItem("极耳在左侧").Value.ToInt() == 1;
 
-            ProcessSpec cam5 = tabIsLeft
-                ? new ProcessSpec(4, ProcessName(4), ProcessKind.极片尺寸带极耳检测)
-                : new ProcessSpec(4, ProcessName(4), ProcessKind.极片尺寸检测);
-            ProcessSpec cam6 = tabIsLeft
-                ? new ProcessSpec(5, ProcessName(5), ProcessKind.极片尺寸检测)
-                : new ProcessSpec(5, ProcessName(5), ProcessKind.极片尺寸带极耳检测);
+            // 尺寸三路谁带极耳由 SizeSlotPlan 统一决定，与配方装尺寸项同一份结论。
+            SizeSlotPlan sizePlan = SizeSlotPlan.Resolve(CamSlots, tabIsLeft);
 
-            return new[]
+            ProcessSpec[] specs = new ProcessSpec[5 + sizePlan.SizeCams.Count];
+            specs[0] = new ProcessSpec(0, ProcessName(0), ProcessKind.相机裁图);
+            specs[1] = new ProcessSpec(1, ProcessName(1), ProcessKind.相机裁图);
+            specs[2] = new ProcessSpec(0, ProcessName(0) + "_极片EA", ProcessKind.极片EA);
+            specs[3] = new ProcessSpec(1, ProcessName(1) + "_极片EA", ProcessKind.极片EA);
+            specs[4] = new ProcessSpec(2, ProcessName(2), ProcessKind.纠偏检测);
+
+            for (int i = 0; i < sizePlan.SizeCams.Count; i++)
             {
-                new ProcessSpec(0, ProcessName(0), ProcessKind.相机裁图),
-                new ProcessSpec(1, ProcessName(1), ProcessKind.相机裁图),
-                new ProcessSpec(0, ProcessName(0) + "_极片EA", ProcessKind.极片EA),
-                new ProcessSpec(1, ProcessName(1) + "_极片EA", ProcessKind.极片EA),
-                new ProcessSpec(2, ProcessName(2), ProcessKind.纠偏检测),
-                new ProcessSpec(3, ProcessName(3), ProcessKind.极片尺寸检测),
-                cam5,
-                cam6,
-            };
+                int camIndex = sizePlan.SizeCams[i];
+                ProcessKind kind = camIndex == sizePlan.TabCam
+                    ? ProcessKind.极片尺寸带极耳检测
+                    : ProcessKind.极片尺寸检测;
+                specs[5 + i] = new ProcessSpec(camIndex, ProcessName(camIndex), kind);
+            }
+
+            return specs;
         }
 
         /// <summary>流程名取配置里的相机名，与既有 Process 目录、Instance.xml 保持一致。</summary>
