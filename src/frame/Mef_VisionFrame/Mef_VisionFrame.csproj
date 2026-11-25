@@ -452,9 +452,6 @@
     <Compile Include="项目五金模切\View\Form_五金告警.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="项目五金模切\View\UC_五金状态板.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="项目五金模切\ViewModel\VM_五金模切.cs" />
     <Compile Include="项目五金模切\View\UC_五金模切.cs">
       <SubType>UserControl</SubType>

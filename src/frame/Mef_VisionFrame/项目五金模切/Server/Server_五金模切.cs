@@ -82,22 +82,9 @@ namespace Mef_VisionFrame
                 {
                     MessageNotify.AddErrorLog("五金模切：正面/背面片数均为 0，缺陷工位只能靠 A/B 同号合片，配不上时良率不会增长");
                 }
-
-                // 下线对齐量 = 两台线扫相机之间隔的片数，来自配方变量「下线片距」。
-                // 0 表示两台相机看同一片（不隔片）；N 表示下线比上线晚 N 片，
-                // 稳态下 下线帧号 = 上线帧号 - N。未配置该变量时按 0 处理并在日志里写明，
-                // 避免"配了却没生效"——旧实现读的是 FrontSideCount/BackSideCount（累计片数），
-                // 那两项不是片距，当成偏移会让 expected 恒定差 2、每片都被判超前/滞后。
-                if (Data.Craft != null)
-                {
-                    bool hasItem = Data.Craft.Get_GlobalVariableItem("下线片距") != null;
-                    int gap = Frame_Core.业务参数类.五金模切帧序号.LoadDownOffsetFromCraft();
-
-                    MessageNotify.AddCommLog(
-                        $"[五金帧号] 下线片距 = {gap}（配方变量「下线片距」" +
-                        $"{(hasItem ? "已生效" : "不存在，按 0 处理")}）；" +
-                        $"稳态下线帧号 = 上线帧号 - {gap}");
-                }
+                // 下线不再有任何"片距"配置：上下线之间的片差 = 相机间距 / 皮带速度，是不定值。
+                // 只保留一条约束：下线帧号 ≤ 上线最新帧号（见 LineScanFrameSequencer.TryNextDown）。
+                // 旧实现读配方变量「下线片距」当固定偏移，一旦与实际不符就会每拍判"下线超前"并钳位。
 
                 // 发布器先起：第一帧的结论进来时必须有消费者，
                 // 否则只能排队等溢出（视觉不等 PLC，但也不该把结果堆在队列里）
@@ -569,53 +556,36 @@ namespace Mef_VisionFrame
             });
         }
 
-        /// <summary>返回 true 表示这一轮有进展（合片成功或丢了一片），可以继续下一轮。</summary>
+        /// <summary>返回 true 表示这一轮合了一片，可以继续下一轮。</summary>
         private bool MergeOnce()
         {
             if (Data.Craft == null) return false;
+            if (Data.ALine_DieCutEAProduct.Count == 0) return false;
+            if (Data.BLine_DieCutEAProduct.Count == 0) return false;
 
-            long AFrame = 0;
-            long BFrame = 0;
+            // 按到达顺序配对，不看帧号。
+            // 上下线帧号只保证"下线不超前"（LineScanFrameSequencer.TryNextDown），两者之间的在途
+            // 片数 = 相机间距 / 皮带速度，是不定值。按帧号相等配对会把不同片配成一对，且无法察觉。
+            ProductDataResult aLine = Data.ALine_DieCutEAProduct.Dequeue();
+            ProductDataResult bLine = Data.BLine_DieCutEAProduct.Dequeue();
+            bool isNG = aLine.IsNG || bLine.IsNG;
 
-            if (Data.ALine_DieCutEAProduct.Count > 0) AFrame = Data.ALine_DieCutEAProduct.Peek().m_nImageFrameID;
-            if (Data.BLine_DieCutEAProduct.Count > 0) BFrame = Data.BLine_DieCutEAProduct.Peek().m_nImageFrameID;
+            // 统计键沿用上线帧号，与上线结果点位口径一致
+            long frameId = aLine.m_nImageFrameID;
+            MessageNotify.AddCommLog(
+                $"缺陷工位——合片完成，上线帧号{frameId}，下线帧号{bLine.m_nImageFrameID}");
 
-            if (AFrame == 0 || BFrame == 0) return false;
+            // 统计按“一片”计：A/B 任一面 NG 即这一片 NG
+            DieCutJudge.DataStatistical(Data.Station1_StatisticalData, frameId, isNG);
 
-            // 同一片在上线与下线拿到的是同一个帧号，所以直接相等配对。
-            // 不再用 m_nProductID + 片差：那是两条线各自独立计数年代的补偿，
-            // 帧号统一后这个偏移已由 LineScanFrameSequencer 保证，再算一遍必然错配。
-            if (AFrame == BFrame)
-            {
-                ProductDataResult aLine = Data.ALine_DieCutEAProduct.Dequeue();
-                ProductDataResult bLine = Data.BLine_DieCutEAProduct.Dequeue();
-                bool isNG = aLine.IsNG || bLine.IsNG;
+            // 分布同样按“一片”计：取 A/B 两面中优先级最高的那一个 NG 项，
+            // 不逐缺陷累加——否则一片上有 3 个缺陷就记 3 次，占比会超过 100%。
+            CountDefectDistribution(aLine, bLine);
 
-                MessageNotify.AddCommLog($"缺陷工位——合片完成，帧号{AFrame}");
+            Data.DefectStation_BindingDatasSave.Enqueue(
+                Model_五金模切.Snapshot(Data.DefectCounts, Data.Station1_StatisticalData), 1);
 
-                // 统计按“一片”计：A/B 任一面 NG 即这一片 NG
-                DieCutJudge.DataStatistical(Data.Station1_StatisticalData, AFrame, isNG);
-
-                // 分布同样按“一片”计：取 A/B 两面中优先级最高的那一个 NG 项，
-                // 不逐缺陷累加——否则一片上有 3 个缺陷就记 3 次，占比会超过 100%。
-                CountDefectDistribution(aLine, bLine);
-
-                Data.DefectStation_BindingDatasSave.Enqueue(
-                    Model_五金模切.Snapshot(Data.DefectCounts, Data.Station1_StatisticalData), 1);
-
-                return true;
-            }
-
-            // 下线落后：丢掉落后的那一帧等它追上，与原先"移除 B 线扫"同一语义
-            if (AFrame > BFrame)
-            {
-                var dropped = Data.BLine_DieCutEAProduct.Dequeue();
-                MessageNotify.AddErrorLog($"缺陷工位——上线帧号大于下线，移除下线帧{dropped?.m_nImageFrameID}");
-                return true;
-            }
-
-            MessageNotify.AddErrorLog($"缺陷工位——上线帧号小于下线（A{AFrame}, B{BFrame}），等待上线追上");
-            return false;
+            return true;
         }
 
         public override void ClearCutData(bool isSendPLC)

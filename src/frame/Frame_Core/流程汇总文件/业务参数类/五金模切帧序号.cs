@@ -70,9 +70,11 @@ namespace Frame_Core.业务参数类
                     return _windowFrameId;
                 }
 
-                if (_windowFrameId != 0 && _windowTaken < CamerasPerGroup)
+                // 每个新窗口开启时都要刷新上一组的到齐情况。
+                // 只在"不满"时写会让缺过一次之后永远显示旧值，齐了也要写 0。
+                if (_windowFrameId != 0)
                 {
-                    LastWindowMissing = CamerasPerGroup - _windowTaken;
+                    LastWindowMissing = Math.Max(0, CamerasPerGroup - _windowTaken);
                 }
 
                 int next = NextFrameIdProvider != null ? NextFrameIdProvider() : _seq + 1;
@@ -211,25 +213,16 @@ namespace Frame_Core.业务参数类
         }
 
         /// <summary>
-        /// 从配方变量「下线片距」刷新下线偏移，返回实际生效值（读不到或非法按 0）。
+        /// 已废弃：上下线片差 = 相机间距 / 皮带速度，不是常数，不能当固定偏移用。
         ///
         /// 两处必须都调：启动流程前（StartRun）与仿真建相机前（触发偏移要按它算）。
         /// 只在 StartRun 读的话，仿真首次建相机拿到的还是旧值，首轮时序就不对。
         /// </summary>
         public static int LoadDownOffsetFromCraft()
         {
-            int gap = 0;
-            try
-            {
-                CraftParam_DieCutBase craft = Project.Instance.craftBase as CraftParam_DieCutBase;
-                var item = craft == null ? null : craft.Get_GlobalVariableItem("下线片距");
-                if (item != null) gap = item.Value.ToInt();
-            }
-            catch { gap = 0; }
-
-            if (gap < 0) gap = 0;
-            LineScan.DownOffset = gap;
-            return gap;
+            // 已废弃：上下线片差 = 相机间距 / 皮带速度，是不定值，不能当固定偏移用。
+            // 保留空实现只为兼容既有调用方（配方变量「下线片距」不再生效）。
+            return 0;
         }
 
         /// <summary>

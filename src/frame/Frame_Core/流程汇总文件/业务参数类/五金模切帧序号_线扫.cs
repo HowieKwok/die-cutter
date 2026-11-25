@@ -34,19 +34,8 @@ namespace Frame_Core.业务参数类
     public sealed class LineScanFrameSequencer
     {
         private readonly object _sync = new object();
-        private int _upFrameId;   // 最新已接受的上线帧号
+        private int _upFrameId;   // 最新已分配的上线帧号
         private int _downFrameId; // 最新已接受的下线帧号
-        private bool _downFirstAfterReset;
-
-        /// <summary>
-        /// 下线相对上线的工位偏移：正常运行时下线帧号 = 上线帧号 - DownOffset。
-        /// 语义就是两台线扫相机之间隔了几片。
-        ///
-        /// 默认 0 而不是 1：0 表示"不隔片"，配置不符时表现为合片配不上、能立刻发现；
-        /// 1 表示"隔一片"，一旦与实际不符，下线会持续判超前 → 钳位 → 再错，
-        /// 永久丢片且很难定位。默认值应当选择能暴露问题的那个。
-        /// </summary>
-        public int DownOffset { get; set; } = 0;
 
         public int UpFrameId { get { lock (_sync) { return _upFrameId; } } }
         public int DownFrameId { get { lock (_sync) { return _downFrameId; } } }
@@ -79,63 +68,38 @@ namespace Frame_Core.业务参数类
 
         /// <summary>
         /// 下线取号。返回 false 表示这一帧必须丢弃：不入队、不处理、不写 PLC。
-        /// 返回 false 前已把下线序号钳到正确值，下一次触发即可对齐。
+        /// 丢帧时已把下线序号钳到上线最新号，上线再发一个号即可恢复。
         /// </summary>
         public bool TryNextDown(out int frameId, out FrameRejectReason reason)
         {
             lock (_sync)
             {
+                frameId = 0;
                 reason = FrameRejectReason.无;
 
-                // 换卷/复位后首帧放行：只有片距为 0 时才需要——此时首帧的 expected 会算成 0，
-                // 而 0 是非法帧号。片距 ≥1 时不该放行：放行会凭空给一个号，
-                // 下一帧立刻变成"下线超前"并丢片（实测 offset=1 时必然重现）。
-                // 片距 ≥1 的冷启动由后面的"启动预热"静默跳过。
-                if (_downFirstAfterReset && DownOffset == 0)
+                // 上线还没出过帧：这几帧下线本来就没有对应产品（启动 / 换卷暂态），静默丢弃。
+                if (_upFrameId < 1)
                 {
-                    _downFirstAfterReset = false;
-                    if (_upFrameId >= 1)
-                    {
-                        frameId = ++_downFrameId;
-                        NotifyDownAccepted(frameId);
-                        return true;
-                    }
-                }
-
-                int expected = _upFrameId - DownOffset;
-                if (expected < 1)
-                {
-                    // 上线还没攒够片距：这几帧下线本来就没有对应产品（启动/换卷暂态）。
-                    // 静默丢弃，不报"下线超前"——那是稳态故障的语义。
                     reason = FrameRejectReason.启动预热;
-                    frameId = 0;
                     return false;
                 }
 
-                int actual = _downFrameId + 1;
-                if (actual == expected)
+                // 唯一约束：下线不能超过上线已经发出的最大帧号。
+                // 落后多少片 = 相机间距 / 皮带速度，是不定值，既不判定也不告警。
+                //
+                // 比较对象是 _upFrameId 这个标量，不是帧队列尾部：帧出队进流程后会从队列移除，
+                // 此时队列可能为空，读队列会把"上线在跑但队列空"误判成"上线没有帧"。
+                int next = _downFrameId + 1;
+                if (next > _upFrameId)
                 {
-                    _downFrameId = actual;
-                    frameId = actual;
-                    NotifyDownAccepted(frameId);
-                    return true;
-                }
-
-                if (actual > expected)
-                {
-                    // 下线超前：多出来的这一帧没有对应的上线帧，丢弃并回到上一号
+                    // 下线超前：这一帧没有对应的上游产品，丢弃并钳齐上线。
                     reason = FrameRejectReason.下线超前;
-                    _downFrameId = expected - 1;
-                    frameId = 0;
+                    _downFrameId = _upFrameId;
                     return false;
                 }
 
-                // 下线滞后：帧本身是真实的，只是号落后了。原实现每拍只把号补 1，
-                // 而上线每拍也推进 1，差值恒定不变，永远追不上（实测 up=n / down=n-1 无限循环）。
-                // 直接把这一帧对齐到 expected 并接受，保证每片都有结论。
-                reason = FrameRejectReason.下线滞后;
-                _downFrameId = expected;
-                frameId = expected;
+                _downFrameId = next;
+                frameId = next;
                 NotifyDownAccepted(frameId);
                 return true;
             }
@@ -152,8 +116,8 @@ namespace Frame_Core.业务参数类
         }
 
         /// <summary>
-        /// 换卷/复位：序号归零，并放行下线首帧。
-        /// 不放行的话换卷后第一片下线必被丢弃（expected 会算成 0）。
+        /// 换卷/复位：序号归零。
+        /// 不需要"放行首帧"的特殊分支：上线为 0 时下线走启动预热，上线发出第 1 个号后自然接上。
         /// </summary>
         public void Reset()
         {
@@ -161,7 +125,6 @@ namespace Frame_Core.业务参数类
             {
                 _upFrameId = 0;
                 _downFrameId = 0;
-                _downFirstAfterReset = true;
             }
         }
     }

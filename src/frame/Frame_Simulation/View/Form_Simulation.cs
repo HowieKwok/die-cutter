@@ -111,11 +111,10 @@ namespace Frame_Simulation.View
                 _stageLabels[i] = CreateBody("—");
                 _queueLabels[i] = CreateBody("—");
 
-                // 列标题必须跟"状态源"一致，不能拿 Cameras[i] 的名字当标题：
-                // 相机创建顺序是 下线→上线→尺寸，而状态数组固定是 上线/下线/尺寸，
-                // 按创建顺序取名字会让两列标题互换（实测下线列显示的是上线帧号）。
-                // 这里标题先给相机名兜底，RefreshStations 再用状态源自报的 Name 覆盖。
-                _titleLabels[i] = CreateTitle(CamNameAt(i, _fallbackTitles[i]) + " · 帧处理");
+                // 标题先给兜底工位名，RefreshStations 再用状态源自报的 Name 覆盖。
+                // 这里刻意不拼相机名：相机创建顺序是 下线→上线→尺寸，按索引取名字会让
+                // 列标题变成"上线扫 · 下线扫"这种看起来像两个工位的错位文本。
+                _titleLabels[i] = CreateTitle(_fallbackTitles[i] + " · 帧处理");
                 grid.Controls.Add(WrapWithTitle(_titleLabels[i], _stageLabels[i]), i, 0);
                 grid.Controls.Add(WrapWithTitle(CreateTitle("PLC 发送队列"), _queueLabels[i]), i, 1);
             }
@@ -172,16 +171,6 @@ namespace Frame_Simulation.View
             panel.Controls.Add(body);
             panel.Controls.Add(lab);
             return panel;
-        }
-
-        private string CamNameAt(int index, string fallback)
-        {
-            if (_runtime != null && _runtime.Cameras != null && _runtime.Cameras.Count > index)
-            {
-                string name = _runtime.Cameras[index].CameraName;
-                if (!string.IsNullOrEmpty(name)) return name;
-            }
-            return fallback;
         }
     }
 }

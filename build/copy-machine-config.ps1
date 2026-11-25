@@ -35,7 +35,7 @@ Write-Host "[config] CraftType=$key"
 $runHit = [regex]::Match($raw, '"RunMode"\s*:\s*(\d+)')
 $runMode = if ($runHit.Success) { [int]$runHit.Groups[1].Value } else { 0 }
 $runModeText = if ($runMode -eq 1) { 'Simulation' } else { 'Auto' }
-Write-Host "[config] RunMode=$runMode ($runModeText)"
+Write-Host "[config] RunMode(repo default, only fills a missing key)=$runMode ($runModeText)"
 
 $mapFile = Join-Path $repo 'build\machine-types.txt'
 if (-not (Test-Path $mapFile)) {
@@ -95,7 +95,10 @@ Copy-MissingFiles (Join-Path $repo 'config\General') $targetRoot
 Copy-MissingFiles $machineSrc $targetMachine
 
 # SystemParam.json 是「机型/模式开关」，不是现场调参数据：输出目录里那份可能被改过
-# 机台号/账号，也可能在第一次投放时就是坏的。这里只保证 CraftType 与 RunMode 与仓库一致。
+# 机台号/账号，也可能在第一次投放时就是坏的。
+# 两个开关的归属不同，因此同步策略也不同：
+#   CraftType — 构建产物。仓库值决定投放哪个机型目录，输出目录必须跟它一致，否则错配。
+#   RunMode   — 本机事实。这台机器跑真机还是仿真由本地决定，构建只补缺失的键，绝不覆盖。
 function Sync-SystemSwitch([string]$Source, [string]$Target) {
     if (-not (Test-Path $Target)) { return }
 
@@ -123,19 +126,16 @@ function Sync-SystemSwitch([string]$Source, [string]$Target) {
         $changed = $true
     }
 
-    # 旧版本没有 RunMode 键：必须补上，否则现场那份永远按 0(自动) 跑，
-    # 改仓库里的配置不会生效——运行期读的是输出目录这份。
-    if ($dst.PSObject.Properties.Name -contains 'RunMode') {
-        if ([int]$dst.RunMode -ne $wantedRun) {
-            Write-Host "[config] SystemParam.json RunMode $($dst.RunMode) -> $wantedRun (repo), other fields kept"
-            $dst.RunMode = $wantedRun
-            $changed = $true
-        }
+    # RunMode 是本机事实：开发者/现场在输出目录里改成 0(自动) 还是 1(仿真)，
+    # 重编译必须保持原样，否则每次 F5 都会被仓库值改回去。
+    # 仓库值只作为「缺键时的默认」，用于把旧版本（没有该字段）的配置补全一次。
+    if (-not ($dst.PSObject.Properties.Name -contains 'RunMode')) {
+        $dst | Add-Member -NotePropertyName 'RunMode' -NotePropertyValue $wantedRun
+        Write-Host "[config] SystemParam.json RunMode missing, added = $wantedRun (repo default)"
+        $changed = $true
     }
     else {
-        $dst | Add-Member -NotePropertyName 'RunMode' -NotePropertyValue $wantedRun
-        Write-Host "[config] SystemParam.json RunMode added = $wantedRun (repo)"
-        $changed = $true
+        Write-Host "[config] SystemParam.json RunMode=$($dst.RunMode) kept (local switch, repo=$wantedRun ignored)"
     }
 
     if (-not $changed) { return }

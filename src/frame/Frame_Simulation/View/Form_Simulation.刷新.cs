@@ -60,10 +60,11 @@ namespace Frame_Simulation.View
             {
                 SimStationState s = states != null && i < states.Count ? states[i] : null;
 
-                // 标题以状态源自报的工位名为准（上线扫/下线扫/尺寸工位），相机名放在后面，
-                // 这样即使相机创建顺序与工位顺序不一致，标题也不会和内容错位。
+                // 标题只写工位名（上线扫/下线扫/尺寸工位）。相机名不再拼进标题——
+                // 按创建顺序取名字会取到别列的那台，标题就变成"上线扫 · 下线扫"这种两个工位的假象。
+                // 相机改由正文第一行"相机"给出，且由宿主按角色填好。
                 if (s != null && !string.IsNullOrEmpty(s.Name) && _titleLabels[i] != null)
-                    _titleLabels[i].Text = s.Name + " · " + CamNameAt(i, _fallbackTitles[i]);
+                    _titleLabels[i].Text = s.Name;
 
                 _stageLabels[i].Text = s == null ? "未接入状态源" : FormatStage(s);
                 _queueLabels[i].Text = s == null ? "—" : FormatQueue(s);
@@ -80,7 +81,8 @@ namespace Frame_Simulation.View
 
         private static string FormatStage(SimStationState s)
         {
-            return "帧号      " + s.FrameId + Environment.NewLine +
+            return "相机      " + (string.IsNullOrEmpty(s.Cameras) ? "—" : s.Cameras) + Environment.NewLine +
+                   "帧号      " + s.FrameId + Environment.NewLine +
                    "状态      " + (string.IsNullOrEmpty(s.Stage) ? "—" : s.Stage);
         }
 

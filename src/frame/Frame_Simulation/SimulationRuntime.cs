@@ -42,6 +42,12 @@ namespace Frame_Simulation
         /// <summary>列标题，例如"上线扫"。</summary>
         public string Name { get; set; }
 
+        /// <summary>
+        /// 本工位绑定的相机名，多路用 " / " 分隔，例如"左上 / 左下 / 右下"。
+        /// 必须由宿主按角色给出：仿真层拿到的是相机创建顺序，而创建顺序不等于工位顺序。
+        /// </summary>
+        public string Cameras { get; set; }
+
         /// <summary>处理中/最近完成的帧号。</summary>
         public int FrameId { get; set; }
 

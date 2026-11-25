@@ -222,19 +222,62 @@ namespace Mef_VisionFrame.Simulation
             var lineScan = Frame_Core.业务参数类.五金模切帧序号.LineScan;
             var size = Frame_Core.业务参数类.五金模切帧序号.Size;
 
+            string upCameras, downCameras, sizeCameras;
+            ResolveStationCameras(out upCameras, out downCameras, out sizeCameras);
+
+            int perGroup = Frame_Core.业务参数类.SizeFrameSequencer.CamerasPerGroup;
+
+            // 状态文字写成谓语完整的短句：界面只负责加"相机/帧号/状态"标签，不再让人猜字段含义。
             return new[]
             {
-                MakeState("上线扫", lineScan.UpFrameId, "上线源头，自增",
-                    Server_五金模切.UpResultChannel),
-                MakeState("下线扫", lineScan.DownFrameId, "下线偏移 " + lineScan.DownOffset,
+                MakeState("上线扫", upCameras, lineScan.UpFrameId,
+                    "发号源，每帧 +1", Server_五金模切.UpResultChannel),
+
+                MakeState("下线扫", downCameras, lineScan.DownFrameId,
+                    "跟随上线，落后 " + (lineScan.UpFrameId - lineScan.DownFrameId) + " 帧",
                     Server_五金模切.DownResultChannel),
-                MakeState("尺寸工位", size.CurrentFrameId, "上组缺帧 " + size.LastWindowMissing,
+
+                MakeState("尺寸工位", sizeCameras, size.CurrentFrameId,
+                    "上一组 " + (perGroup - size.LastWindowMissing) + "/" + perGroup + " 路到齐",
                     Server_五金模切.SizeResultChannel),
             };
         }
 
+        /// <summary>
+        /// 三列各配哪些相机：按相机在仿真配置里的角色划分，
+        /// 不按相机创建顺序取索引（顺序是 下线→上线→尺寸），也不按名字猜。
+        /// 上线 = 发令相机，尺寸 = 领令相机，下线 = 其余相机（既不发放也不领取产品令牌）。
+        /// </summary>
+        private static void ResolveStationCameras(out string up, out string down, out string size)
+        {
+            SimulationConfig cfg = Runtime == null ? null : Runtime.Config;
+            List<string> all = CameraNames();
+
+            List<string> producers = InBoth(all, cfg == null ? null : cfg.ProductProducerCameras);
+            List<string> consumers = InBoth(all, cfg == null ? null : cfg.ProductConsumerCameras);
+
+            up = string.Join(" / ", producers);
+            size = string.Join(" / ", consumers);
+            down = string.Join(" / ", all.Where(n => !producers.Contains(n) && !consumers.Contains(n)));
+        }
+
+        /// <summary>实际相机与配置名单的交集，顺序以实际相机为准。</summary>
+        private static List<string> InBoth(List<string> all, List<string> wanted)
+        {
+            if (wanted == null || wanted.Count == 0) return new List<string>();
+            return all.Where(n => wanted.Contains(n)).ToList();
+        }
+
+        private static List<string> CameraNames()
+        {
+            return EnumerateDevices()
+                .Select(d => d.CameraParameter == null ? null : d.CameraParameter.CameraName)
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
+        }
+
         private static Frame_Simulation.SimStationState MakeState(
-            string name, int frameId, string stage, PlcResultChannel channel)
+            string name, string cameras, int frameId, string stage, PlcResultChannel channel)
         {
             PlcResultItem head;
             bool hasHead = channel.TryPeek(out head);
@@ -242,6 +285,7 @@ namespace Mef_VisionFrame.Simulation
             return new Frame_Simulation.SimStationState
             {
                 Name = name,
+                Cameras = cameras,
                 FrameId = frameId,
                 Stage = stage,
                 QueueDepth = channel.Count,
