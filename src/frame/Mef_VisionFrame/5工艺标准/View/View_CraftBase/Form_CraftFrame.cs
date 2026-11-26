@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -411,16 +412,134 @@ namespace Mef_VisionFrame
         {
             try
             {
+                // 保存前拍快照：重启类参数只在保存成功后比较，避免保存失败时误报
+                List<KeyValuePair<string, string>> restartValues =
+                    CaptureRestartRequiredValues(CurrentCraftBase);
+
                 M_FormCraftBase.ViewToParam();
+                List<string> changed = DiffRestartRequiredValues(restartValues, CurrentCraftBase);
+
                 CurrentCraftBase.SaveCraft(VM.CraftBasePath, CurrentCraftBase.CraftType, CurrentCraftBase.RecipeName);
                 VM.M_craftBase = Craft_ModelService.GetCraft(VM.CraftBasePath, VM.systemInfo.CraftType, VM.systemInfo.RecipeName);
                 Project.Instance.craftBase = VM.M_craftBase;
+
+                if (changed.Count > 0)
+                {
+                    string message = "以下配方参数已修改，需要重启软件后生效：\n\n"
+                        + string.Join("\n", changed)
+                        + "\n\n是否立即重启软件？";
+
+                    if (MessageBox.Show(message, "需要重启", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+                        == DialogResult.Yes)
+                    {
+                        RestartApplication();
+                        return;
+                    }
+
+                    MessageBox.Show("保存成功。请稍后手动重启软件，参数将在重启后生效。", "提示");
+                    return;
+                }
+
                 MessageBox.Show("保存成功");
             }
             catch (Exception ex)
             {
                 MessageBox.Show("保存失败");
             }
+        }
+
+        /// <summary>保存前快照：只取配方声明的“需重启”全局变量，保持配方给出的顺序。</summary>
+        private static List<KeyValuePair<string, string>> CaptureRestartRequiredValues(CraftBase craft)
+        {
+            List<KeyValuePair<string, string>> values = new List<KeyValuePair<string, string>>();
+            if (craft == null) return values;
+
+            IReadOnlyList<string> names = craft.GetRestartRequiredGlobalVariableNames();
+            for (int i = 0; i < names.Count; i++)
+            {
+                values.Add(new KeyValuePair<string, string>(names[i], craft.GetGlobalVariableValue(names[i])));
+            }
+            return values;
+        }
+
+        /// <summary>比较保存前后的“需重启”全局变量，返回“名称：旧值 → 新值”列表。</summary>
+        private static List<string> DiffRestartRequiredValues(
+            List<KeyValuePair<string, string>> before, CraftBase after)
+        {
+            List<string> changed = new List<string>();
+            if (before == null || after == null) return changed;
+
+            foreach (KeyValuePair<string, string> pair in before)
+            {
+                string now = after.GetGlobalVariableValue(pair.Key);
+                if (!string.Equals(pair.Value ?? string.Empty, now ?? string.Empty, StringComparison.Ordinal))
+                {
+                    changed.Add($"{pair.Key}：{DisplayValue(pair.Value)} → {DisplayValue(now)}");
+                }
+            }
+            return changed;
+        }
+
+        private static string DisplayValue(string value)
+        {
+            return string.IsNullOrEmpty(value) ? "(空)" : value;
+        }
+
+        /// <summary>
+        /// 自动重启：先起一个延迟的 PowerShell，等旧进程退出后再拉起新实例。
+        /// 不能先直接启动新实例：主界面 close() 会清理同名进程，新实例会被误杀。
+        /// </summary>
+        private static void RestartApplication()
+        {
+            if (Project.Instance.Is_MojuanStart)
+            {
+                MessageBox.Show("正在生产中，不能自动重启。请停机后手动重启软件，参数将在重启后生效。",
+                    "提示");
+                return;
+            }
+
+            try
+            {
+                string exePath = Application.ExecutablePath;
+                if (string.IsNullOrEmpty(exePath))
+                {
+                    MessageBox.Show("无法获取程序路径，请手动重启软件。", "提示");
+                    return;
+                }
+
+                ProcessStartInfo info = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden "
+                        + "-Command \"$old = Get-Process -Id $env:MEF_RESTART_PID -ErrorAction SilentlyContinue; "
+                        + "if ($old) { Wait-Process -Id $old.Id -Timeout 30 -ErrorAction SilentlyContinue }; "
+                        + "Start-Sleep -Milliseconds 500; Start-Process -FilePath $env:MEF_RESTART_EXE\"",
+                    WorkingDirectory = Application.StartupPath,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                };
+                info.EnvironmentVariables["MEF_RESTART_EXE"] = exePath;
+                info.EnvironmentVariables["MEF_RESTART_PID"] = System.Diagnostics.Process.GetCurrentProcess().Id.ToString();
+                System.Diagnostics.Process.Start(info);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("自动重启失败，请手动重启软件。\n" + ex.Message, "提示");
+                return;
+            }
+
+            // 复用主界面已有的退出路径：保存系统参数、释放相机/PLC 资源
+            Form_Main main = Application.OpenForms["Form_Main"] as Form_Main;
+            if (main != null)
+            {
+                main.close();
+                return;
+            }
+
+            Project.Instance.systemInfo.Save();
+            Project.Instance.Close_Dev();
+            Environment.Exit(0);
         }
 
         private void inputSearch_TextChanged(object sender, EventArgs e)

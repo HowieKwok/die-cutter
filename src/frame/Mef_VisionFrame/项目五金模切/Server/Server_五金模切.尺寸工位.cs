@@ -427,7 +427,7 @@ namespace Mef_VisionFrame
 
             // 必须取全部尺寸项：配方里既有"跨相机合成"项（CameraId1 != CameraId2），
             // 也有"单路测量"项（CameraId1 == CameraId2）。只取前者会让后者永远不参与出表。
-            List<SizeCraftStation_DieCuttingCut> items = craft.Get_Station3_SizeCrafts();
+            List<SizeCraftStation_DieCuttingCut> items = craft.Get_Station3_SizeCrafts_Runtime();
             if (items == null || items.Count == 0) return true;
 
             bool isNG = false;
@@ -451,8 +451,10 @@ namespace Mef_VisionFrame
                 sizeRow.Add(new RowData { dataStr = sizeInfo.DataResult.ToString(), resultType = sizeInfo.resultType });
             }
 
-            // 一片一行：列顺序必须与 Station3_Title_Size 一致（时间/帧号/各尺寸项）
-            FileOperationCSV.WriteData_CSV(Data.Station3_Path_Size, Data.Station3_Title_Size.ToArray(), sizeRow.ToArray(), "极片尺寸工位");
+            // 一片一行：表头与行同源，用同一份 items 生成，避免开关切换时列数不一致
+            List<string> titles = new List<string> { "时间", "帧号" };
+            foreach (SizeCraftStation_DieCuttingCut item in items) titles.Add(item.Name);
+            FileOperationCSV.WriteData_CSV(Data.Station3_Path_Size, titles.ToArray(), sizeRow.ToArray(), "极片尺寸工位");
             Data.Station3_SizeShowQueue.Enqueue(sizeRow, 200);
 
             return !isNG;
@@ -511,7 +513,7 @@ namespace Mef_VisionFrame
             CraftParam_五金模切 craft = Data.Craft;
             if (craft == null) return true;
 
-            List<SizeCraftStation_DieCuttingCut> items = craft.Get_Station3_SizeCrafts(camIndex);
+            List<SizeCraftStation_DieCuttingCut> items = craft.Get_Station3_SizeCrafts_Runtime(camIndex);
             if (items == null || items.Count == 0) return true;
 
             bool isNG = false;

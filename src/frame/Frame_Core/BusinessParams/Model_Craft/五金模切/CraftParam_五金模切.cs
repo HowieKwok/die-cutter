@@ -95,6 +95,7 @@ namespace Frame_Core
             target.AddVariableByOrder(loaded, "CamABGap", "AB相机间隔(mm)", DataTypeEnum.Double, "0");
             target.AddVariableByOrder(loaded, "DefCutPos", "默认切刀位（px）", DataTypeEnum.Double, "0");
             target.AddVariableByOrder(loaded, "DefCamEALftBaseCol", "缺陷相机&EA左侧边缘基准线Col(px)", DataTypeEnum.Double, "0");
+            target.AddVariableByOrder(loaded, "DefCamEALftBaseRow", "EA极耳水平边基准线Row(px)", DataTypeEnum.Double, "0");
 
             target.AddVariableByOrder(loaded, "CoatLftCol1", "涂层区域左偏移Col1(mm)", DataTypeEnum.Double, "0");
             target.AddVariableByOrder(loaded, "CoatRgtCol2", "涂层区域右偏移Col2(mm)", DataTypeEnum.Double, "0");
@@ -284,6 +285,8 @@ namespace Frame_Core
             target.AddVariableByOrder(loaded, CraftVersionKey, "配方结构版本（勿手改）", DataTypeEnum.Int, SizeCraftVersion.ToString());
 
             target.AddVariableByOrder(loaded, "极耳在左侧", "左侧为1右侧为0", DataTypeEnum.Int, "1");
+            // V角总开关：1=启用，0=禁用。老配方缺项按 1 补齐，升级前后行为一致。
+            target.AddVariableByOrder(loaded, V角检测开关名, "是否启用V角检测（1=启用，0=禁用）", DataTypeEnum.Int, "1");
             target.AddVariableByOrder(loaded, "带AT", "带AT（true）", DataTypeEnum.Bool, "false");
             target.AddVariableByOrder(loaded, "防抖时间", "防抖时间(ms)", DataTypeEnum.Int, "10");
             target.AddVariableByOrder(loaded, "PulseWidth", "脉冲宽度(ms)", DataTypeEnum.Int, "10");
@@ -310,6 +313,153 @@ namespace Frame_Core
             if (version != null) version.Value = SizeCraftVersion.ToString();
 
             Reindex(M_GlobalVariable.l_GlobalVariableItems);
+        }
+
+        #endregion
+
+        #region V角检测开关
+
+        /// <summary>全局变量键。1=启用，0=禁用。</summary>
+        public const string V角检测开关名 = "是否启用V角检测";
+
+        /// <summary>尺寸项 DataSource 中代表 V角凸点模块的名字片段。</summary>
+        private const string V角凸点标识 = "V角凸点";
+
+        /// <summary>缺陷项名，必须与流程 emit 的 NgDefectResult.ClassName 逐字一致。</summary>
+        private const string V角缺陷项名 = "V角检测有无";
+
+        /// <summary>流程中的 V角凸点测量模块名（带极耳侧 + plain 侧）。</summary>
+        public static readonly string[] V角凸点模块名 =
+        {
+            "V角凸点1", "V角凸点2",
+            "左侧V角凸点1", "左侧V角凸点2",
+            "右侧V角凸点1", "右侧V角凸点2",
+        };
+
+        /// <summary>流程中的 V角检测有无 Blob 模块名。</summary>
+        public static readonly string[] V角检测模块名 =
+        {
+            "顶部V角检测有无", "左底部V角检测有无", "右底部V角检测有无",
+        };
+
+        /// <summary>
+        /// 是否启用 V角检测。1=启用，0=禁用。
+        /// 缺项/空值/非数字一律按启用（默认 1）处理，保证升级后行为不变。
+        /// </summary>
+        public bool V角检测启用
+        {
+            get
+            {
+                GlobalVariableItem item = this.Get_GlobalVariableItem(V角检测开关名);
+                return item == null || item.Value.ToTryInt(1) == 1;
+            }
+        }
+
+        /// <summary>尺寸项是否依赖 V角凸点：DataSource1/2 任一端含“V角凸点”即算。</summary>
+        public static bool IsV角测量项(SizeCraftStation_DieCuttingCut item)
+        {
+            if (item == null) return false;
+            return IsV角数据源(item.DataSource1) || IsV角数据源(item.DataSource2);
+        }
+
+        private static bool IsV角数据源(string dataSource)
+        {
+            return !string.IsNullOrEmpty(dataSource)
+                && dataSource.IndexOf(V角凸点标识, StringComparison.Ordinal) >= 0;
+        }
+
+        /// <summary>
+        /// 运行期尺寸项：
+        ///   开关=1：直接返回原列表（引用与顺序不变，零分配）；
+        ///   开关=0：返回新列表，剔除依赖 V角凸点的项，其余顺序不变；
+        ///   永不返回 null。调用方只读，不得原地修改返回列表。
+        /// </summary>
+        public List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts_Runtime()
+        {
+            List<SizeCraftStation_DieCuttingCut> all = l_SizeCraftStation_3;
+            if (all == null) return new List<SizeCraftStation_DieCuttingCut>();
+            if (V角检测启用) return all;
+
+            List<SizeCraftStation_DieCuttingCut> result =
+                new List<SizeCraftStation_DieCuttingCut>(all.Count);
+            for (int i = 0; i < all.Count; i++)
+            {
+                SizeCraftStation_DieCuttingCut item = all[i];
+                if (item == null || IsV角测量项(item)) continue;
+                result.Add(item);
+            }
+            return result;
+        }
+
+        /// <summary>单路尺寸项；筛选条件与共享扩展 Get_Station3_SizeCrafts(camIndex) 一致。</summary>
+        public List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts_Runtime(int camIndex)
+        {
+            List<SizeCraftStation_DieCuttingCut> all = l_SizeCraftStation_3;
+            if (all == null) return new List<SizeCraftStation_DieCuttingCut>();
+
+            bool includeV = V角检测启用;
+            List<SizeCraftStation_DieCuttingCut> result =
+                new List<SizeCraftStation_DieCuttingCut>();
+            for (int i = 0; i < all.Count; i++)
+            {
+                SizeCraftStation_DieCuttingCut item = all[i];
+                if (item == null) continue;
+                if (item.CameraId1 != camIndex || item.CameraId2 != camIndex) continue;
+                if (!includeV && IsV角测量项(item)) continue;
+                result.Add(item);
+            }
+            return result;
+        }
+
+        /// <summary>运行期尺寸项名，顺序与 Get_Station3_SizeCrafts_Runtime() 一致。</summary>
+        public List<string> Get_Station3_SizeNames_Runtime()
+        {
+            List<SizeCraftStation_DieCuttingCut> items = Get_Station3_SizeCrafts_Runtime();
+            List<string> names = new List<string>(items.Count);
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] != null) names.Add(items[i].Name);
+            }
+            return names;
+        }
+
+        /// <summary>运行期缺陷项名；开关=0 时只剔除“V角检测有无”。</summary>
+        public List<string> Get_Station3_DefectNames_Runtime()
+        {
+            List<DefectCraft_DieCuttingCut> all = l_DefectCraftStation_3;
+            if (all == null) return new List<string>();
+
+            bool includeV = V角检测启用;
+            List<string> names = new List<string>(all.Count);
+            for (int i = 0; i < all.Count; i++)
+            {
+                DefectCraft_DieCuttingCut item = all[i];
+                if (item == null || string.IsNullOrEmpty(item.Name)) continue;
+                if (!includeV && item.Name == V角缺陷项名) continue;
+                names.Add(item.Name);
+            }
+            return names;
+        }
+
+        #endregion
+
+        #region 保存后需重启
+
+        /// <summary>
+        /// 保存后必须重启软件才能生效的全局变量：
+        ///   极耳在左侧 / 带AT：决定流程模块与尺寸槽位装配，Init 之后不再重算；
+        ///   是否启用V角检测：执行开关每帧可读，但右侧表/曲线和插件启用位要重建才生效。
+        /// </summary>
+        public static readonly string[] 需重启全局变量名 =
+        {
+            "极耳在左侧",
+            "带AT",
+            V角检测开关名,
+        };
+
+        public override IReadOnlyList<string> GetRestartRequiredGlobalVariableNames()
+        {
+            return 需重启全局变量名;
         }
 
         #endregion
