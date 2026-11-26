@@ -27,6 +27,10 @@ x86/
 *.aps
 *.ipch
 *.pdb.locked
+# 项目升级向导生成的报告，每次升级都会重新生成
+UpgradeLog*.htm
+UpgradeLog*.xml
+_UpgradeReport_Files/
 
 # ---- Cursor 规则（本地配置，不纳入版本库）----
 .cursor/rules/
