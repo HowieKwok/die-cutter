@@ -190,7 +190,14 @@ namespace Frame_Core
         private void ApplySizeDefaults(SizeSlotPlan plan, bool overwrite)
         {
             int tab = plan.TabCam;
-            int plain = plan.FirstPlainCam;
+
+            // 不带极耳侧的各路相机下标，按槽位顺序（SizeSlotPlan.PlainCams 已剔除 TabCam）：
+            //   plain_0 = 第 1 路 plain；plain_1 = 第 2 路 plain。
+            // 只有一路 plain 时 plain_1 退回 plain_0；一路尺寸相机都没有时两者都退回 tab，
+            // 避免指向不存在的相机（与 SizeSlotPlan.FirstPlainCam 的原行为一致）。
+            IReadOnlyList<int> plainCams = plan.PlainCams;
+            int plain_0 = plainCams.Count > 0 ? plainCams[0] : plan.TabCam;
+            int plain_1 = plainCams.Count > 1 ? plainCams[1] : plain_0;
 
             // 带极耳侧
             l_SizeCraftStation_3.AppVariableByOrder("下左V宽X", CalcFormulaEnum.点线, tab, "左侧V角凸点2", tab, "粗定位工具.抓边1", overwrite);
@@ -202,15 +209,15 @@ namespace Frame_Core
             l_SizeCraftStation_3.AppVariableByOrder("极耳高度", CalcFormulaEnum.线线Y, tab, "粗定位工具.抓边2", tab, "极耳左侧交点.抓边2", overwrite);
             l_SizeCraftStation_3.AppVariableByOrder("极耳左肩宽", CalcFormulaEnum.线线X, tab, "粗定位工具.抓边1", tab, "极耳左侧交点.抓边1", overwrite);
             l_SizeCraftStation_3.AppVariableByOrder("带料高", CalcFormulaEnum.线线Y, tab, "极片AT抓边", tab, "极耳左侧交点.抓边2", overwrite);
-            l_SizeCraftStation_3.AppVariableByOrder("单片宽度", CalcFormulaEnum.线线X, tab, "粗定位工具.抓边1", tab, "极片右侧抓边", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("单片宽度", CalcFormulaEnum.线线X, plain_1, "粗定位工具.抓边1", tab, "极片右侧抓边", overwrite);
 
-            // 不带极耳侧
-            l_SizeCraftStation_3.AppVariableByOrder("上左V宽X", CalcFormulaEnum.点线, plain, "V角凸点1", plain, "粗定位工具.抓边1", overwrite);
-            l_SizeCraftStation_3.AppVariableByOrder("上左V深Y", CalcFormulaEnum.点线, plain, "V角凸点2", plain, "粗定位工具.抓边2", overwrite);
-            l_SizeCraftStation_3.AppVariableByOrder("极片角度", CalcFormulaEnum.角度, plain, "粗定位工具.抓边1", plain, "粗定位工具.抓边2", overwrite);
+            // 不带极耳侧（相机动哪一路由你按 plain_0 / plain_1 指定，项名保持原样）
+            l_SizeCraftStation_3.AppVariableByOrder("上左V宽X", CalcFormulaEnum.点线, plain_0, "V角凸点1", plain_0, "粗定位工具.抓边1", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("上左V深Y", CalcFormulaEnum.点线, plain_0, "V角凸点2", plain_0, "粗定位工具.抓边2", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("极片角度", CalcFormulaEnum.角度, plain_0, "粗定位工具.抓边1", plain_0, "粗定位工具.抓边2", overwrite);
 
             // 跨相机项：粗定位工具两边都有，一端 plain、一端 tab
-            l_SizeCraftStation_3.AppVariableByOrder("单片长度", CalcFormulaEnum.线线Y, plain, "粗定位工具.抓边2", tab, "粗定位工具.抓边2", overwrite);
+            l_SizeCraftStation_3.AppVariableByOrder("单片长度", CalcFormulaEnum.线线Y, plain_0, "粗定位工具.抓边2", tab, "粗定位工具.抓边2", overwrite);
         }
 
         /// <summary>

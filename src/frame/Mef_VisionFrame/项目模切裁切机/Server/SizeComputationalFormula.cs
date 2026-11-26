@@ -151,25 +151,15 @@ namespace Mef_VisionFrame
             Val = -999;
             try
             {
-                double line1midcol = (lineInfo1.ColBegin + lineInfo1.ColEnd) / 2;
-                double line2midcol = (lineInfo2.ColBegin + lineInfo2.ColEnd) / 2;
-                double line1midrow = (lineInfo1.RowBegin + lineInfo1.RowEnd) / 2;
-                double line2midrow = (lineInfo2.RowBegin + lineInfo2.RowEnd) / 2;
+                bool alongCol = sizeDirectionEnum == SizeDirectionEnum.X;
+                if (!alongCol && sizeDirectionEnum != SizeDirectionEnum.Y) return false;
 
-                if (sizeDirectionEnum == SizeDirectionEnum.X)
-                {
-                    Val = Math.Abs(line2midcol - line1midcol);
-                    Val = Val * coefficient + RealFixOffset;
-                }
+                // 共享法向 + 质心投影，再按轴换算；详见 ParallelLineFit / docs/最佳方案_2D平行线间距.md。
+                // 走向与所测轴平行时（法向分量不足）判为无效，不输出被除以 sinθ 放大的天文数字。
+                ParallelLineFit.FitResult fit = ParallelLineFit.Solve(lineInfo1, lineInfo2);
+                if (!fit.TryAxisDistance(alongCol, out double axisDistance)) return false;
 
-                else if (sizeDirectionEnum == SizeDirectionEnum.Y)
-                {
-                    Val = Math.Abs(line2midrow - line1midrow);
-                    Val = Val * coefficient + RealFixOffset;
-                }
-
-
-                Val = Math.Round(Val, 3);
+                Val = Math.Round(axisDistance * coefficient + RealFixOffset, 3);
                 return true;
             }
             catch (Exception)
@@ -192,25 +182,15 @@ namespace Mef_VisionFrame
             Val = -999;
             try
             {
-                double line1midcol = (lineInfo1.ColBegin + lineInfo1.ColEnd) / 2;
-                double line2midcol = (lineInfo2.ColBegin + lineInfo2.ColEnd) / 2;
-                double line1midrow = (lineInfo1.RowBegin + lineInfo1.RowEnd) / 2;
-                double line2midrow = (lineInfo2.RowBegin + lineInfo2.RowEnd) / 2;
+                bool alongCol = sizeDirectionEnum == SizeDirectionEnum.X;
+                if (!alongCol && sizeDirectionEnum != SizeDirectionEnum.Y) return false;
 
-                if (sizeDirectionEnum == SizeDirectionEnum.X)
-                {
-                    Val = line2midcol - line1midcol;
-                    Val = Val * calibValueX * coefficient + RealFixOffset;
-                }
+                // 各向异性标定版本：轴距先在像素域按轴求出，再乘对应轴的标定系数。
+                // 与主重载一致，输出无符号值（旧实现这里是有符号的，属遗留不一致）。
+                ParallelLineFit.FitResult fit = ParallelLineFit.Solve(lineInfo1, lineInfo2);
+                if (!fit.TryAxisDistance(alongCol, out double axisDistance)) return false;
 
-                else if (sizeDirectionEnum == SizeDirectionEnum.Y)
-                {
-                    Val = line2midrow - line1midrow;
-                    Val = Val * calibValueY * coefficient + RealFixOffset;
-                }
-
-
-                Val = Math.Round(Val, 3);
+                Val = Math.Round(axisDistance * (alongCol ? calibValueX : calibValueY) * coefficient + RealFixOffset, 3);
                 return true;
             }
             catch (Exception)
@@ -227,31 +207,8 @@ namespace Mef_VisionFrame
         /// <returns></returns>
         public static bool DistanceLl(LineInfo lineInfo1, LineInfo lineInfo2, SizeDirectionEnum sizeDirectionEnum, out double Val)
         {
-            Val = -999;
-            try
-            {
-
-                double line1midcol = (lineInfo1.ColBegin + lineInfo1.ColEnd) / 2;
-                double line2midcol = (lineInfo2.ColBegin + lineInfo2.ColEnd) / 2;
-                double line1midrow = (lineInfo1.RowBegin + lineInfo1.RowEnd) / 2;
-                double line2midrow = (lineInfo2.RowBegin + lineInfo2.RowEnd) / 2;
-
-                if (sizeDirectionEnum == SizeDirectionEnum.X)
-                {
-                    Val = line2midcol - line1midcol;
-                }
-
-                else if (sizeDirectionEnum == SizeDirectionEnum.Y)
-                {
-                    Val = line2midrow - line1midrow;
-                }
-                Val = Math.Round(Val, 3);
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            // 纯像素域轴距：不标定、不补偿。统一委托给主重载，避免旧的"中点轴差"再次被复用。
+            return DistanceLl(lineInfo1, lineInfo2, sizeDirectionEnum, 1.0, 0.0, out Val);
         }
 
         /// <summary>

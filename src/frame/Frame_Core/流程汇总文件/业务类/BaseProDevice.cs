@@ -403,6 +403,9 @@ namespace Frame_Core
                 lineInfo.ColBegin = MeasureLineParamsTile.hv_LineColumnBegin;
                 lineInfo.RowEnd = MeasureLineParamsTile.hv_LineRowEnd;
                 lineInfo.ColEnd = MeasureLineParamsTile.hv_LineColumnEnd;
+                // 亚像素实测点：线线间距改走整体最小二乘后靠它定共同法向；
+                // 为空时下游自动退回两端点法，不会算错只是精度退化。
+                lineInfo.SetPoints(MeasureLineParamsTile.hv_CrossRow, MeasureLineParamsTile.hv_CrossColumn);
                 lineInfo.m_nLineWidth = 10;
                 lineInfo.Color = HalconColor.yellow;
 
@@ -458,6 +461,9 @@ namespace Frame_Core
                 lineInfo.ColBegin = MeasureLineParamsTile.hv_LineColumnBegin;
                 lineInfo.RowEnd = MeasureLineParamsTile.hv_LineRowEnd;
                 lineInfo.ColEnd = MeasureLineParamsTile.hv_LineColumnEnd;
+                // 亚像素实测点：线线间距改走整体最小二乘后靠它定共同法向；
+                // 为空时下游自动退回两端点法，不会算错只是精度退化。
+                lineInfo.SetPoints(MeasureLineParamsTile.hv_CrossRow, MeasureLineParamsTile.hv_CrossColumn);
                 lineInfo.m_nLineWidth = 10;
                 lineInfo.Color = HalconColor.yellow;
 
@@ -505,6 +511,9 @@ namespace Frame_Core
                 lineInfo.ColBegin = MeasureLineParamsTile.hv_LineColumnBegin;
                 lineInfo.RowEnd = MeasureLineParamsTile.hv_LineRowEnd;
                 lineInfo.ColEnd = MeasureLineParamsTile.hv_LineColumnEnd;
+                // 亚像素实测点：线线间距改走整体最小二乘后靠它定共同法向；
+                // 为空时下游自动退回两端点法，不会算错只是精度退化。
+                lineInfo.SetPoints(MeasureLineParamsTile.hv_CrossRow, MeasureLineParamsTile.hv_CrossColumn);
                 lineInfo.m_nLineWidth = 10;
                 lineInfo.Color = HalconColor.yellow;
 

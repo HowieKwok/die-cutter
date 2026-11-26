@@ -247,6 +247,8 @@
     <Compile Include="StandardData\DetectionTime.cs" />
     <Compile Include="StandardData\Image3DClass.cs" />
     <Compile Include="StandardData\LineInfo.cs" />
+    <Compile Include="StandardData\LineGeometry.cs" />
+    <Compile Include="StandardData\ParallelLineFit.cs" />
     <Compile Include="StandardData\ProductDataResult.cs" />
     <Compile Include="StandardData\QualityData.cs" />
     <Compile Include="tools\DirectoryHelper.cs" />

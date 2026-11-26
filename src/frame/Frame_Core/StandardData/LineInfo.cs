@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -65,6 +65,38 @@ namespace Frame_Core
         public double RowEnd = -999;
         public double ColEnd = -999;
 
+        /// <summary>
+        /// 亚像素测量点集（抓边模块 metrology 的实测点，行/列成对、下标一一对应）。
+        /// 供 <see cref="ParallelLineFit"/> 做整体最小二乘；为空时自动退回两个端点。
+        /// 约定只读：跨帧/跨模块传递一律走 <see cref="Copy"/>，不要就地改数组内容。
+        /// </summary>
+        public double[] PtsRow;
+        public double[] PtsCol;
+
+        /// <summary>
+        /// 记录抓边点集。行列长度不一致或为空时清空点集，让下游退回端点法，
+        /// 宁可精度退化也不留下半组点。
+        /// </summary>
+        public void SetPoints(HTuple rows, HTuple cols)
+        {
+            if (rows == null || cols == null || rows.Length < 2 || rows.Length != cols.Length)
+            {
+                PtsRow = null;
+                PtsCol = null;
+                return;
+            }
+
+            double[] r = new double[rows.Length];
+            double[] c = new double[cols.Length];
+            for (int i = 0; i < r.Length; i++)
+            {
+                r[i] = rows[i].D;
+                c[i] = cols[i].D;
+            }
+            PtsRow = r;
+            PtsCol = c;
+        }
+
 
 
 
@@ -103,7 +135,11 @@ namespace Frame_Core
 
         public LineInfo Copy()
         {
-            return (LineInfo)MemberwiseClone();
+            LineInfo copy = (LineInfo)MemberwiseClone();
+            // 点集必须深拷贝：MemberwiseClone 只复制数组引用，跨帧共享后一旦有人就地改点就会串数据。
+            if (PtsRow != null) copy.PtsRow = (double[])PtsRow.Clone();
+            if (PtsCol != null) copy.PtsCol = (double[])PtsCol.Clone();
+            return copy;
         }
     }
 

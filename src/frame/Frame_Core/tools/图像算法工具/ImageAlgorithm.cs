@@ -1,4 +1,4 @@
-﻿using Frame_Cor;
+using Frame_Cor;
 using FrameCommunity;
 using HalconDotNet;
 using LogTool;
@@ -952,6 +952,27 @@ namespace Frame_Core
                         lineInfos[i].RowEnd = hv_LineRowEnd[i].D;
                         lineInfos[i].ColEnd = hv_LineColumnEnd[i].D;
                     }
+
+                    // 亚像素实测点：只有单实例时才能按线归属（多实例时测量点是所有线摊平的，
+                    // 硬填会让两条线的点混在一起，间距直接错）。取不到就留空，下游自动退回端点法。
+                    if (hv_LineRowBegin.Length == 1)
+                    {
+                        HOperatorSet.GetMetrologyObjectMeasures(out HObject ho_MeasurePts, hv_MetrologyHandle, "all", "all",
+                                                               out HTuple hv_PtsRow, out HTuple hv_PtsCol);
+                        if (hv_PtsRow != null && hv_PtsCol != null && hv_PtsRow.Length == hv_PtsCol.Length && hv_PtsRow.Length >= 2)
+                        {
+                            double[] ptsRow = new double[hv_PtsRow.Length];
+                            double[] ptsCol = new double[hv_PtsCol.Length];
+                            for (int k = 0; k < ptsRow.Length; k++)
+                            {
+                                ptsRow[k] = hv_PtsRow[k].D;
+                                ptsCol[k] = hv_PtsCol[k].D;
+                            }
+                            lineInfos[0].PtsRow = ptsRow;
+                            lineInfos[0].PtsCol = ptsCol;
+                        }
+                        if (ho_MeasurePts != null) ho_MeasurePts.Dispose();
+                    }
                 }
             }
             catch (Exception ex)
@@ -1045,6 +1066,27 @@ namespace Frame_Core
                         lineInfos[i].ColBegin = hv_LineColumnBegin[i].D;
                         lineInfos[i].RowEnd = hv_LineRowEnd[i].D;
                         lineInfos[i].ColEnd = hv_LineColumnEnd[i].D;
+                    }
+
+                    // 亚像素实测点：只有单实例时才能按线归属（多实例时测量点是所有线摊平的，
+                    // 硬填会让两条线的点混在一起，间距直接错）。取不到就留空，下游自动退回端点法。
+                    if (hv_LineRowBegin.Length == 1)
+                    {
+                        HOperatorSet.GetMetrologyObjectMeasures(out HObject ho_MeasurePts, hv_MetrologyHandle, "all", "all",
+                                                               out HTuple hv_PtsRow, out HTuple hv_PtsCol);
+                        if (hv_PtsRow != null && hv_PtsCol != null && hv_PtsRow.Length == hv_PtsCol.Length && hv_PtsRow.Length >= 2)
+                        {
+                            double[] ptsRow = new double[hv_PtsRow.Length];
+                            double[] ptsCol = new double[hv_PtsCol.Length];
+                            for (int k = 0; k < ptsRow.Length; k++)
+                            {
+                                ptsRow[k] = hv_PtsRow[k].D;
+                                ptsCol[k] = hv_PtsCol[k].D;
+                            }
+                            lineInfos[0].PtsRow = ptsRow;
+                            lineInfos[0].PtsCol = ptsCol;
+                        }
+                        if (ho_MeasurePts != null) ho_MeasurePts.Dispose();
                     }
                 }
             }

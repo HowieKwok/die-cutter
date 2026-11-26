@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -456,6 +456,13 @@ namespace Frame_Core
         public double ColBegin = 0;
         public double RowEnd = 0;
         public double ColEnd = 0;
+
+        /// <summary>
+        /// 亚像素测量点集（metrology 实测点，行/列成对）。供 ParallelLineFit 做整体最小二乘；
+        /// 为空时自动退回两个端点。多实例拟合时无法按线归属，一律为空。
+        /// </summary>
+        public double[] PtsRow;
+        public double[] PtsCol;
 
 
         /// <summary>

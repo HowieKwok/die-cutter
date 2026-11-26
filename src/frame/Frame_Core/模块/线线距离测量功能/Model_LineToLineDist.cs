@@ -1,4 +1,4 @@
-﻿using HalconDotNet;
+using HalconDotNet;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -104,13 +104,17 @@ namespace Frame_Core
                         {
                             if (lineInfo1.IsLineSuccessfull && lineInfo2.IsLineSuccessfull)
                             {
-                                double line1midcol = (lineInfo1.ColBegin + lineInfo1.ColEnd) / 2;
-                                double line2midcol = (lineInfo2.ColBegin + lineInfo2.ColEnd) / 2;
-                                sizeInfo.value = line2midcol - line1midcol;
-                                sizeInfo.value = sizeInfo.value * calibValueX * ScaleCalibValue + CalibCompensateValue;
-                                sizeInfo.executeResult.IsSuccess = true;
-
-                                sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                if (TryLineDistance(lineInfo1, lineInfo2, true, out double axisDistance))
+                                {
+                                    sizeInfo.value = axisDistance * calibValueX * ScaleCalibValue + CalibCompensateValue;
+                                    sizeInfo.executeResult.IsSuccess = true;
+                                    sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                }
+                                else
+                                {
+                                    sizeInfo.executeResult.IsSuccess = false;
+                                    sizeInfo.executeResult.Message = "line pair invalid(axis X)";
+                                }
                             }
                         }
                         else
@@ -128,13 +132,17 @@ namespace Frame_Core
                         {
                             if (lineInfo1.IsLineSuccessfull && lineInfo2.IsLineSuccessfull)
                             {
-                                double line1midrow = (lineInfo1.RowBegin + lineInfo1.RowEnd) / 2;
-                                double line2midrow = (lineInfo2.RowBegin + lineInfo2.RowEnd) / 2;
-                                sizeInfo.value = line2midrow - line1midrow;
-                                sizeInfo.value = sizeInfo.value * calibValueY * ScaleCalibValue + CalibCompensateValue;
-                                sizeInfo.executeResult.IsSuccess = true;
-
-                                sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                if (TryLineDistance(lineInfo1, lineInfo2, false, out double axisDistance))
+                                {
+                                    sizeInfo.value = axisDistance * calibValueY * ScaleCalibValue + CalibCompensateValue;
+                                    sizeInfo.executeResult.IsSuccess = true;
+                                    sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                }
+                                else
+                                {
+                                    sizeInfo.executeResult.IsSuccess = false;
+                                    sizeInfo.executeResult.Message = "line pair invalid(axis Y)";
+                                }
                             }
                         }
                         else
@@ -169,6 +177,17 @@ namespace Frame_Core
         /// <param name="lineShowInfos"></param>
         /// <param name="regionShowInfos"></param>
         /// <returns></returns>
+        /// <summary>
+        /// 两条线的轴距（像素域，带符号）：线线X 走列向、线线Y 走行向。
+        /// 统一交给 <see cref="ParallelLineFit"/>（共享法向 + 质心/全点集投影），
+        /// 不再"两端点中点相减"——那会把沿线错位按 sinθ 混进结果。
+        /// </summary>
+        private static bool TryLineDistance(LineInfo1 line1, LineInfo1 line2, bool alongCol, out double axisDistance)
+        {
+            ParallelLineFit.FitResult fit = ParallelLineFit.Solve(line1.ToGeometry(), line2.ToGeometry());
+            return fit.TrySignedAxisDistance(alongCol, out axisDistance);
+        }
+
         public static void DetectEdgeValueAssign(CameraEnum cameraEnum, List<LineInfo1> lineInfo1s,  List<MessageShowInfo> messageShowInfos,  List<LineInfo> lineShowInfos,  List<RegionShowInfo> regionShowInfos)
         {
             try
@@ -287,13 +306,17 @@ namespace Frame_Core
                         {
                             if (lineInfo1.IsLineSuccessfull && lineInfo2.IsLineSuccessfull)
                             {
-                                double line1midcol = (lineInfo1.ColBegin + lineInfo1.ColEnd) / 2;
-                                double line2midcol = (lineInfo2.ColBegin + lineInfo2.ColEnd) / 2;
-                                sizeInfo.value = line2midcol - line1midcol;
-                                sizeInfo.value = sizeInfo.value * calibValueX * ScaleCalibValue + CalibCompensateValue;
-                                sizeInfo.executeResult.IsSuccess = true;
-
-                                sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                if (TryLineDistance(lineInfo1, lineInfo2, true, out double axisDistance))
+                                {
+                                    sizeInfo.value = axisDistance * calibValueX * ScaleCalibValue + CalibCompensateValue;
+                                    sizeInfo.executeResult.IsSuccess = true;
+                                    sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                }
+                                else
+                                {
+                                    sizeInfo.executeResult.IsSuccess = false;
+                                    sizeInfo.executeResult.Message = "line pair invalid(axis X)";
+                                }
                             }
                         }
                         else
@@ -311,13 +334,17 @@ namespace Frame_Core
                         {
                             if (lineInfo1.IsLineSuccessfull && lineInfo2.IsLineSuccessfull)
                             {
-                                double line1midrow = (lineInfo1.RowBegin + lineInfo1.RowEnd) / 2;
-                                double line2midrow = (lineInfo2.RowBegin + lineInfo2.RowEnd) / 2;
-                                sizeInfo.value = line2midrow - line1midrow;
-                                sizeInfo.value = sizeInfo.value * calibValueY * ScaleCalibValue + CalibCompensateValue;
-                                sizeInfo.executeResult.IsSuccess = true;
-
-                                sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                if (TryLineDistance(lineInfo1, lineInfo2, false, out double axisDistance))
+                                {
+                                    sizeInfo.value = axisDistance * calibValueY * ScaleCalibValue + CalibCompensateValue;
+                                    sizeInfo.executeResult.IsSuccess = true;
+                                    sizeInfo.result = Math.Abs(sizeInfo.value - standardValue) <= toleranceValue;
+                                }
+                                else
+                                {
+                                    sizeInfo.executeResult.IsSuccess = false;
+                                    sizeInfo.executeResult.Message = "line pair invalid(axis Y)";
+                                }
                             }
                         }
                         else
