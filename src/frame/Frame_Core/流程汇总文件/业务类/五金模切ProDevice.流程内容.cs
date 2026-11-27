@@ -452,11 +452,17 @@ namespace Frame_Core.业务类
 
         public void RunCropProcess(Process process)
         {
+            // catch 里要用：帧出队之后才有帧号；只有确认产出了 EA 图才由 EA 流程结算，
+            // 否则裁图异常的那一帧没有任何人会给它结论
+            int camID = 0;
+            DieCutParam ProParam相机模切业务 = null;
+            ImageInfo InfoImgInfo = null;
+            bool eaEnqueued = false;
             try
             {
                 int ProcessID = process.processInfo.ProcessID;
                 // 五金：相机号取流程声明，不从流程 ID 推——流程清单顺序变了也不会读错相机
-                int camID = process.processInfo.CameraID;
+                camID = process.processInfo.CameraID;
                 int CurCamSide = camID;
                 //设置当前流程绑定核
                 SetThreadAffinityMask(GetCurrentThread(), new UIntPtr(SetCpuID(ProcessID)));
@@ -489,7 +495,7 @@ namespace Frame_Core.业务类
                 CurrentThread.Priority = ThreadPriority.Highest;
 
                 // 选择参数和队列基于是否模拟
-                DieCutParam ProParam相机模切业务 = m_DicCamOperaParam[camID] as DieCutParam;
+                ProParam相机模切业务 = m_DicCamOperaParam[camID] as DieCutParam;
                 var imageQueue = ProParam相机模切业务.alreadyDealGrabImage;
                 //通过信号量把控线程
                 ProParam相机模切业务.semaphoreSlimCam.Wait(50);
@@ -498,7 +504,7 @@ namespace Frame_Core.业务类
                     DieCutImageProduct Product模切帧图 = new DieCutImageProduct();
                     HOperatorSet.CountSeconds(out Product模切帧图.detectionTime.Image_StartTime);
 
-                    ImageInfo InfoImgInfo = imageQueue.Dequeue();
+                    InfoImgInfo = imageQueue.Dequeue();
                     InfoImgInfo.nFirstLineEncoderCount = (long)((InfoImgInfo.image_ID - 1) * InfoImgInfo.imageHeight);
                     InfoImgInfo.nLastLineEncoderCount = (long)(InfoImgInfo.image_ID * InfoImgInfo.imageHeight);
 
@@ -572,8 +578,7 @@ namespace Frame_Core.业务类
                             ngImage.imageHeight = ngImage.nLastLineEncoderCount - ngImage.nFirstLineEncoderCount;
                             ngImage.ImageDescription = $"第{ngImage.EAID}片EA";
 
-                            EnqueueEAImage(ProParam相机模切业务, ngImage);
-                            ProParam相机模切业务.semaphoreSlim.Release();
+                            eaEnqueued = EnqueueEaOrAbandon(ProParam相机模切业务, ngImage, camID);
                             ProParam相机模切业务.nEAId++;
 
                             ShowHalconWindow2.m_messageShowInfos.Add(new MessageShowInfo { m_strMessage = 原因, m_stuGetColor = HalconColor.red });
@@ -725,8 +730,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.imageHeight = EAImageInfo.nLastLineEncoderCount - EAImageInfo.nFirstLineEncoderCount;
                                 EAImageInfo.ImageDescription = $"第{EAImageInfo.EAID}片EA";
 
-                                EnqueueEAImage(ProParam相机模切业务, EAImageInfo);
-                                ProParam相机模切业务.semaphoreSlim.Release();
+                                eaEnqueued = EnqueueEaOrAbandon(ProParam相机模切业务, EAImageInfo, camID);
 
                                 ProParam相机模切业务.nEAId++;
 
@@ -777,8 +781,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.imageHeight = EAImageInfo.nLastLineEncoderCount - EAImageInfo.nFirstLineEncoderCount;
                                 EAImageInfo.ImageDescription = $"第{EAImageInfo.EAID}片EA";
 
-                                EnqueueEAImage(ProParam相机模切业务, EAImageInfo);
-                                ProParam相机模切业务.semaphoreSlim.Release();
+                                eaEnqueued = EnqueueEaOrAbandon(ProParam相机模切业务, EAImageInfo, camID);
 
                             }
                             else
@@ -795,8 +798,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.imageHeight = EAImageInfo.nLastLineEncoderCount - EAImageInfo.nFirstLineEncoderCount;
                                 EAImageInfo.ImageDescription = $"第{EAImageInfo.EAID}片EA";
 
-                                EnqueueEAImage(ProParam相机模切业务, EAImageInfo);
-                                ProParam相机模切业务.semaphoreSlim.Release();
+                                eaEnqueued = EnqueueEaOrAbandon(ProParam相机模切业务, EAImageInfo, camID);
 
                                 ShowHalconWindow2.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = "拼小图模块失败", m_stuGetColor = HalconColor.red });
                                 ShowHalconWindow1.m_nImageFrameID = InfoImgInfo.image_ID;
@@ -849,8 +851,7 @@ namespace Frame_Core.业务类
                             EAImageInfo.imageHeight = EAImageInfo.nLastLineEncoderCount - EAImageInfo.nFirstLineEncoderCount;
                             EAImageInfo.ImageDescription = $"第{EAImageInfo.EAID}片EA";
 
-                            ProParam相机模切业务.imageEAInfos.Add(EAImageInfo);
-                            ProParam相机模切业务.semaphoreSlim.Release();
+                            EnqueueEaOrAbandon(ProParam相机模切业务, EAImageInfo, camID);
 
 
 
@@ -881,8 +882,7 @@ namespace Frame_Core.业务类
                         InfoImgInfo.NgType = 2;
                         InfoImgInfo.ImageDescription = "首片NG";
 
-                        EnqueueEAImage(ProParam相机模切业务, InfoImgInfo);
-                        ProParam相机模切业务.semaphoreSlim.Release();
+                        eaEnqueued = EnqueueEaOrAbandon(ProParam相机模切业务, InfoImgInfo, camID);
 
 
                         ShowHalconWindow1.m_hImage = InfoImgInfo.ho_image.CopyObj(1, -1);
@@ -911,9 +911,62 @@ namespace Frame_Core.业务类
             catch (Exception ee)
             {
                 MessageNotify.AddErrorLog("ProProcessCropBaseCam():" + ee.ToString());
-                System.Windows.Forms.MessageBox.Show("ProProcessCropBaseCam():" + ee.ToString(), "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                //throw;
+
+                // 裁图流程不直接写 PLC 结论：线扫的结论由 EA 线程按队列顺序结算，
+                // 这里从别的线程 Abandon 会越过更早的帧。做法是补一张 NG 的 EA 标记，
+                // 让 EA 流程按序把这一帧判成 NG。
+                TryEnqueueCropFailureEa(ee, InfoImgInfo, ProParam相机模切业务, camID, eaEnqueued);
             }
+        }
+
+        /// <summary>
+        /// 裁图流程异常且尚未产出 EA 图时，补一张 NG 标记交给 EA 线程按序结算。
+        /// 已经产出 EA 图说明 EA 线程会照常判定，这里不能再补，否则同一帧会出两张图。
+        /// </summary>
+        private void TryEnqueueCropFailureEa(Exception error, ImageInfo imageInfo, DieCutParam param, int camID, bool eaEnqueued)
+        {
+            if (imageInfo == null || imageInfo.image_ID <= 0) return;   // 帧还没出队，没有可结算对象
+
+            var station = camID == 0
+                ? 五金模切帧序号.FrameStation.上线扫
+                : 五金模切帧序号.FrameStation.下线扫;
+
+            if (eaEnqueued) return;
+            // 已经由其它路径结算（例如 EA 队列溢出时补过 NG）就不再补
+            if (FrameSettlement.Query((int)imageInfo.image_ID, station) != FrameSettlementState.Open) return;
+
+            if (param == null)
+            {
+                // 连相机参数都拿不到，EA 流程同样跑不起来，只能放弃这一帧
+                五金模切帧序号.Abandon((int)imageInfo.image_ID, station, "裁图异常且相机参数缺失：" + error.Message);
+                return;
+            }
+
+            ImageInfo ngImage = new ImageInfo
+            {
+                NgType = 1,
+                EAID = param.nEAId,
+                image_ID = imageInfo.image_ID,
+                ImageDescription = $"第{param.nEAId}片EA（裁图异常）",
+                imageWidth = imageInfo.imageWidth,
+                imageHeight = imageInfo.imageHeight,
+                nFirstLineEncoderCount = imageInfo.nFirstLineEncoderCount,
+                nLastLineEncoderCount = imageInfo.nLastLineEncoderCount,
+            };
+
+            // 原图可能已被拼图/显示环节释放，CopyObj 会抛 HALCON 异常；
+            // 这里只是补一张 NG 标记，复制失败也要让 EA 流程按序结算
+            try { ngImage.ho_image = 安全复制(imageInfo, imageInfo); }
+            catch (Exception copyEx) { Log4netRecord.ErrorLog.Error("裁图异常补 NG 时复制原图失败：" + copyEx.Message); }
+
+            param.nEAId++;
+
+            if (!EnqueueEaOrAbandon(param, ngImage, camID))
+            {
+                Log4netRecord.ErrorLog.Error($"裁图异常补 NG 标记时 EA 队列已满，帧 {imageInfo.image_ID}");
+            }
+
+            MessageNotify.AddErrorLog($"裁图流程异常，帧 {imageInfo.image_ID} 已按 NG 交给 EA 流程结算：{error.Message}");
         }
 
     
@@ -928,6 +981,9 @@ namespace Frame_Core.业务类
             int ProcessID = process.processInfo.ProcessID;
             // 本帧帧号：catch 里要用它补一条 NG，必须声明在 try 外
             int currentFrameId = 0;
+            // 图是否已交给显示队列；没有交付的图必须在 catch 里释放，否则逐帧泄漏
+            ImageInfo EAimageInfo = null;
+            bool eaDelivered = false;
             try
             {
 
@@ -997,10 +1053,12 @@ namespace Frame_Core.业务类
                 //通过信号量把控线程
                 ProParm模切业务.semaphoreSlim.Wait(30);
 
-                if (TryTakeEAImage(ProParm模切业务, out ImageInfo EAimageInfo))
+                if (TryTakeEAImage(ProParm模切业务, out EAimageInfo))
                 {
                     currentFrameId = (int)EAimageInfo.image_ID;
                     DieCutEAProduct Product极片EA = new DieCutEAProduct();
+                    // 帧号写进产品：Server 侧异常补结算不依赖显示窗口是否构造完整
+                    Product极片EA.FrameId = (int)EAimageInfo.image_ID;
                     HOperatorSet.CountSeconds(out Product极片EA.detectionTime.Image_StartTime);
                     Product极片EA.showHalconGroup = new System.Collections.ObjectModel.ObservableCollection<ShowHalconWindow>();
                     Product极片EA.showHalconGroup.Add(new ShowHalconWindow()
@@ -1041,7 +1099,7 @@ namespace Frame_Core.业务类
                             ? EAimageInfo.ho_image.CopyObj(1, -1)
                             : null;
                         Product极片EA.ngDefectResults.Add(ngDefect);
-                        ProParm模切业务.ProductCallBackCraft(Product极片EA);
+                        ProParm模切业务.ProductCallBackCraft(Product极片EA); eaDelivered = true;
                         return;
 
                     }
@@ -1145,8 +1203,11 @@ namespace Frame_Core.业务类
                         //涂布检测模块出问题，需排查原因，不能开机，停机处理
                         MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = "涂布检测模块出问题", describe = "涂布检测模块出问题，需排查原因，不能开机，停机处理" });
 
+                        // 检测没跑完，这一片不能按 OK 回传
+                        Product极片EA.ForceNg = true;
+                        Product极片EA.ForceNgReason = "涂布检测模块执行失败";
                         HOperatorSet.CountSeconds(out Product极片EA.detectionTime.Image_EndTime);
-                        ProParm模切业务.ProductCallBackCraft(Product极片EA);
+                        ProParm模切业务.ProductCallBackCraft(Product极片EA); eaDelivered = true;
 
                         return;
                     }
@@ -1215,8 +1276,10 @@ namespace Frame_Core.业务类
                                     //边缘破损模块输出问题，需排查原因，不能开机，停机处理
                                     MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = "边缘破损模块输出问题", describe = "边缘破损模块输出问题，需排查原因，不能开机，停机处理" });
 
+                                    Product极片EA.ForceNg = true;
+                                    Product极片EA.ForceNgReason = "边缘破损模块输出异常";
                                     HOperatorSet.CountSeconds(out Product极片EA.detectionTime.Image_EndTime);
-                                    ProParm模切业务.ProductCallBackCraft(Product极片EA);
+                                    ProParm模切业务.ProductCallBackCraft(Product极片EA); eaDelivered = true;
 
                                     return;
                                     //throw;
@@ -1230,8 +1293,10 @@ namespace Frame_Core.业务类
                             //边缘破损检测模块出问题，需排查原因，不能开机，停机处理
                             MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = "边缘破损检测模块", describe = "边缘破损检测模块，需排查原因，不能开机，停机处理" });
 
+                            Product极片EA.ForceNg = true;
+                            Product极片EA.ForceNgReason = "边缘破损检测模块执行失败";
                             HOperatorSet.CountSeconds(out Product极片EA.detectionTime.Image_EndTime);
-                            ProParm模切业务.ProductCallBackCraft(Product极片EA);
+                            ProParm模切业务.ProductCallBackCraft(Product极片EA); eaDelivered = true;
 
                             return;
                         }
@@ -1303,8 +1368,10 @@ namespace Frame_Core.业务类
                                         //边缘破损模块输出问题，需排查原因，不能开机，停机处理
                                         MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = "AT漏金属检测模块", describe = "AT漏金属检测模块输出问题，需排查原因，不能开机，停机处理" });
 
+                                        Product极片EA.ForceNg = true;
+                                        Product极片EA.ForceNgReason = "AT漏金属检测模块输出异常";
                                         HOperatorSet.CountSeconds(out Product极片EA.detectionTime.Image_EndTime);
-                                        ProParm模切业务.ProductCallBackCraft(Product极片EA);
+                                        ProParm模切业务.ProductCallBackCraft(Product极片EA); eaDelivered = true;
 
                                         return;
                                         //throw;
@@ -1318,8 +1385,10 @@ namespace Frame_Core.业务类
                                 //涂布检测模块出问题，需排查原因，不能开机，停机处理
                                 MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = "AT漏金属检测模块", describe = "AT漏金属检测模块出问题，需排查原因，不能开机，停机处理" });
 
+                                Product极片EA.ForceNg = true;
+                                Product极片EA.ForceNgReason = "AT漏金属检测模块执行失败";
                                 HOperatorSet.CountSeconds(out Product极片EA.detectionTime.Image_EndTime);
-                                ProParm模切业务.ProductCallBackCraft(Product极片EA);
+                                ProParm模切业务.ProductCallBackCraft(Product极片EA); eaDelivered = true;
 
                                 return;
                             }
@@ -1337,7 +1406,7 @@ namespace Frame_Core.业务类
                     HTuple end = (Product极片EA.detectionTime.Image_EndTime - Product极片EA.detectionTime.Image_StartTime) * 1000;
                     ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时:{end.D.ToString("0.00")}" });
 
-                    ProParm模切业务.ProductCallBackCraft(Product极片EA);
+                    ProParm模切业务.ProductCallBackCraft(Product极片EA); eaDelivered = true;
 
 
                 }
@@ -1346,6 +1415,12 @@ namespace Frame_Core.业务类
             catch (Exception ee)
             {
                 MessageNotify.AddErrorLog($"流程{ProcessID}ProProcessEACam():" + ee.ToString());
+
+                // 图还没交给显示队列就异常：在这里释放，否则每帧泄漏一张 EA 图
+                if (!eaDelivered && EAimageInfo != null)
+                {
+                    try { EAimageInfo.Dispose(); } catch { }
+                }
 
                 // 异常必须给出结论：少一条结论 = PLC 少一拍，外部表现是机构停在等结果，
                 // 比判错更严重。正常分支都已回调过，这里只补没走完的那一帧。
@@ -1365,6 +1440,36 @@ namespace Frame_Core.业务类
             }
         }
 
+        /// <summary>并行检测分支失败的统一原因。分支内只标记，结论由主流程统一回调。</summary>
+        private const string SizeBranchFailed = "并行检测分支执行失败";
+
+        /// <summary>
+        /// 并行检测分支的失败标记。
+        /// 分支内不能直接 ProductCallBack：那时 ngDefectResults 还没合并，
+        /// 提前回调会把不完整的数据判成结论；主流程末尾统一回调一次，
+        /// 由 ForceNg 把这一片判成 NG。
+        /// </summary>
+        private sealed class SizeFailureBox
+        {
+            private int _failed;
+            public string Reason;
+
+            public void Fail(string reason)
+            {
+                if (Interlocked.Exchange(ref _failed, 1) == 0) Reason = reason;
+            }
+
+            public bool Failed { get { return Volatile.Read(ref _failed) != 0; } }
+        }
+
+        /// <summary>只有第一路尺寸相机是尺寸工位的顺序结算线程。</summary>
+        private static bool IsFirstSizeRoute(int camID)
+        {
+            int firstCam;
+            return Project.Instance.baseProDevice.TryGetCamIndex(CamRole.尺寸检测, 0, out firstCam)
+                   && firstCam == camID;
+        }
+
         /// <summary>
         /// 尺寸相机极耳侧检测
         /// </summary>
@@ -1376,11 +1481,16 @@ namespace Frame_Core.业务类
             int camID = process.processInfo.CameraID;
             int CurCamSide = camID;
             int PoleMode = 0;
-            int tabISLeft = m_craft.Get_GlobalVariableItem("极耳在左侧").Value.ToInt();
-            bool isAT = m_craft.Get_GlobalVariableItem("带AT").Value.ToBool();
+            // catch 里补结算要用
+            int currentFrameId = 0;
             //HTuple end=0;
             try
             {
+                // 配方缺项时这里会返回 null：必须放进 try 内，否则未捕获异常会带走整条流程线程
+                GlobalVariableItem 极耳在左侧项 = m_craft.Get_GlobalVariableItem("极耳在左侧");
+                GlobalVariableItem 带AT项 = m_craft.Get_GlobalVariableItem("带AT");
+                int tabISLeft = 极耳在左侧项 == null ? 0 : 极耳在左侧项.Value.ToInt();
+                bool isAT = 带AT项 != null && 带AT项.Value.ToBool();
 
                 //设置当前流程绑定核
                 SetThreadAffinityMask(GetCurrentThread(), new UIntPtr(SetCpuID(ProcessID)));
@@ -1410,8 +1520,11 @@ namespace Frame_Core.业务类
 
 
                     ImageInfo InfoImgInfo = imageQueue.Dequeue();
+                    currentFrameId = (int)InfoImgInfo.image_ID;
 
                     SizeDectectProduct Product尺寸 = new SizeDectectProduct();
+                    Product尺寸.FrameId = (int)InfoImgInfo.image_ID;
+                    var failure = new SizeFailureBox();
 
                     Product尺寸.showHalconGroup = new System.Collections.ObjectModel.ObservableCollection<ShowHalconWindow>();
                     Product尺寸.showHalconGroup.Add(new ShowHalconWindow()
@@ -1877,7 +1990,7 @@ namespace Frame_Core.业务类
                                             HTuple end1 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                             ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end1.D.ToString("0.00")}" });
                                             HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                            ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                            failure.Fail(SizeBranchFailed);
                                             return;
                                             //throw;
                                         }
@@ -1889,7 +2002,7 @@ namespace Frame_Core.业务类
                                 {
                                     MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin左底部V角检测有无.moduleInfo.ProcessID}&&{Plugin左底部V角检测有无.moduleInfo.ModuleName}", describe = $"流程{Plugin左底部V角检测有无.moduleInfo.ProcessID}&&{Plugin左底部V角检测有无.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
                                     HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                    ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                    failure.Fail(SizeBranchFailed);
                                     return;
                                 }
                             }
@@ -1953,7 +2066,7 @@ namespace Frame_Core.业务类
                                                 HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
                                                 HTuple end2 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                                 ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end2.D.ToString("0.00")}" });
-                                                ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                                failure.Fail(SizeBranchFailed);
                                                 return;
                                                 //throw;
                                             }
@@ -1966,7 +2079,7 @@ namespace Frame_Core.业务类
 
                                         MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin右底部V角检测有无.moduleInfo.ProcessID}&&{Plugin右底部V角检测有无.moduleInfo.ModuleName}", describe = $"流程{Plugin右底部V角检测有无.moduleInfo.ProcessID}&&{Plugin右底部V角检测有无.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
                                         HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                        ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                        failure.Fail(SizeBranchFailed);
                                         return;
                                     }
                                 }
@@ -2026,7 +2139,7 @@ namespace Frame_Core.业务类
                                         HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
                                         HTuple end3 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                         ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end3.D.ToString("0.00")}" });
-                                        ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                        failure.Fail(SizeBranchFailed);
                                         return;
                                         //throw;
                                     }
@@ -2039,7 +2152,7 @@ namespace Frame_Core.业务类
 
                                 MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin极片有无.moduleInfo.ProcessID}&&{Plugin极片有无.moduleInfo.ModuleName}", describe = $"流程{Plugin极片有无.moduleInfo.ProcessID}&&{Plugin极片有无.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
                                 HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                failure.Fail(SizeBranchFailed);
                                 return;
                             }
                         }
@@ -2100,7 +2213,7 @@ namespace Frame_Core.业务类
                                                   HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
                                                   HTuple end4 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                                   ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end4.D.ToString("0.00")}" });
-                                                  ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                                  failure.Fail(SizeBranchFailed);
                                                   return;
                                                   //throw;
                                               }
@@ -2113,7 +2226,7 @@ namespace Frame_Core.业务类
 
                                           MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin极耳翻折检测.moduleInfo.ProcessID}&&{Plugin极耳翻折检测.moduleInfo.ModuleName}", describe = $"流程{Plugin极耳翻折检测.moduleInfo.ProcessID}&&{Plugin极耳翻折检测.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
                                           HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                          ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                          failure.Fail(SizeBranchFailed);
                                           return;
                                       }
                                   }
@@ -2174,7 +2287,7 @@ namespace Frame_Core.业务类
                                                         HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
                                                         HTuple end5 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                                         ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end5.D.ToString("0.00")}" });
-                                                        ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                                        failure.Fail(SizeBranchFailed);
                                                         return;
                                                         //throw;
                                                     }
@@ -2189,7 +2302,7 @@ namespace Frame_Core.业务类
                                                 HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
                                                 HTuple end6 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                                 ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end6.D.ToString("0.00")}" });
-                                                ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                                failure.Fail(SizeBranchFailed);
                                                 return;
                                             }
                                         }
@@ -2250,7 +2363,7 @@ namespace Frame_Core.业务类
                                                         HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
                                                         HTuple end7 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                                         ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end7.D.ToString("0.00")}" });
-                                                        ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                                        failure.Fail(SizeBranchFailed);
                                                         return;
                                                         //throw;
                                                     }
@@ -2266,7 +2379,7 @@ namespace Frame_Core.业务类
                                                 HTuple end8 = (Product尺寸.detectionTime.Image_EndTime - Product尺寸.detectionTime.Image_StartTime) * 1000;
                                                 ShowHalconWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"当前耗时：{end8.D.ToString("0.00")}" });
 
-                                                ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                                failure.Fail(SizeBranchFailed);
                                                 return;
                                             }
                                         }
@@ -2283,6 +2396,14 @@ namespace Frame_Core.业务类
                     Product尺寸.ngDefectResults.AddRange(ngDefect极耳余料检测);
                     Product尺寸.ngDefectResults.AddRange(ngDefect极耳涂布内翻检测);
                     Product尺寸.ngDefectResults.AddRange(ngDefect极片有无);
+
+                    // 并行分支里任何一路失败都不能当成 OK：数据不完整，交 Server 判 NG
+                    if (failure.Failed)
+                    {
+                        Product尺寸.ForceNg = true;
+                        Product尺寸.ForceNgReason = failure.Reason;
+                        Log4netRecord.ErrorLog.Error($"尺寸流程并行检测失败：{failure.Reason}");
+                    }
 
                     ShowHalconWindow.m_regionShowInfos.AddRange(RegionShow左底部V角检测有无);
                     ShowHalconWindow.m_regionShowInfos.AddRange(RegionShow右底部V角检测有无);
@@ -2354,8 +2475,19 @@ namespace Frame_Core.业务类
             catch (Exception ee)
             {
                 MessageNotify.AddErrorLog($"流程{ProcessID}ProProcess极片尺寸带极耳检测流程():" + ee.ToString());
-                System.Windows.Forms.MessageBox.Show("ProProcess极片尺寸带极耳检测流程():" + ee.ToString(), "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                //throw;
+
+                // 只有第一路能直接写结论；另外两路交给第一路等齐超时兜底，
+                // 从别的路线程直接入队会越过更早的帧，把 PLC 的结论错位
+                if (currentFrameId > 0 && IsFirstSizeRoute(camID))
+                {
+                    五金模切帧序号.Abandon(currentFrameId, 五金模切帧序号.FrameStation.尺寸,
+                        "尺寸流程异常：" + ee.Message);
+                }
+
+                五金模切告警.Raise(
+                    "尺寸流程异常_" + ProcessID,
+                    "尺寸流程异常",
+                    $"流程{ProcessID}：{ee.Message}");
             }
         }
 
@@ -2371,6 +2503,8 @@ namespace Frame_Core.业务类
             int CurCamSide = camID;
             int PoleMode = 0;
             int CID = camID;
+            // catch 里补结算要用
+            int currentFrameId = 0;
             try
             {
 
@@ -2401,8 +2535,11 @@ namespace Frame_Core.业务类
                 if (imageQueue.Count > 0)
                 {
                     ImageInfo InfoImgInfo = imageQueue.Dequeue();
+                    currentFrameId = (int)InfoImgInfo.image_ID;
 
                     SizeDectectProduct Product尺寸 = new SizeDectectProduct();
+                    Product尺寸.FrameId = (int)InfoImgInfo.image_ID;
+                    var failure = new SizeFailureBox();
                     HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_StartTime);
                     Product尺寸.showHalconGroup = new System.Collections.ObjectModel.ObservableCollection<ShowHalconWindow>();
 
@@ -2574,7 +2711,7 @@ namespace Frame_Core.业务类
                                             MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin极片有无.moduleInfo.ProcessID}&&{Plugin极片有无.moduleInfo.ModuleName}", describe = $"结果__流程{Plugin极片有无.moduleInfo.ProcessID}&&{Plugin极片有无.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
 
                                             HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                            ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                            failure.Fail(SizeBranchFailed);
                                             return;
                                             //throw;
                                         }
@@ -2588,7 +2725,7 @@ namespace Frame_Core.业务类
                                     MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin极片有无.moduleInfo.ProcessID}&&{Plugin极片有无.moduleInfo.ModuleName}", describe = $"流程{Plugin极片有无.moduleInfo.ProcessID}&&{Plugin极片有无.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
 
                                     HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                    ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                    failure.Fail(SizeBranchFailed);
                                     return;
                                 }
                             }
@@ -2647,7 +2784,7 @@ namespace Frame_Core.业务类
                                         MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin顶部V角检测有无.moduleInfo.ProcessID}&&{Plugin顶部V角检测有无.moduleInfo.ModuleName}", describe = $"结果__流程{Plugin顶部V角检测有无.moduleInfo.ProcessID}&&{Plugin顶部V角检测有无.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
 
                                         HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                        ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                        failure.Fail(SizeBranchFailed);
                                         return;
                                         //throw;
                                     }
@@ -2661,7 +2798,7 @@ namespace Frame_Core.业务类
                                 MessageNotify.AddStopAlarm(new StopAlarmMessage() { StopAlarmState = StopAlarmStateEnum.停机, name = $"流程{Plugin顶部V角检测有无.moduleInfo.ProcessID}&&{Plugin顶部V角检测有无.moduleInfo.ModuleName}", describe = $"流程{Plugin顶部V角检测有无.moduleInfo.ProcessID}&&{Plugin顶部V角检测有无.moduleInfo.ModuleName}——出问题，需排查原因，不能开机，停机处理" });
 
                                 HOperatorSet.CountSeconds(out Product尺寸.detectionTime.Image_EndTime);
-                                ProParam尺寸业务.ProductCallBack(Product尺寸);
+                                failure.Fail(SizeBranchFailed);
                                 return;
                             }
                         }
@@ -2679,6 +2816,15 @@ namespace Frame_Core.业务类
 
                     Product尺寸.ngDefectResults.AddRange(ngDefect极片有无);
                     Product尺寸.ngDefectResults.AddRange(ngDefect顶部V角检测有无);
+
+                    // 并行分支里任何一路失败都不能当成 OK：数据不完整，交 Server 判 NG
+                    if (failure.Failed)
+                    {
+                        Product尺寸.ForceNg = true;
+                        Product尺寸.ForceNgReason = failure.Reason;
+                        Log4netRecord.ErrorLog.Error($"尺寸流程并行检测失败：{failure.Reason}");
+                    }
+
                     ShowHalconWindow.m_regionShowInfos.AddRange(RegionShow极片有无);
                     ShowHalconWindow.m_regionShowInfos.AddRange(RegionShow顶部V角检测有无);
 
@@ -2739,9 +2885,19 @@ namespace Frame_Core.业务类
             catch (Exception ee)
             {
                 MessageNotify.AddErrorLog($"流程{ProcessID}ProProcess极片尺寸检测流程():" + ee.ToString());
-                System.Windows.Forms.MessageBox.Show("ProProcess极片尺寸检测流程():" + ee.ToString(), "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
-                // throw;
+                // 只有第一路能直接写结论；另外两路交给第一路等齐超时兜底，
+                // 从别的路线程直接入队会越过更早的帧，把 PLC 的结论错位
+                if (currentFrameId > 0 && IsFirstSizeRoute(camID))
+                {
+                    五金模切帧序号.Abandon(currentFrameId, 五金模切帧序号.FrameStation.尺寸,
+                        "尺寸流程异常：" + ee.Message);
+                }
+
+                五金模切告警.Raise(
+                    "尺寸流程异常_" + ProcessID,
+                    "尺寸流程异常",
+                    $"流程{ProcessID}：{ee.Message}");
             }
         }
 

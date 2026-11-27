@@ -104,10 +104,42 @@ namespace Mef_VisionFrame
         private void ProcessSizeStation(CamRole role, int occurrence, ProductBase productBase)
         {
             SizeDectectProduct product = productBase as SizeDectectProduct;
-            if (product?.showHalconGroup == null || product.showHalconGroup.Count == 0) return;
+            if (product == null)
+            {
+                Log4netRecord.ErrorLog.Error("尺寸工位收到非尺寸产品，无法结算，请检查流程回调绑定");
+                return;
+            }
+
+            // 帧号先取出来：早返回与异常路径都要靠它补结算
+            int frameId = product.FrameId;
+            if (frameId <= 0 && product.showHalconGroup != null && product.showHalconGroup.Count > 0 &&
+                product.showHalconGroup[0] != null)
+            {
+                frameId = (int)product.showHalconGroup[0].m_nImageFrameID;
+            }
+
+            if (product.showHalconGroup == null || product.showHalconGroup.Count == 0)
+            {
+                SettleAndEnqueue(frameId, Frame_Core.业务参数类.五金模切帧序号.FrameStation.尺寸, true,
+                    Frame_Core.业务参数类.SettlementSource.ServerJudge, "尺寸产品缺少显示窗口");
+                return;
+            }
 
             int camIndex = ResolveCamIndex(role, occurrence);
-            if (camIndex < 0) return;
+            if (camIndex < 0)
+            {
+                SettleAndEnqueue(frameId, Frame_Core.业务参数类.五金模切帧序号.FrameStation.尺寸, true,
+                    Frame_Core.业务参数类.SettlementSource.ServerJudge, "尺寸相机下标解析失败");
+                return;
+            }
+
+            // 第一路是尺寸工位的顺序结算线程：顺手清掉第一路从未到齐的残留组，
+            // 否则那些帧的待检永远不会再变成 1/2。巡检失败不能影响本帧判定
+            if (occurrence == 0)
+            {
+                try { SweepStaleSizes(); }
+                catch (Exception sweepEx) { Log4netRecord.ErrorLog.Error("尺寸过期组清扫异常:" + sweepEx); }
+            }
 
             ShowHalconWindow window = product.showHalconGroup[0];
             try
@@ -128,7 +160,7 @@ namespace Mef_VisionFrame
 
                 // 尺寸超规也要让这一路画面标 NG：截图与 NG 存图按 m_bIsNG 判断，
                 // 只在缺陷判定里置位会让超规片的 NG 图不出。
-                window.m_bIsNG = !(singleCamOk && !defect.IsNG);
+                window.m_bIsNG = !(singleCamOk && !defect.IsNG) || product.ForceNg;
 
                 // 缺陷明细落盘（与外观工位同一套写法，只是表头第二列是相机名）
                 FileOperationCSV.WriteData_CSV(Data.Station3_Path_Defect, Data.Station3_DefectTitle.ToArray(),
@@ -140,7 +172,7 @@ namespace Mef_VisionFrame
                 }
 
                 // 帧号是本片的唯一身份：三路同号才进同一组
-                int frameId = (int)window.m_nImageFrameID;
+                if (frameId <= 0) frameId = (int)window.m_nImageFrameID;
                 AddToSizeGroup(camIndex, product, defect.IsNG, frameId);
 
                 // 只有第一路尺寸相机负责等齐与判工位。
@@ -154,20 +186,22 @@ namespace Mef_VisionFrame
                 if (result == ProcessExecutionResult.Success)
                 {
                     bool sizeOk = JudgeStationSize(group, window);
-                    bool ok = sizeOk && !group.IsDefectNG;
+                    // 三路里任何一路在流程层失败都会置 ForceNg：数据不完整不能算合格
+                    bool ok = sizeOk && !group.IsDefectNG && !GroupForceNg(group);
                     window.m_bIsNG = !ok;
 
                     // 三路到齐即本片成立：结论入队，一个 SN 只入一次。
                     // 与外观不同，尺寸三路共用 Size 一个点位，所以必须等到齐才入队。
-                    // 帧号暂取本路 window：三路同属一个组窗口，取哪一路都相等；
-                    // 待合并槽改按帧号配对后可改用 group 的帧号。
-                    EnqueueSizeResult((int)window.m_nImageFrameID, !ok);
-                    WriteSizeSendLog(window.m_nImageFrameID, !ok);
+                    // 结算被拒说明这一帧已由别的路径结案，统计与日志也不能再记一次
+                    if (EnqueueSizeResult(frameId, !ok))
+                    {
+                        WriteSizeSendLog(frameId, !ok);
 
-                    DieCutJudge.DataStatistical(Data.Station3_StatisticalData, (long)window.m_nProductID, !ok);
-                    CountSizeDistribution(group);
-                    Data.SizeStation_BindingDatasSave.Enqueue(
-                        Model_五金模切.Snapshot(Data.SizeDefectCounts, Data.Station3_StatisticalData), 1);
+                        DieCutJudge.DataStatistical(Data.Station3_StatisticalData, (long)window.m_nProductID, !ok);
+                        CountSizeDistribution(group);
+                        Data.SizeStation_BindingDatasSave.Enqueue(
+                            Model_五金模切.Snapshot(Data.SizeDefectCounts, Data.Station3_StatisticalData), 1);
+                    }
                 }
                 else
                 {
@@ -183,27 +217,45 @@ namespace Mef_VisionFrame
                     // 迟到的那几路图不再入组，否则会在字典里留下一个永远没人消费的孤儿组
                     AbandonSizeGroup(frameId);
 
-                    // 等不齐也算一片 NG，立即入队，机构不会一直等
-                    EnqueueSizeResult((int)window.m_nImageFrameID, true);
-                    WriteSizeSendLog(window.m_nImageFrameID, true);
+                    // 等不齐也算一片 NG，立即入队，机构不会一直等。
+                    // 已经由别的路径结案时不再重复记账
+                    if (EnqueueSizeResult(frameId, true))
+                    {
+                        WriteSizeSendLog(frameId, true);
 
-                    // 界面这一片不能丢：良率、分布、过程数据三处都要留痕，
-                    // 否则 PLC 已经判了这一片 NG，界面良率却比实际高。
-                    // SumupCount 的口径是 productID，超时那路的 ID 可能比已记账的小，
-                    // 直接写会让总数回退，所以取一次单调递增值。
-                    long timeoutProductId = Math.Max((long)window.m_nProductID,
-                        (long)Data.Station3_StatisticalData.SumupCount + 1);
-                    DieCutJudge.DataStatistical(Data.Station3_StatisticalData, timeoutProductId, true);
-                    Data.SizeDefectCounts.AddOrUpdate(SizeAbnormalName, 1, (k, v) => v + 1);
-                    Data.SizeStation_BindingDatasSave.Enqueue(
-                        Model_五金模切.Snapshot(Data.SizeDefectCounts, Data.Station3_StatisticalData), 1);
-                    EnqueueInvalidSizeRow(window);
+                        // 界面这一片不能丢：良率、分布、过程数据三处都要留痕，
+                        // 否则 PLC 已经判了这一片 NG，界面良率却比实际高。
+                        // SumupCount 的口径是 productID，超时那路的 ID 可能比已记账的小，
+                        // 直接写会让总数回退，所以取一次单调递增值。
+                        long timeoutProductId = Math.Max((long)window.m_nProductID,
+                            (long)Data.Station3_StatisticalData.SumupCount + 1);
+                        DieCutJudge.DataStatistical(Data.Station3_StatisticalData, timeoutProductId, true);
+                        Data.SizeDefectCounts.AddOrUpdate(SizeAbnormalName, 1, (k, v) => v + 1);
+                        Data.SizeStation_BindingDatasSave.Enqueue(
+                            Model_五金模切.Snapshot(Data.SizeDefectCounts, Data.Station3_StatisticalData), 1);
+                        EnqueueInvalidSizeRow(window);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Log4netRecord.ErrorLog.Error("五金模切尺寸工位异常:" + ex);
-                window.m_bIsNG = true;
+                if (window != null) window.m_bIsNG = true;
+
+                // 只有第一路是顺序结算线程，可以直接写结论；
+                // 另外两路不在这里入队——第一路会因组里缺一路在等齐超时后统一补 NG，
+                // 由它写保证同一帧只有一条、且不会越过更早的帧
+                if (occurrence == 0)
+                {
+                    SettleAndEnqueue(frameId, Frame_Core.业务参数类.五金模切帧序号.FrameStation.尺寸, true,
+                        Frame_Core.业务参数类.SettlementSource.ServerJudge,
+                        "尺寸工位异常：" + ex.Message);
+                }
+                else
+                {
+                    Log4netRecord.ErrorLog.Error(
+                        $"尺寸工位第 {occurrence + 1} 路异常，交由第一路等齐超时统一结算，帧号 {frameId}");
+                }
             }
             finally
             {
@@ -238,6 +290,48 @@ namespace Mef_VisionFrame
 
         #region 等齐
 
+        /// <summary>组内是否有任一路在流程层失败（ForceNg）。数据不完整不能算合格。</summary>
+        private static bool GroupForceNg(SizeStationGroup group)
+        {
+            if (group == null) return false;
+
+            foreach (SizeDectectProduct product in group.Products.Values)
+            {
+                if (product != null && product.ForceNg) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 第一路入口的超时清扫：第一路从未到齐的组没有等待者，不会自己超时，
+        /// 不清掉这些帧的待检就永远停在 3。
+        /// 只由第一路（顺序结算线程）调用，补 NG 不会越过更早的帧。
+        /// </summary>
+        private void SweepStaleSizes()
+        {
+            List<int> stale = null;
+            DateTime now = DateTime.Now;
+
+            lock (SizeSyncLock)
+            {
+                foreach (KeyValuePair<string, SizeStationGroup> item in _sizePendingGroups)
+                {
+                    if ((now - item.Value.CreatedAt).TotalMilliseconds < SizeGroupTtlMs) continue;
+                    if (stale == null) stale = new List<int>();
+                    stale.Add(item.Value.FrameId);
+                }
+            }
+
+            if (stale == null) return;
+
+            foreach (int frameId in stale)
+            {
+                AbandonSizeGroup(frameId);
+                SettleAndEnqueue(frameId, Frame_Core.业务参数类.五金模切帧序号.FrameStation.尺寸, true,
+                    Frame_Core.业务参数类.SettlementSource.Route, "尺寸组超时未凑齐");
+            }
+        }
+
         private void AddToSizeGroup(int camIndex, SizeDectectProduct product, bool isDefectNG, int frameId)
         {
             // 用帧号作键：三路同号才进同一组。原先用 SN，而 SN 从未赋值、恒为空串，
@@ -271,6 +365,17 @@ namespace Mef_VisionFrame
                 {
                     group = new SizeStationGroup { FrameId = frameId };
                     _sizePendingGroups.Add(key, group);
+                }
+
+                // 同一窗口内同一路再次到图：保留先入组的数据，不覆盖。
+                // 覆盖会静默换掉等待方正在用的那一份，判定结果对不上原始触发
+                if (group.Products.ContainsKey(camIndex))
+                {
+                    Frame_Core.业务类.五金模切告警.Raise(
+                        "尺寸重复帧",
+                        "尺寸重复触发",
+                        $"尺寸相机下标 {camIndex} 在帧 {frameId} 的组窗口内重复到图，已保留先入组的数据。");
+                    return;
                 }
 
                 group.Products[camIndex] = product;
@@ -423,12 +528,27 @@ namespace Mef_VisionFrame
         private bool JudgeStationSize(SizeStationGroup group, ShowHalconWindow window)
         {
             CraftParam_五金模切 craft = Data.Craft;
-            if (craft == null) return false;
+            if (craft == null)
+            {
+                Frame_Core.业务类.五金模切告警.Raise(
+                    "尺寸工艺缺失_工位",
+                    "尺寸配方缺失",
+                    "尺寸工位未加载工艺配方，本片按 NG 结算。");
+                return false;
+            }
 
             // 必须取全部尺寸项：配方里既有"跨相机合成"项（CameraId1 != CameraId2），
             // 也有"单路测量"项（CameraId1 == CameraId2）。只取前者会让后者永远不参与出表。
             List<SizeCraftStation_DieCuttingCut> items = craft.Get_Station3_SizeCrafts_Runtime();
-            if (items == null || items.Count == 0) return true;
+            if (items == null || items.Count == 0)
+            {
+                // 工位级没有任何尺寸项：没有规则就证明不了合格，不能直接判 OK
+                Frame_Core.业务类.五金模切告警.Raise(
+                    "尺寸工艺缺失_工位",
+                    "尺寸工艺项为空",
+                    "尺寸工位没有配置任何尺寸项，本片按 NG 结算。");
+                return false;
+            }
 
             bool isNG = false;
 
@@ -511,8 +631,17 @@ namespace Mef_VisionFrame
         private bool JudgeSingleCamSize(int camIndex, SizeDectectProduct product, ShowHalconWindow window)
         {
             CraftParam_五金模切 craft = Data.Craft;
-            if (craft == null) return true;
+            if (craft == null)
+            {
+                Frame_Core.业务类.五金模切告警.Raise(
+                    "尺寸工艺缺失_单路",
+                    "尺寸配方缺失",
+                    "尺寸工位未加载工艺配方，本片按 NG 结算。");
+                return false;
+            }
 
+            // 单路没有配置尺寸项是合法的（该路只做缺陷检测），不能因此判 NG；
+            // 工位级一项都没有时由 JudgeStationSize 兜底判 NG
             List<SizeCraftStation_DieCuttingCut> items = craft.Get_Station3_SizeCrafts_Runtime(camIndex);
             if (items == null || items.Count == 0) return true;
 

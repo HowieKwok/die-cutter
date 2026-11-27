@@ -152,19 +152,29 @@
 
 ### 3.4 帧结算
 
-结算口径是一帧一条结论；正常判完、裁图失败、未产出 EA、判定异常各走自己的出口，异常一律落 NG。
+结算口径是一帧一条结论，由 `FrameSettlement` 状态机保证：
+
+- 帧号分配（`Register`）时 `Begin` 登记为 Open；每个 `(工位, 帧号)` 在每个代际内只能从 Open 迁移一次。
+- 所有结论（正常 OK/NG、异常补 NG、放弃补 NG）都走 `Server.SettleAndEnqueue`：先 `TryClaim`，成功才入队；
+  后到的结论、异常、补值一律拒绝并记日志。
+- 入队失败（结果队列满）时 `Reopen` 把认领回滚成 Open，避免守卫认为已结算、PLC 永远停在待检。
+- 代际随 `BumpGeneration` 一起清空，停机/换卷后的旧帧结算会被拒绝。
+- 只有该工位的顺序结算线程可以写终态：线扫上下线 = EA 流程线程；尺寸 = 第一路（`occurrence == 0`）流程线程。
+  其他线程只报告失败，不直接入队。
 
 | 位置 | 结算方式 |
 |---|---|
-| EA 流程正常分支 | 每个分支都调 `ProductCallBackCraft` → `Server.ProcessEaImage` → `EnqueueAppearanceResult` |
-| EA 流程抛异常 | `catch` 调 `五金模切帧序号.Abandon(frameId, station, reason)` |
-| Server 侧判定抛异常 | `SafeProcessEaImage` 兜住；帧号 > 0 且队列里该帧没有结论时，按 NG 补一条 |
-| `Abandon` 的落点 | 事件 `FrameAbandoned` → `OnFrameAbandoned`：`Is_Run` + `IsLive` + 队列里该帧没有结论 → 入队 NG + 告警 `帧结算异常` |
+| EA 流程正常分支 | `ProductCallBackCraft` → `Server.ProcessEaImage` → `EnqueueAppearanceResult`；`ForceNg` 或判定 NG 都算 NG |
+| EA 检测模块失败 | 流程层置 `Product极片EA.ForceNg`，照常回调，由 Server 统一按 NG 结算（不再回调空结果被当 OK） |
+| EA 流程抛异常 | `catch` 释放未交付的 EA 图后调 `Abandon`，`OnFrameAbandoned` 认领 NG |
+| Server 侧判定抛异常 | `SafeProcessEaImage` 用 `product.FrameId` 认领 NG，不再扫队列判重 |
+| 裁图流程抛异常 | 不直接写结论：若尚未产出 EA 图，补一张 `NgType=1` 的 EA 标记，由 EA 线程按序判 NG |
+| 尺寸流程抛异常 | 第一路直接 `Abandon`；另外两路只记日志，由第一路等齐超时统一补 NG（保证顺序） |
+| 尺寸工位异常/早返回 | `ProcessSizeStation` 的 `catch` 与早返回由第一路认领 NG |
+| `Abandon` 的落点 | `OnFrameAbandoned` → `SettleAndEnqueue(NG)`，认领失败说明已有结论，不再补 |
 
-`Abandon` 挂在 EA 流程的 `catch` 上，`station` 由 `CameraID == 0 ? 上线扫 : 下线扫` 判定（当前流程清单里 0/1 就是上线/下线）。
-
-**未走结算出口的路径**：裁图流程（`RunCropProcess`）与尺寸流程（`RunSizeProcess` / `RunSizeTabProcess`）的 `catch`
-只写错误日志并弹模态 `MessageBox`，既不 `Abandon` 也不入队 NG。这几处一旦抛异常，该帧的待检（3）之后不会再变成 1/2。
+`Abandon` 只在顺序结算线程上调用，`station` 由 `CameraID == 0 ? 上线扫 : 下线扫` 判定（当前流程清单里 0/1 就是上线/下线）。
+尺寸组的 TTL 清扫也由第一路入口执行，把第一路从未到齐的残留组按 NG 结算。
 
 ### 3.5 合片（只服务统计）
 
@@ -184,11 +194,11 @@
 
 ### 3.6 运行态与代际
 
-- `Generation` 只增：停机、换卷、复位各 +1，同时清空帧有效集。
+- `Generation` 只增：停机、换卷、复位各 +1，同时清空帧有效集，并调用 `FrameSettlement.NewGeneration()` 清空结算表。
 - 写结果前校验 `Is_Run` 与 `IsLive(frameId)`，用来拦住"停机瞬间已出队、随后才判完"的迟到结果。
-- `IsLive` 的语义是"本代际分配过该帧号"，不是"该帧尚未结算"：帧结算后不从集合里移除。因此"结算一次"靠调用方判重
-  （`OnFrameAbandoned` / `SafeProcessEaImage` 会扫结果队列看该帧是否已有结论）。结论一旦被发布并从队列移除，就扫不到了，
-  此时若同一帧再次抛异常，会补出第二条结论。
+- `IsLive` 的语义是"本代际分配过该帧号"，不是"该帧尚未结算"；结算状态由 `FrameSettlement` 单独维护：
+  终态一旦写入就不再变回 Open，同一帧第二次结论会被拒绝。状态不随结果队列出队而丢失，
+  因此"结论发布后再补一条"这条错位路径已被关闭。
 
 ### 3.7 两条线独立
 
@@ -216,8 +226,8 @@ SizeFrameSequencer.Acquire()
 - 窗口宽度是常量 1500ms（`WindowMilliseconds`），没有与配方变量 `SizeStationTimeout` 联动；后者只用于合并槽等待（4.5）。
 - 三路同组必然同号、不同组必然不同号，合并槽才能通过比较帧号发现错配。
 - `LastWindowMissing` 只用于界面/仿真显示"上组缺帧"，不发告警。
-- `Acquire()` 返回 0 表示"没有可用产品号"，注释写明由上层丢弃；当前 `五金模切SizeParam.TryAssignFrameId` 没有判 0，
-  会把 0 写进 `image_ID` 并登记，于是入队一帧"帧号 0"、投递一条 Pending(0)、尺寸组合以 `"0"` 为键。
+- `Acquire()` 返回 0 表示"没有可用产品号"；`五金模切SizeParam.TryAssignFrameId` 判 0 后直接丢弃这一帧
+  （不写 `image_ID`、不登记、不投 Pending），不会再出现"帧号 0"的组。
 
 ### 4.3 合并槽
 
@@ -237,8 +247,10 @@ _sizePendingGroups: 帧号 → SizeStationGroup {
 
 ### 4.4 帧号不一致
 
-- 帧号不一致：告警、该帧不入组、直接返回。这一帧的待检已经投递，但不会再有结论与它配对。
-- 若被挡掉的是第一路（等待方），这一片就没有等待者，最终不会有结论入队，组由 TTL 清理。
+- 帧号不一致：告警、该帧不入组、直接返回。
+- 若被挡掉的是第一路（等待方），它随后 `WaitForSizeGroup` 找不到自己的组 → 立即按 NG 结算；
+  若被挡掉的是另外两路，第一路会缺一路，等齐超时后统一补 NG。
+- 第一路从未到齐的残留组由第一路入口的 TTL 清扫按 NG 结算，不会留下停在待检的帧。
 - 没有多数表决：错帧不参与合成，避免把不同产品的数据拼成同一片的结论。
 
 ### 4.5 等齐与结果入队
@@ -246,10 +258,13 @@ _sizePendingGroups: 帧号 → SizeStationGroup {
 - 只有第一路（`occurrence == 0`）等齐，另两路只入组。三路都等时，同一个到齐信号只能唤醒一个等待者，另两路必然超时。
 - `WaitForSizeGroup` 用"查是否到齐 → 等信号 → 再查"的循环，超时取配方 `SizeStationTimeout`（默认 1500ms）。
 - 成功：`JudgeStationSize` 合算跨相机项、按名取回单路项 → `EnqueueSizeResult(帧号, !ok)` → 写发送日志 → 记统计与片分布。
+  组内任一路 `ForceNg`（流程层并行检测失败）也会判 NG；认领失败（已被别的路径结案）时不再重复记统计。
 - 超时 / 组异常：本路标 NG、`AbandonSizeGroup`（移除残留组 + 打废弃标记）、入队一条 NG、补一行全 `-999` 的结果面板行、统计归入
-  "等齐超时/组异常"。
+  "等齐超时/组异常"。`AbandonSizeGroup` 之后由第一路统一认领，三路不会各补一条。
 - 每路在 `finally` 里各自出图与写检测耗时，不依赖其它两路。
-- `ProcessSizeStation` 自身的 `catch` 只置 `m_bIsNG` 并记日志，**不会入队结论**：这一片会停在待检 3。
+- 并行检测分支（`Parallel.Invoke`）失败时不再提前 `ProductCallBack`：只置失败标记，主流程末尾统一回调一次，
+  由 `ForceNg` 判 NG。提前回调会把还没合并 `ngDefectResults` 的不完整数据判成结论，并在同一帧再回调一次。
+- `ProcessSizeStation` 自身的 `catch`：第一路认领 NG；另外两路只记日志，由第一路等齐超时统一补 NG。
 
 ## 5. PLC 结果发布
 

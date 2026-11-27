@@ -204,6 +204,10 @@ namespace Frame_Core.业务参数类
         {
             lock (_genSync) { _liveFrames.Add(frameId); }
 
+            // 结算守卫在同一时刻登记：只有登记过的帧才允许认领终态，
+            // 这样才能把「被接受但从未结算」的帧暴露出来，而不是等它永远停在待检
+            FrameSettlement.Begin(frameId, station);
+
             Action<int, FrameStation> handler = FrameAssigned;
             if (handler == null) return;
             try { handler(frameId, station); }
@@ -287,6 +291,10 @@ namespace Frame_Core.业务参数类
                 _generation++;
                 _liveFrames.Clear();
             }
+
+            // 结算守卫跟着换代：不复用帧号时旧终态会挡住新帧。
+            // 必须在 _genSync 之外调用，避免两把锁嵌套顺序反转。
+            FrameSettlement.NewGeneration();
         }
     }
 

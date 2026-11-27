@@ -48,6 +48,9 @@
     <Compile Include="..\..\frame\Frame_Core\流程汇总文件\业务参数类\五金模切帧序号_线扫.cs">
       <Link>Linked\五金模切帧序号_线扫.cs</Link>
     </Compile>
+    <Compile Include="..\..\frame\Frame_Core\流程汇总文件\业务参数类\五金模切_帧结算.cs">
+      <Link>Linked\五金模切_帧结算.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\frame\Frame_MetalRun\Frame_MetalRun.csproj">

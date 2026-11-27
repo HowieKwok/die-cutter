@@ -253,7 +253,8 @@ namespace Mef_VisionFrame
         private void SafeProcessEaImage(CamRole role, int occurrence, ProductBase productBase)
         {
             DieCutEAProduct ea = productBase as DieCutEAProduct;
-            int frameId = (int)(ea?.showHalconGroup?.FirstOrDefault()?.m_nImageFrameID ?? 0);
+            int frameId = ResolveEaFrameId(ea);
+            bool isUp = role == CamRole.模切主相机;
 
             try
             {
@@ -263,14 +264,13 @@ namespace Mef_VisionFrame
             {
                 Log4netRecord.ErrorLog.Error($"五金外观判定异常，按 NG 结算：{ex}");
 
-                bool isUp = role == CamRole.模切主相机;
-                PlcResultChannel channel = isUp ? UpResultChannel : DownResultChannel;
-
-                // 已经入过结论就不能再补：重复入队会让 PLC 把两片的结论错位。
-                // 判定异常多发生在入队之后的落盘/界面环节，必须判重。
-                if (frameId > 0 && !HasConclusion(channel, frameId))
+                // 认领成功才补：判定异常多发生在入队之后的落盘/界面环节，
+                // 重复入队会让 PLC 把两片的结论错位。判重由结算守卫负责，不再扫队列
+                if (frameId > 0 &&
+                    SettleAndEnqueue(frameId, StationOf(isUp), true,
+                        Frame_Core.业务参数类.SettlementSource.ServerJudge,
+                        "EA 判定异常：" + ex.Message))
                 {
-                    EnqueueAppearanceResult(isUp, frameId, true);
                     Frame_Core.业务类.五金模切告警.Raise(
                         Frame_Core.业务类.五金模切告警.帧结算异常,
                         "帧结算异常",
@@ -279,14 +279,20 @@ namespace Mef_VisionFrame
             }
         }
 
-        /// <summary>队列里是否已有该帧的结论（不含待检）。仅异常路径调用，队列深度上限 64。</summary>
-        private static bool HasConclusion(PlcResultChannel channel, int frameId)
+        /// <summary>EA 产品的帧号：优先取流程显式写入的 FrameId，缺失时退回显示窗口。</summary>
+        private static int ResolveEaFrameId(DieCutEAProduct product)
         {
-            foreach (PlcResultItem item in channel.Snapshot())
-            {
-                if (item.FrameId == frameId && item.Value != PlcResult.Pending) return true;
-            }
-            return false;
+            if (product == null) return 0;
+            if (product.FrameId > 0) return product.FrameId;
+            return (int)(product.showHalconGroup?.FirstOrDefault()?.m_nImageFrameID ?? 0);
+        }
+
+        /// <summary>外观相机的上线 / 下线工位映射。当前流程清单 0/1 就是上线/下线。</summary>
+        private static Frame_Core.业务参数类.五金模切帧序号.FrameStation StationOf(bool isUp)
+        {
+            return isUp
+                ? Frame_Core.业务参数类.五金模切帧序号.FrameStation.上线扫
+                : Frame_Core.业务参数类.五金模切帧序号.FrameStation.下线扫;
         }
 
         // 尺寸三路的回调在 Server_五金模切.尺寸工位.cs：它们要等齐三路再判，
@@ -320,55 +326,89 @@ namespace Mef_VisionFrame
         private void ProcessEaImage(CamRole role, int occurrence, ProductBase productBase)
         {
             DieCutEAProduct product = productBase as DieCutEAProduct;
+            if (product == null)
+            {
+                Log4netRecord.ErrorLog.Error("外观工位收到非 EA 产品，无法结算，请检查流程回调绑定");
+                return;
+            }
+
+            bool isUp = role == CamRole.模切主相机;
+            int frameId = ResolveEaFrameId(product);
+
             ShowHalconWindow window = product?.showHalconGroup?.FirstOrDefault();
-            if (window == null) return;
+            if (window == null)
+            {
+                // 没有可判定产物也要给结论：少一条结论等于 PLC 少一拍，机构会停在等结果
+                SettleAndEnqueue(frameId, StationOf(isUp), true,
+                    Frame_Core.业务参数类.SettlementSource.ServerJudge,
+                    "EA 产品缺少显示窗口");
+                return;
+            }
 
             int camIndex = ResolveCamIndex(role, occurrence);
-            if (camIndex < 0) return;
-
-            HOperatorSet.CountSeconds(out product.detectionTime.Data_StartTime);
-
-            DefectFrameResult result = JudgeAppearanceDefects(camIndex, product, window);
-            window.m_bIsNG = result.IsNG;
-
-            // 本片外观结论直接回传 PLC：上线/下线各写各的，不需要等合片、也不需要 PLC 请求。
-            // 宁可先给结论再落盘，机构在等这个值。
-            bool isUp = role == CamRole.模切主相机;
-            EnqueueAppearanceResult(isUp, (int)window.m_nImageFrameID, result.IsNG);
-            WriteAppearanceSendLog(isUp, result.IsNG, window.m_nImageFrameID);
-
-            // 明细落盘：这一帧检出的每个缺陷一行（没有缺陷时为空表，与激光一致）
-            string detailPath = role == CamRole.模切主相机 ? Data.Station1_ALineCamPath_Defect : Data.Station1_BLineCamPath_Defect;
-            FileOperationCSV.WriteData_CSV(detailPath, Data.Station1_DefectTitle.ToArray(), product.productDataResult.DefectData, Service_Camera.GetCam_Name(camIndex));
-
-            // 右侧"EA 缺陷明细"面板：与 CSV 同一批行，界面线程取走显示
-            QueuePackage<List<RowData>> detailQueue = role == CamRole.模切主相机 ? Data.UpCamDefectShowQueue : Data.DownCamDefectShowQueue;
-            foreach (List<RowData> row in product.productDataResult.DefectData)
+            if (camIndex < 0)
             {
-                detailQueue.Enqueue(row, 200);
+                SettleAndEnqueue(frameId, StationOf(isUp), true,
+                    Frame_Core.业务参数类.SettlementSource.ServerJudge,
+                    "EA 相机下标解析失败");
+                return;
             }
 
-            // 结果入 A/B 队列，由合片线程按 EA 号配对；统计在合片后按“一片”计，不在这里算
-            product.productDataResult.m_nImageFrameID = window.m_nImageFrameID;
-            product.productDataResult.m_nProductID = window.m_nProductID;
-            product.productDataResult.IsNG = result.IsNG;
-            product.productDataResult.IsSevereDefect = result.IsSevere;
-            // 片级统计只取这一项，见 计缺陷片分布
-            product.productDataResult.highestPriorityNgDefect = result.HighestPriority;
-
-            if (role == CamRole.模切主相机)
+            try
             {
-                Data.ALine_DieCutEAProduct.Enqueue(product.productDataResult, 100);
+                HOperatorSet.CountSeconds(out product.detectionTime.Data_StartTime);
+
+                DefectFrameResult result = JudgeAppearanceDefects(camIndex, product, window);
+
+                // 流程层的检测模块故障会置 ForceNg：这一片检不完整，必须算 NG，
+                // 不能因为 ngDefectResults 为空就回传 OK
+                bool isNG = result.IsNG || product.ForceNg;
+                window.m_bIsNG = isNG;
+
+                // 本片外观结论直接回传 PLC：上线/下线各写各的，不需要等合片、也不需要 PLC 请求。
+                // 宁可先给结论再落盘，机构在等这个值。
+                // 认领失败说明这帧已由别的路径结案，发送日志也不能再记一行
+                if (EnqueueAppearanceResult(isUp, frameId, isNG))
+                {
+                    WriteAppearanceSendLog(isUp, isNG, frameId);
+                }
+
+                // 明细落盘：这一帧检出的每个缺陷一行（没有缺陷时为空表，与激光一致）
+                string detailPath = role == CamRole.模切主相机 ? Data.Station1_ALineCamPath_Defect : Data.Station1_BLineCamPath_Defect;
+                FileOperationCSV.WriteData_CSV(detailPath, Data.Station1_DefectTitle.ToArray(), product.productDataResult.DefectData, Service_Camera.GetCam_Name(camIndex));
+
+                // 右侧"EA 缺陷明细"面板：与 CSV 同一批行，界面线程取走显示
+                QueuePackage<List<RowData>> detailQueue = role == CamRole.模切主相机 ? Data.UpCamDefectShowQueue : Data.DownCamDefectShowQueue;
+                foreach (List<RowData> row in product.productDataResult.DefectData)
+                {
+                    detailQueue.Enqueue(row, 200);
+                }
+
+                // 结果入 A/B 队列，由合片线程按 EA 号配对；统计在合片后按“一片”计，不在这里算
+                product.productDataResult.m_nImageFrameID = frameId;
+                product.productDataResult.m_nProductID = window.m_nProductID;
+                product.productDataResult.IsNG = isNG;
+                product.productDataResult.IsSevereDefect = result.IsSevere;
+                // 片级统计只取这一项，见 计缺陷片分布
+                product.productDataResult.highestPriorityNgDefect = result.HighestPriority;
+
+                if (role == CamRole.模切主相机)
+                {
+                    Data.ALine_DieCutEAProduct.Enqueue(product.productDataResult, 100);
+                }
+                else
+                {
+                    Data.BLine_DieCutEAProduct.Enqueue(product.productDataResult, 100);
+                }
+
+                HOperatorSet.CountSeconds(out product.detectionTime.Data_EndTime);
+                WriteDetectionTime(camIndex, 1, window, product.detectionTime);
             }
-            else
+            finally
             {
-                Data.BLine_DieCutEAProduct.Enqueue(product.productDataResult, 100);
+                // 图必须交付或释放：判定/落盘异常时跳过这里，EA 图会逐帧泄漏
+                DeliverImage(camIndex, window, "EA图", Data.Cams[camIndex].EaShow, 图像流.EA图);
             }
-
-            HOperatorSet.CountSeconds(out product.detectionTime.Data_EndTime);
-            WriteDetectionTime(camIndex, 1, window, product.detectionTime);
-
-            DeliverImage(camIndex, window, "EA图", Data.Cams[camIndex].EaShow, 图像流.EA图);
         }
 
         /// <summary>相机下标按角色解析，不写死 0..4——画像换顺序时这里不用改。</summary>

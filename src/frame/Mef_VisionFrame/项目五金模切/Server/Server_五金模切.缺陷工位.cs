@@ -41,7 +41,15 @@ namespace Mef_VisionFrame
         private DefectFrameResult JudgeAppearanceDefects(int camIndex, DieCutEAProduct product, ShowHalconWindow window)
         {
             CraftParam_五金模切 craft = Data.Craft;
-            if (craft == null) return new DefectFrameResult();
+            if (craft == null)
+            {
+                // 没有工艺规则就不能证明产品合格：判 NG 并告警，不能静默给 OK
+                Frame_Core.业务类.五金模切告警.Raise(
+                    "缺陷工艺缺失_外观",
+                    "外观配方缺失",
+                    "外观工位未加载工艺配方，本片按 NG 结算。");
+                return new DefectFrameResult { IsNG = true, IsSevere = true, NgCount = 1 };
+            }
 
             string camName = Service_Camera.GetCam_Name(camIndex);
 
@@ -62,7 +70,14 @@ namespace Mef_VisionFrame
         private DefectFrameResult JudgeSizeDefects(int camIndex, SizeDectectProduct product, ShowHalconWindow window)
         {
             CraftParam_五金模切 craft = Data.Craft;
-            if (craft == null) return new DefectFrameResult();
+            if (craft == null)
+            {
+                Frame_Core.业务类.五金模切告警.Raise(
+                    "缺陷工艺缺失_尺寸",
+                    "尺寸配方缺失",
+                    "尺寸工位未加载工艺配方，本片按 NG 结算。");
+                return new DefectFrameResult { IsNG = true, IsSevere = true, NgCount = 1 };
+            }
 
             string camName = Service_Camera.GetCam_Name(camIndex);
 
@@ -90,6 +105,9 @@ namespace Mef_VisionFrame
         {
             DefectFrameResult result = new DefectFrameResult();
             ImageSaveParamConfig saveParam = Project.Instance.M_NewImageSaveParamer.ImageSaveConfigItems.GetSaveParam(camIndex);
+            // 任何一条缺陷判不出来，这一片就不能算合格。
+            // 不能只靠把该条 T_IsNG 置位：汇总还要过工艺的"同类累计 N 片"条件，单条未必判 NG
+            bool judgeFailed = false;
 
             // 汇总判定要按类名重新遍历一遍，所以先物化；调用方传进来的本来就是 List，不会产生额外拷贝
             List<NgDefectResult> items = defects as List<NgDefectResult> ?? defects.ToList();
@@ -200,6 +218,23 @@ namespace Mef_VisionFrame
                 catch (Exception ex)
                 {
                     Log4netRecord.ErrorLog.Error($"五金模切缺陷判定异常，相机：{camName}\r\n{ex}");
+
+                    // 判定不了的缺陷不能当 OK：标记成 NG 让它进入 JudgeSummary，
+                    // 否则这一条被静默跳过，整片可能因为"没有其它缺陷"而回传 OK
+                    try
+                    {
+                        item.T_IsOverspecification = true;
+                        item.T_IsNG = true;
+                        item.T_IsSevere = true;
+                        result.NgCount++;
+                        result.IsSevere = true;
+                        judgeFailed = true;
+                    }
+                    catch
+                    {
+                        // 标记失败也不能把异常抛回流程线程，结论仍由汇总层兜底
+                    }
+
                     // 异常时这一条的 Region 不会交给窗口（正常路径由 RegionShowInfo/ngWindow 接管），
                     // 不释放会随帧累积，最终拖垮 Halcon 内存
                     item.Dispose();
@@ -207,6 +242,9 @@ namespace Mef_VisionFrame
             }
 
             JudgeSummary(items, GetCraft, ref result);
+
+            // 汇总层可能因为"同类累计 N 片"的条件把单条异常判回 OK，这里强制兜底
+            if (judgeFailed) result.IsNG = true;
             return result;
         }
 

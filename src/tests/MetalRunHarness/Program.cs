@@ -2,6 +2,7 @@ using Frame_Core.业务参数类;
 using Frame_MetalRun;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -38,6 +39,8 @@ namespace MetalRunHarness
             TestFrameGate();
             TestSizeManualFrameId();
             TestManualStepClampSuppression();
+            TestFrameSettlement();
+            TestSettlementPipeline();
 
             Console.WriteLine(_failed == 0 ? "ALL PASS" : ("FAILED: " + _failed));
             return _failed == 0 ? 0 : 1;
@@ -409,6 +412,157 @@ namespace MetalRunHarness
                   reason == FrameRejectReason.单步恢复, "单步后首次钳位不告警");
             Check(!sequencer.TryNextDown(out frameId, out reason) &&
                   reason == FrameRejectReason.下线超前, "后续钳位恢复正常告警");
+        }
+
+        /// <summary>结算守卫：一帧只允许一次终态，尺寸三路同号共享一次结算。</summary>
+        private static void TestFrameSettlement()
+        {
+            const 五金模切帧序号.FrameStation LineScan = 五金模切帧序号.FrameStation.上线扫;
+            const 五金模切帧序号.FrameStation Size = 五金模切帧序号.FrameStation.尺寸;
+
+            FrameSettlement.NewGeneration();
+
+            Check(!FrameSettlement.TryClaim(1, LineScan, false, SettlementSource.Appearance, "未登记"),
+                "未登记的帧不能结算");
+
+            Check(FrameSettlement.Begin(1, LineScan), "登记帧号 1");
+            Check(FrameSettlement.Begin(1, LineScan), "同代际重复登记幂等");
+
+            Check(FrameSettlement.TryClaim(1, LineScan, false, SettlementSource.Appearance, "OK"),
+                "第一次认领成功");
+            Check(!FrameSettlement.TryClaim(1, LineScan, true, SettlementSource.ServerJudge, "重复"),
+                "第二次认领被拒");
+            Check(FrameSettlement.Query(1, LineScan) == FrameSettlementState.Ok, "终态保持 OK");
+
+            Check(!FrameSettlement.Begin(0, LineScan), "帧号 0 不能登记");
+            Check(!FrameSettlement.TryClaim(0, LineScan, true, SettlementSource.ServerJudge, "0"),
+                "帧号 0 不能结算");
+
+            // 尺寸三路共用帧号：登记三次仍只有一次结算机会
+            FrameSettlement.Begin(7, Size);
+            FrameSettlement.Begin(7, Size);
+            FrameSettlement.Begin(7, Size);
+            Check(FrameSettlement.TryClaim(7, Size, true, SettlementSource.Route, "单路异常"),
+                "尺寸三路第一次认领成功");
+            Check(!FrameSettlement.TryClaim(7, Size, false, SettlementSource.Group, "组成功"),
+                "尺寸三路同一帧不会出现第二条结论");
+
+            // 入队失败回滚后允许重新认领
+            FrameSettlement.Begin(9, LineScan);
+            FrameSettlement.TryClaim(9, LineScan, true, SettlementSource.ServerJudge, "先认领");
+            Check(FrameSettlement.Reopen(9, LineScan), "队列满时回滚认领");
+            Check(FrameSettlement.TryClaim(9, LineScan, false, SettlementSource.Appearance, "重新认领"),
+                "回滚后可以再次结算");
+
+            // 换卷/停机换代后旧帧作废
+            FrameSettlement.Begin(11, LineScan);
+            FrameSettlement.NewGeneration();
+            Check(!FrameSettlement.TryClaim(11, LineScan, true, SettlementSource.ServerJudge, "旧代际"),
+                "旧代际的迟到结算被拒");
+
+            FrameSettlement.Begin(12, LineScan);
+            FrameSettlement.Begin(13, LineScan);
+            Check(FrameSettlement.OpenCount == 2, "OpenCount 只统计未结算帧");
+        }
+
+        /// <summary>
+        /// 结算链路端到端：帧分配投 Pending → 认领结论 → 放弃/迟到结论被拒 → 发布器按序写出。
+        /// 用真实的 FrameSettlement + 五金模切帧序号 + PlcResultChannel + PlcResultPublisher，
+        /// 只把 Server 的 SettleAndEnqueue 换成测试内的同构实现（Server 依赖界面与 Halcon，无法引用）。
+        /// </summary>
+        private static void TestSettlementPipeline()
+        {
+            const 五金模切帧序号.FrameStation LineScan = 五金模切帧序号.FrameStation.上线扫;
+            const 五金模切帧序号.FrameStation Size = 五金模切帧序号.FrameStation.尺寸;
+
+            PlcResultChannel channel = new PlcResultChannel("pipeline", 16);
+            object sync = new object();
+
+            Action<int, 五金模切帧序号.FrameStation> onAssigned =
+                (id, st) => { lock (sync) { channel.Enqueue(id, PlcResult.Pending); } };
+            Action<int, 五金模切帧序号.FrameStation, string> onAbandoned =
+                (id, st, reason) => { SettleForTest(channel, id, st, true); };
+
+            五金模切帧序号.Reset();
+            五金模切帧序号.FrameAssigned += onAssigned;
+            五金模切帧序号.FrameAbandoned += onAbandoned;
+            try
+            {
+                // 场景 A：正常结论先到，迟到异常不能再补
+                五金模切帧序号.Register(1, LineScan);
+                Check(SettleForTest(channel, 1, LineScan, false), "场景A 正常结论认领成功");
+                五金模切帧序号.Abandon(1, LineScan, "迟到异常");
+                Check(Sequence(channel).SequenceEqual(new[] { 3, 1 }), "场景A 迟到异常不补第二条");
+
+                // 场景 B：放弃先到，正常结论后到被拒
+                channel.Clear();
+                五金模切帧序号.Register(2, LineScan);
+                五金模切帧序号.Abandon(2, LineScan, "流程异常");
+                Check(!SettleForTest(channel, 2, LineScan, false), "场景B 迟到 OK 被拒");
+                Check(Sequence(channel).SequenceEqual(new[] { 3, 2 }), "场景B 放弃补一条 NG");
+
+                // 场景 C：尺寸三路同号，三条待检、只一条结论
+                channel.Clear();
+                五金模切帧序号.Register(7, Size);
+                五金模切帧序号.Register(7, Size);
+                五金模切帧序号.Register(7, Size);
+                Check(SettleForTest(channel, 7, Size, false), "场景C 尺寸工位结论认领成功");
+                Check(!SettleForTest(channel, 7, Size, true), "场景C 尺寸三路不会补第二条");
+                Check(Sequence(channel).SequenceEqual(new[] { 3, 3, 3, 1 }), "场景C 三待检一结论");
+
+                // 场景 D：发布器按入队顺序写出
+                List<int> writes = new List<int>();
+                PlcResultPublisher publisher = new PlcResultPublisher(
+                    new[] { channel },
+                    (ch, item) =>
+                    {
+                        lock (writes) { writes.Add((int)item.Value); }
+                        return true;
+                    });
+                publisher.Start();
+                Thread.Sleep(300);
+                publisher.Dispose();
+                Check(writes.SequenceEqual(new[] { 3, 3, 3, 1 }), "场景D 发布顺序 3→3→3→结论");
+
+                // 场景 E：队列满时回滚认领，排空后可以重新结算
+                PlcResultChannel small = new PlcResultChannel("small", 1);
+                FrameSettlement.NewGeneration();
+                五金模切帧序号.Register(9, LineScan);
+                small.Enqueue(9, PlcResult.Pending);   // 占满
+                Check(!SettleForTest(small, 9, LineScan, true), "场景E 队列满时结算失败");
+                Check(FrameSettlement.Query(9, LineScan) == FrameSettlementState.Open, "场景E 认领已回滚");
+                small.Clear();
+                Check(SettleForTest(small, 9, LineScan, true), "场景E 排空后可以重新结算");
+            }
+            finally
+            {
+                五金模切帧序号.FrameAssigned -= onAssigned;
+                五金模切帧序号.FrameAbandoned -= onAbandoned;
+                五金模切帧序号.Reset();
+            }
+        }
+
+        /// <summary>Server.SettleAndEnqueue 的同构实现：认领 → 入队 → 失败回滚。</summary>
+        private static bool SettleForTest(PlcResultChannel channel, int frameId,
+            五金模切帧序号.FrameStation station, bool isNg)
+        {
+            if (!FrameSettlement.TryClaim(frameId, station, isNg, SettlementSource.ServerJudge, "harness"))
+                return false;
+
+            if (!channel.Enqueue(frameId, isNg ? PlcResult.Ng : PlcResult.Ok))
+            {
+                FrameSettlement.Reopen(frameId, station);
+                return false;
+            }
+            return true;
+        }
+
+        private static int[] Sequence(PlcResultChannel channel)
+        {
+            PlcResultItem[] items = channel.Snapshot();
+            int[] values = new int[items.Length];
+            for (int i = 0; i < items.Length; i++) values[i] = (int)items[i].Value;
+            return values;
         }
 
         /// <summary>假宿主：只记录调用，不碰真实流程/队列/PLC。</summary>

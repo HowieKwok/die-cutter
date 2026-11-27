@@ -785,6 +785,7 @@
     <Compile Include="流程汇总文件\业务参数类\五金模切参数.cs" />
     <Compile Include="流程汇总文件\业务参数类\五金模切帧序号.cs" />
     <Compile Include="流程汇总文件\业务参数类\五金模切帧序号_线扫.cs" />
+    <Compile Include="流程汇总文件\业务参数类\五金模切_帧结算.cs" />
     <Compile Include="流程汇总文件\业务类\五金模切ProDevice.EA队列.cs" />
     <Compile Include="流程汇总文件\业务类\五金模切告警.cs" />
     <Compile Include="流程汇总文件\业务参数类\PFTCleanProParams.cs" />

@@ -154,17 +154,15 @@ namespace Mef_VisionFrame
             Frame_Core.业务参数类.五金模切帧序号.FrameStation station,
             string reason)
         {
-            if (!Project.Instance.Is_Run) return;
-            if (!Frame_Core.业务参数类.五金模切帧序号.IsLive(frameId)) return;
+            // 认领成功才入队。已有结论的帧（正常判完后又抛异常）由守卫直接拒绝，
+            // 不再依赖「扫队列」判重——结论发布出队后队列里就找不到了
+            if (!SettleAndEnqueue(frameId, station, true,
+                    Frame_Core.业务参数类.SettlementSource.ServerJudge,
+                    "帧被放弃：" + reason))
+            {
+                return;
+            }
 
-            PlcResultChannel channel =
-                station == Frame_Core.业务参数类.五金模切帧序号.FrameStation.上线扫 ? UpResultChannel :
-                station == Frame_Core.业务参数类.五金模切帧序号.FrameStation.下线扫 ? DownResultChannel :
-                SizeResultChannel;
-
-            if (HasConclusion(channel, frameId)) return;
-
-            EnqueueResult(channel, frameId, PlcResult.Ng);
             Frame_Core.业务类.五金模切告警.Raise(
                 Frame_Core.业务类.五金模切告警.帧结算异常,
                 "帧结算异常",

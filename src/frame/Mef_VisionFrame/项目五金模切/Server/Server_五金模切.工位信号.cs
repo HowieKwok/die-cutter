@@ -88,23 +88,24 @@ namespace Mef_VisionFrame
         /// 待检（Pending）不在这里投递：它在帧号分配时随 FrameAssigned 事件入队，
         /// 这样被去抖或帧号校验丢弃的帧不会留下多余的 Pending。
         /// </summary>
-        public void EnqueueAppearanceResult(bool isUp, int frameId, bool isNG)
+        public bool EnqueueAppearanceResult(bool isUp, int frameId, bool isNG)
         {
-            if (!Project.Instance.Is_Run) return;
-            if (!Frame_Core.业务参数类.五金模切帧序号.IsLive(frameId)) return;
-
-            EnqueueResult(isUp ? UpResultChannel : DownResultChannel,
-                frameId,
-                isNG ? PlcResult.Ng : PlcResult.Ok);
+            return SettleAndEnqueue(frameId,
+                isUp ? Frame_Core.业务参数类.五金模切帧序号.FrameStation.上线扫
+                     : Frame_Core.业务参数类.五金模切帧序号.FrameStation.下线扫,
+                isNG,
+                Frame_Core.业务参数类.SettlementSource.Appearance,
+                isNG ? "外观判定 NG" : "外观判定 OK");
         }
 
-        /// <summary>三路尺寸合成后的本片结论入队。与外观同理，过同样的两道闸门。</summary>
-        public void EnqueueSizeResult(int frameId, bool isNG)
+        /// <summary>三路尺寸合成后的本片结论入队。与外观同理，只允许第一路（顺序结算线程）调用。</summary>
+        public bool EnqueueSizeResult(int frameId, bool isNG)
         {
-            if (!Project.Instance.Is_Run) return;
-            if (!Frame_Core.业务参数类.五金模切帧序号.IsLive(frameId)) return;
-
-            EnqueueResult(SizeResultChannel, frameId, isNG ? PlcResult.Ng : PlcResult.Ok);
+            return SettleAndEnqueue(frameId,
+                Frame_Core.业务参数类.五金模切帧序号.FrameStation.尺寸,
+                isNG,
+                Frame_Core.业务参数类.SettlementSource.Group,
+                isNG ? "尺寸工位 NG" : "尺寸工位 OK");
         }
 
         #endregion
