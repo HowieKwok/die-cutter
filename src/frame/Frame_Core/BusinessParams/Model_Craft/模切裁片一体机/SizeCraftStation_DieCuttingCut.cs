@@ -146,7 +146,7 @@ namespace Frame_Core
 
         #region BJ 报警配置
         private int _ContinuousCount = 0;
-        /// <summary>连续超限次数</summary>
+        /// <summary>连续NG阈值：同一检测项连续 NG 的片数达到该值触发；中间一片 OK 即清零。</summary>
         public int ContinuousCount
         {
             get => _ContinuousCount;
@@ -155,7 +155,7 @@ namespace Frame_Core
 
 
         private bool _BJ_Continuous = false;
-        /// <summary>是否报警</summary>
+        /// <summary>连续NG是否报警：连续 NG 达到阈值时写入报警。</summary>
         public bool BJ_Continuous
         {
             get => _BJ_Continuous;
@@ -163,7 +163,7 @@ namespace Frame_Core
         }
 
         private bool _TJ_Continuous = false;
-        /// <summary>是否报警</summary>
+        /// <summary>连续NG是否停机：连续 NG 达到阈值时写入停机。</summary>
         public bool TJ_Continuous
         {
             get => _TJ_Continuous;
@@ -174,7 +174,7 @@ namespace Frame_Core
         #region TJ 停机配置
 
         private int _AccumulateCount = 0;
-        /// <summary>累计超限次数</summary>
+        /// <summary>累计NG阈值：自上次清零起，同一检测项累计 NG 的片数达到该值触发；中间 OK 不清零。</summary>
         public int AccumulateCount
         {
             get => _AccumulateCount;
@@ -182,7 +182,7 @@ namespace Frame_Core
         }
 
         private bool _BJ_Accumulate = false;
-        /// <summary>是否报警</summary>
+        /// <summary>累计NG是否报警：累计 NG 达到阈值时写入报警。</summary>
         public bool BJ_Accumulate
         {
             get => _BJ_Accumulate;
@@ -190,7 +190,7 @@ namespace Frame_Core
         }
 
         private bool _TJ_Accumulate = false;
-        /// <summary>是否报警</summary>
+        /// <summary>累计NG是否停机：累计 NG 达到阈值时写入停机。</summary>
         public bool TJ_Accumulate
         {
             get => _TJ_Accumulate;

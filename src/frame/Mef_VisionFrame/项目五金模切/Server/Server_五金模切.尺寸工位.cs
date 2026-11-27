@@ -185,7 +185,8 @@ namespace Mef_VisionFrame
 
                 if (result == ProcessExecutionResult.Success)
                 {
-                    bool sizeOk = JudgeStationSize(group, window);
+                    List<string> ngSizeNames = new List<string>();
+                    bool sizeOk = JudgeStationSize(group, window, ngSizeNames);
                     // 三路里任何一路在流程层失败都会置 ForceNg：数据不完整不能算合格
                     bool ok = sizeOk && !group.IsDefectNG && !GroupForceNg(group);
                     window.m_bIsNG = !ok;
@@ -199,6 +200,17 @@ namespace Mef_VisionFrame
 
                         DieCutJudge.DataStatistical(Data.Station3_StatisticalData, (long)window.m_nProductID, !ok);
                         CountSizeDistribution(group);
+
+                        // 累计 NG 按"片"计：三路里同一检测项只算一次
+                        List<string> ngDefectNames = new List<string>();
+                        foreach (SizeDectectProduct item in group.Products.Values)
+                        {
+                            if (item?.productDataResult == null) continue;
+                            CollectNgDefectNames(item.productDataResult.defectSummaries, ngDefectNames);
+                        }
+                        CountCumulativeNgForSize(ngSizeNames, "尺寸工位");
+                        CountCumulativeNgForDefect(_station3DefectCumulativeNgCounts, ngDefectNames, false, "尺寸工位");
+
                         Data.SizeStation_BindingDatasSave.Enqueue(
                             Model_五金模切.Snapshot(Data.SizeDefectCounts, Data.Station3_StatisticalData), 1);
                     }
@@ -525,7 +537,7 @@ namespace Mef_VisionFrame
         /// 用三路结果算工位尺寸。每一项的 DataSource1/2 通过 CameraId1/2 落到具体某一路，
         /// 所以三路各测一段、再合成一个整片尺寸，是配方的事，不是代码的事。
         /// </summary>
-        private bool JudgeStationSize(SizeStationGroup group, ShowHalconWindow window)
+        private bool JudgeStationSize(SizeStationGroup group, ShowHalconWindow window, List<string> ngSizeNames)
         {
             CraftParam_五金模切 craft = Data.Craft;
             if (craft == null)
@@ -567,6 +579,7 @@ namespace Mef_VisionFrame
                     : JudgeCrossCamSize(item, group, window);
 
                 isNG |= sizeInfo.IsNG;
+                if (sizeInfo.IsNG && ngSizeNames != null) ngSizeNames.Add(sizeInfo.Name);
 
                 sizeRow.Add(new RowData { dataStr = sizeInfo.DataResult.ToString(), resultType = sizeInfo.resultType });
             }

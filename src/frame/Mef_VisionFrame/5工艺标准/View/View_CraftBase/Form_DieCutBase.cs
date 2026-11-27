@@ -265,7 +265,7 @@ namespace Mef_VisionFrame
             {
                 Name = "ContinuousCount",
                 DataPropertyName = "ContinuousCount",
-                HeaderText = "连续数量",
+                HeaderText = "连续NG阈值",
                 Width = 100,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
@@ -276,8 +276,8 @@ namespace Mef_VisionFrame
             {
                 Name = "BJ_Continuous",
                 DataPropertyName = "BJ_Continuous",
-                HeaderText = "报警",
-                Width = 50,
+                HeaderText = "连续NG报警",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -286,8 +286,8 @@ namespace Mef_VisionFrame
             {
                 Name = "TJ_Continuous",
                 DataPropertyName = "TJ_Continuous",
-                HeaderText = "停机",
-                Width = 50,
+                HeaderText = "连续NG停机",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -296,7 +296,7 @@ namespace Mef_VisionFrame
             {
                 Name = "AccumulateCount",
                 DataPropertyName = "AccumulateCount",
-                HeaderText = "累计数量",
+                HeaderText = "累计NG阈值",
                 Width = 100,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
@@ -307,8 +307,8 @@ namespace Mef_VisionFrame
             {
                 Name = "BJ_Accumulate",
                 DataPropertyName = "BJ_Accumulate",
-                HeaderText = "报警",
-                Width = 50,
+                HeaderText = "累计NG报警",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -317,8 +317,8 @@ namespace Mef_VisionFrame
             {
                 Name = "TJ_Accumulate",
                 DataPropertyName = "TJ_Accumulate",
-                HeaderText = "停机",
-                Width = 50,
+                HeaderText = "累计NG停机",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -667,7 +667,7 @@ namespace Mef_VisionFrame
             {
                 Name = "ContinuousCount",
                 DataPropertyName = "ContinuousCount",
-                HeaderText = "连续数量",
+                HeaderText = "连续NG阈值",
                 Width = 100,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
@@ -677,8 +677,8 @@ namespace Mef_VisionFrame
             {
                 Name = "BJ_Continuous",
                 DataPropertyName = "BJ_Continuous",
-                HeaderText = "报警",
-                Width = 50,
+                HeaderText = "连续NG报警",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -687,8 +687,8 @@ namespace Mef_VisionFrame
             {
                 Name = "TJ_Continuous",
                 DataPropertyName = "TJ_Continuous",
-                HeaderText = "停机",
-                Width = 50,
+                HeaderText = "连续NG停机",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -698,7 +698,7 @@ namespace Mef_VisionFrame
             {
                 Name = "AccumulateCount",
                 DataPropertyName = "AccumulateCount",
-                HeaderText = "累计数量",
+                HeaderText = "累计NG阈值",
                 Width = 100,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
@@ -709,8 +709,8 @@ namespace Mef_VisionFrame
             {
                 Name = "BJ_Accumulate",
                 DataPropertyName = "BJ_Accumulate",
-                HeaderText = "报警",
-                Width = 50,
+                HeaderText = "累计NG报警",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -719,8 +719,8 @@ namespace Mef_VisionFrame
             {
                 Name = "TJ_Accumulate",
                 DataPropertyName = "TJ_Accumulate",
-                HeaderText = "停机",
-                Width = 50,
+                HeaderText = "累计NG停机",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -1113,7 +1113,7 @@ namespace Mef_VisionFrame
             {
                 Name = "ContinuousCount",
                 DataPropertyName = "ContinuousCount",
-                HeaderText = "连续数量",
+                HeaderText = "连续NG阈值",
                 Width = 100,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
@@ -1123,8 +1123,8 @@ namespace Mef_VisionFrame
             {
                 Name = "BJ_Continuous",
                 DataPropertyName = "BJ_Continuous",
-                HeaderText = "报警",
-                Width = 50,
+                HeaderText = "连续NG报警",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -1133,8 +1133,8 @@ namespace Mef_VisionFrame
             {
                 Name = "TJ_Continuous",
                 DataPropertyName = "TJ_Continuous",
-                HeaderText = "停机",
-                Width = 50,
+                HeaderText = "连续NG停机",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -1144,7 +1144,7 @@ namespace Mef_VisionFrame
             {
                 Name = "AccumulateCount",
                 DataPropertyName = "AccumulateCount",
-                HeaderText = "累计数量",
+                HeaderText = "累计NG阈值",
                 Width = 100,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
@@ -1155,8 +1155,8 @@ namespace Mef_VisionFrame
             {
                 Name = "BJ_Accumulate",
                 DataPropertyName = "BJ_Accumulate",
-                HeaderText = "报警",
-                Width = 50,
+                HeaderText = "累计NG报警",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
@@ -1165,8 +1165,8 @@ namespace Mef_VisionFrame
             {
                 Name = "TJ_Accumulate",
                 DataPropertyName = "TJ_Accumulate",
-                HeaderText = "停机",
-                Width = 50,
+                HeaderText = "累计NG停机",
+                Width = 90,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });

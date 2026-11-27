@@ -197,6 +197,7 @@ namespace Mef_VisionFrame
 
                 Data.Init();                    // 按新卷重建 CSV 路径、清显示/统计/保存队列
                 ClearConsecutiveCounts();
+                ClearCumulativeNgCounts();
                 ResetAllResults();              // 三路写 0（发布器已停，0 是终值）+ 清多次NG
                 ClearSizeGroups();
 

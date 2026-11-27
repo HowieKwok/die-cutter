@@ -64,7 +64,8 @@ namespace Mef_VisionFrame
             }
 
             return JudgeItems(product.ngDefectResults, name => craft.Get_Station1_DefectCrafts(name),
-                camIndex, camName, window, true, product.productDataResult.DefectData);
+                camIndex, camName, window, true, product.productDataResult.DefectData,
+                product.productDataResult);
         }
 
         private DefectFrameResult JudgeSizeDefects(int camIndex, SizeDectectProduct product, ShowHalconWindow window)
@@ -89,7 +90,8 @@ namespace Mef_VisionFrame
             }
 
             return JudgeItems(product.ngDefectResults, name => craft.Get_Station3_DefectCrafts(name),
-                camIndex, camName, window, false, product.productDataResult.DefectData);
+                camIndex, camName, window, false, product.productDataResult.DefectData,
+                product.productDataResult);
         }
 
         /// <summary>
@@ -101,7 +103,8 @@ namespace Mef_VisionFrame
                                     int camIndex, string camName,
                                     ShowHalconWindow window,
                                     bool isAppearanceStation,
-                                    List<List<RowData>> detailRows)
+                                    List<List<RowData>> detailRows,
+                                    ProductDataResult productResult)
         {
             DefectFrameResult result = new DefectFrameResult();
             ImageSaveParamConfig saveParam = Project.Instance.M_NewImageSaveParamer.ImageSaveConfigItems.GetSaveParam(camIndex);
@@ -241,7 +244,10 @@ namespace Mef_VisionFrame
                 }
             }
 
-            JudgeSummary(items, GetCraft, ref result);
+            // 汇总结果随产品一起带走：累计 NG 按片计数时要用到全部 NG 类名，
+            // 只留 highestPriority 会把同一片上的其它 NG 项漏掉。
+            List<DefectSummary> summaries = JudgeSummary(items, GetCraft, ref result);
+            if (productResult != null) productResult.defectSummaries = summaries;
 
             // 汇总层可能因为"同类累计 N 片"的条件把单条异常判回 OK，这里强制兜底
             if (judgeFailed) result.IsNG = true;
@@ -256,7 +262,7 @@ namespace Mef_VisionFrame
         /// "同类缺陷累计 N 片才算 NG"。与激光模切 Station1_DefectJudgment 的口径一致，
         /// 片级统计也只用这里的 HighestPriority 计一次，不逐缺陷累加。
         /// </summary>
-        private static void JudgeSummary(List<NgDefectResult> items,
+        private static List<DefectSummary> JudgeSummary(List<NgDefectResult> items,
                                       Func<string, DefectCraft_DieCuttingCut> GetCraft,
                                       ref DefectFrameResult result)
         {
@@ -290,11 +296,12 @@ namespace Mef_VisionFrame
                 summaries.Add(summary);
             }
 
-            if (summaries.Count == 0) return;
+            if (summaries.Count == 0) return summaries;
 
             result.IsNG = summaries.Any(p => p.T_IsNG);
             result.IsSevere = summaries.Any(p => p.T_IsNG && p.T_IsSevere);
             result.HighestPriority = DieCutJudge.GetHighestPriority(summaries.ToArray());
+            return summaries;
         }
 
         /// <summary>

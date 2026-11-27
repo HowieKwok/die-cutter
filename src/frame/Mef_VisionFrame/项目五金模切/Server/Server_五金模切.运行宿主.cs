@@ -178,6 +178,7 @@ namespace Mef_VisionFrame
 
                 Data.Init();
                 ClearConsecutiveCounts();
+                ClearCumulativeNgCounts();
                 ResetAllResults();
                 ClearSizeGroups();
 

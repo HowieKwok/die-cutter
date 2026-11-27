@@ -608,6 +608,12 @@ namespace Mef_VisionFrame
             // 不逐缺陷累加——否则一片上有 3 个缺陷就记 3 次，占比会超过 100%。
             CountDefectDistribution(aLine, bLine);
 
+            // 累计 NG 按"片"计：A/B 两面同一类缺陷只算一次
+            List<string> ngDefectNames = new List<string>();
+            CollectNgDefectNames(aLine?.defectSummaries, ngDefectNames);
+            CollectNgDefectNames(bLine?.defectSummaries, ngDefectNames);
+            CountCumulativeNgForDefect(_station1DefectCumulativeNgCounts, ngDefectNames, true, "外观工位");
+
             Data.DefectStation_BindingDatasSave.Enqueue(
                 Model_五金模切.Snapshot(Data.DefectCounts, Data.Station1_StatisticalData), 1);
 
@@ -619,6 +625,7 @@ namespace Mef_VisionFrame
             // 五金没有裁切工位；这里清的是缺陷/尺寸两个工位的结果与队列
             Data.Reset_DefectStation();
             ClearConsecutiveCounts();
+            ClearCumulativeNgCounts();
             ResetAllResults();
             ClearSizeGroups();
         }

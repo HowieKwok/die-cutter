@@ -532,7 +532,7 @@ namespace Mef_VisionFrame
                 station3Product.Frame_Cam4 = showHalconWindow.m_nProductID;
                 station3Product.Frame_Cam5 = station3Product.Cam5_Product.productDataResult.m_nImageFrameID;
                 station3Product.Frame_Cam6 = station3Product.Cam6_Product.productDataResult.m_nImageFrameID;
-                Station3_StatisticalData((int)showHalconWindow.m_nProductID, station3Product.IsNG, Data, station3Product);
+                Station3_StatisticalData((int)showHalconWindow.m_nProductID, station3Product.IsNG, Data, station3Product, Data.tempData_DieCuttingCut);
 
                 //【】添加产品,发送结果至PLC
                 Data.Station3_LastResult.SetValue(station3Product.SN, station3Product.IsNG, station3Product.Frame_Cam4, station3Product.Frame_Cam5, station3Product.Frame_Cam6);
@@ -937,7 +937,8 @@ namespace Mef_VisionFrame
 
 
         #region 数据统计
-        public static void Station1_StatisticalData(int totalCount, bool isNG, Model_DieCuttingCut data, Station1Product station1Product)
+        public static void Station1_StatisticalData(int totalCount, bool isNG, Model_DieCuttingCut data, Station1Product station1Product,
+            TempData_DieCuttingCut tempData)
         {
             ExecuteMethodClass.ExecuteMethod(() =>
             {
@@ -1020,10 +1021,24 @@ namespace Mef_VisionFrame
                     data.DefectStation_BindingDatasSave.Enqueue(qualityDatas, 1);
 
                 }
+
+                // 累计 NG（按片）：A/B 两面同一类缺陷只算一次
+                if (data.Craft != null && tempData != null)
+                {
+                    foreach (string name in CollectNgDefectNames(productDataResultA, productDataResultB))
+                    {
+                        DefectCraft_DieCuttingCut item = data.Craft.Get_Station1_DefectCrafts(name);
+                        if (item == null) continue;
+
+                        CheckCumulativeNgTrigger(tempData, CumulativeNgTable.Station1Defect, "外观工位",
+                            name, item.AccumulateCount, item.BJ_Accumulate, item.TJ_Accumulate);
+                    }
+                }
             });
         }
 
-        public static void Station3_StatisticalData(int totalCount, bool isNG, Model_DieCuttingCut data, Station3Product station3Product)
+        public static void Station3_StatisticalData(int totalCount, bool isNG, Model_DieCuttingCut data, Station3Product station3Product,
+            TempData_DieCuttingCut tempData)
         {
             ExecuteMethodClass.ExecuteMethod(() =>
             {
@@ -1128,6 +1143,32 @@ namespace Mef_VisionFrame
                     data.SizeStation_BindingDatasShow.Enqueue(qualityDatas, 1);
                     data.SizeStation_BindingDatasSave.Enqueue(qualityDatas, 1);
 
+                }
+
+                // 累计 NG（按片）：三路里同一检测项只算一次
+                if (data.Craft != null && tempData != null)
+                {
+                    ProductDataResult p4 = station3Product.Cam4_Product?.productDataResult;
+                    ProductDataResult p5 = station3Product.Cam5_Product?.productDataResult;
+                    ProductDataResult p6 = station3Product.Cam6_Product?.productDataResult;
+
+                    foreach (string name in CollectNgSizeNames(p4, p5, p6))
+                    {
+                        SizeCraftStation_DieCuttingCut item = data.Craft.Get_Station3_SizeCraft(name);
+                        if (item == null) continue;
+
+                        CheckCumulativeNgTrigger(tempData, CumulativeNgTable.Station3Size, "尺寸工位",
+                            name, item.AccumulateCount, item.BJ_Accumulate, item.TJ_Accumulate);
+                    }
+
+                    foreach (string name in CollectNgDefectNames(p4, p5, p6))
+                    {
+                        DefectCraft_DieCuttingCut item = data.Craft.Get_Station3_DefectCrafts(name);
+                        if (item == null) continue;
+
+                        CheckCumulativeNgTrigger(tempData, CumulativeNgTable.Station3Defect, "尺寸工位",
+                            name, item.AccumulateCount, item.BJ_Accumulate, item.TJ_Accumulate);
+                    }
                 }
             });
         }
@@ -1418,8 +1459,7 @@ namespace Mef_VisionFrame
                             if (sizeInfo.IsNG)
                             {
                                 sizeTypeTempData.ContinuousCount++;
-                                sizeTypeTempData.AccumulateCount++;
-                                StopAlarmJudgment(sizeTypeTempData, item);
+                                CheckContinuousNgTrigger(sizeTypeTempData, item);
                             }
                             else
                             {
@@ -1506,9 +1546,8 @@ namespace Mef_VisionFrame
                             if (sizeInfo.IsNG)
                             {
                                 sizeTypeTempData.ContinuousCount++;
-                                sizeTypeTempData.AccumulateCount++;
                                 //statisticalDistribution.Count++;
-                                StopAlarmJudgment(sizeTypeTempData, item);
+                                CheckContinuousNgTrigger(sizeTypeTempData, item);
 
                             }
                             else
@@ -1687,8 +1726,7 @@ namespace Mef_VisionFrame
                             if (item.T_IsNG)
                             {
                                 defectTypeTempData.ContinuousCount++;
-                                defectTypeTempData.AccumulateCount++;
-                                StopAlarmJudgment(camName, defectTypeTempData, defectCraft);
+                                CheckContinuousNgTrigger(camName, defectTypeTempData, defectCraft);
                             }
                             else
                             {
@@ -1717,7 +1755,8 @@ namespace Mef_VisionFrame
                 {
                     defectIsNG = defectSummaries.Where(p => p.T_IsNG == true).Count() > 0;
                     sizeDectectProduct.productDataResult.highestPriorityNgDefect = DieCutJudge.GetHighestPriority(defectSummaries.ToArray());
-
+                    // 累计 NG 按片计数要用全部 NG 类名，只留 highestPriority 会漏项
+                    sizeDectectProduct.productDataResult.defectSummaries = defectSummaries;
                 }
                 return !defectIsNG;
             });
@@ -1859,9 +1898,8 @@ namespace Mef_VisionFrame
                             if (item.T_IsNG)
                             {
                                 defectTypeTempData.ContinuousCount++;
-                                defectTypeTempData.AccumulateCount++;
 
-                                StopAlarmJudgment(camName, defectTypeTempData, defectCraft);
+                                CheckContinuousNgTrigger(camName, defectTypeTempData, defectCraft);
                             }
                             else
                             {
@@ -1889,6 +1927,8 @@ namespace Mef_VisionFrame
                     defectIsNG = defectSummaries.Where(p => p.T_IsNG == true).Count() > 0;
                     isSevereDefect = defectSummaries.Where(p => p.T_IsNG == true && p.T_IsSevere == true).Count() > 0;
                     dieCutEAProduct.productDataResult.highestPriorityNgDefect = DieCutJudge.GetHighestPriority(defectSummaries.ToArray());
+                    // 累计 NG 按片计数要用全部 NG 类名，只留 highestPriority 会漏项
+                    dieCutEAProduct.productDataResult.defectSummaries = defectSummaries;
                 }
 
                 return (!defectIsNG, isSevereDefect);
@@ -1918,7 +1958,8 @@ namespace Mef_VisionFrame
         }
 
 
-        private static void StopAlarmJudgment(string camName, SizeTypeTempData tempData, SizeCraft_DieCuttingCut sizeCraft)
+        /// <summary>连续 NG 判断：按相机逐项计数，达到阈值按勾选写报警/停机，然后清零重新计数。</summary>
+        private static void CheckContinuousNgTrigger(string camName, SizeTypeTempData tempData, SizeCraft_DieCuttingCut sizeCraft)
         {
             if (tempData.ContinuousCount >= sizeCraft.ContinuousCount)
             {
@@ -1933,23 +1974,10 @@ namespace Mef_VisionFrame
 
                 tempData.ContinuousCount = 0;
             }
-
-            if (tempData.AccumulateCount >= sizeCraft.AccumulateCount && sizeCraft.BJ_Continuous)
-            {
-                if (sizeCraft.TJ_Accumulate)
-                {
-                    TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.停机, $"{camName}-{sizeCraft.Name}_累计：" + $"当前个数{tempData.AccumulateCount}> 设定个数{sizeCraft.AccumulateCount}");
-                }
-                else if (sizeCraft.BJ_Accumulate)
-                {
-                    TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.报警, $"{camName}-{sizeCraft.Name}_累计：" + $"当前个数{tempData.AccumulateCount}> 设定个数{sizeCraft.AccumulateCount}");
-                }
-
-                tempData.AccumulateCount = 0;
-            }
         }
 
-        private static void StopAlarmJudgment(string camName, DefectTypeTempData tempData, DefectCraft_DieCuttingCut defectCraft)
+        /// <summary>连续 NG 判断：按相机逐项计数，达到阈值按勾选写报警/停机，然后清零重新计数。</summary>
+        private static void CheckContinuousNgTrigger(string camName, DefectTypeTempData tempData, DefectCraft_DieCuttingCut defectCraft)
         {
             if (tempData.ContinuousCount >= defectCraft.ContinuousCount)
             {
@@ -1964,23 +1992,10 @@ namespace Mef_VisionFrame
 
                 tempData.ContinuousCount = 0;
             }
-
-            if (tempData.AccumulateCount >= defectCraft.AccumulateCount && defectCraft.BJ_Continuous)
-            {
-                if (defectCraft.TJ_Accumulate)
-                {
-                    TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.停机, $"{camName}-{defectCraft.Name}_累计：" + $"当前个数{tempData.AccumulateCount}> 设定个数{defectCraft.AccumulateCount}");
-                }
-                else if (defectCraft.BJ_Accumulate)
-                {
-                    TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.报警, $"{camName}-{defectCraft.Name}_累计：" + $"当前个数{tempData.AccumulateCount}> 设定个数{defectCraft.AccumulateCount}");
-                }
-
-                tempData.AccumulateCount = 0;
-            }
         }
 
-        private static void StopAlarmJudgment(SizeTypeTempData tempData, SizeCraftStation_DieCuttingCut _Craft)
+        /// <summary>连续 NG 判断：按相机逐项计数，达到阈值按勾选写报警/停机，然后清零重新计数。</summary>
+        private static void CheckContinuousNgTrigger(SizeTypeTempData tempData, SizeCraftStation_DieCuttingCut _Craft)
         {
             if (tempData.ContinuousCount >= _Craft.ContinuousCount)
             {
@@ -1995,20 +2010,66 @@ namespace Mef_VisionFrame
 
                 tempData.ContinuousCount = 0;
             }
+        }
 
-            if (tempData.AccumulateCount >= _Craft.AccumulateCount && _Craft.BJ_Continuous)
+        /// <summary>
+        /// 累计 NG 判断：按"片"计数，一个检测项每片最多 +1（A/B 合片或三路到齐后各调用一次）。
+        /// 停机优先于报警；阈值 ≤ 0 或两个勾选都没开时，该项不监视。
+        /// 触发后计数清零，重新累计。
+        /// </summary>
+        private static void CheckCumulativeNgTrigger(TempData_DieCuttingCut tempData, CumulativeNgTable table,
+            string source, string name, int threshold, bool alarmEnabled, bool stopEnabled)
+        {
+            if (threshold <= 0 || (!alarmEnabled && !stopEnabled)) return;
+
+            int count = tempData.AddCumulativeNg(table, name);
+            if (count < threshold) return;
+
+            tempData.ResetCumulativeNg(table, name);
+
+            string detail = $"{source}-{name}_累计：当前个数{count} > 设定个数{threshold}";
+            if (stopEnabled)
+                TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.停机, detail);
+            else
+                TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.报警, detail);
+        }
+
+        /// <summary>取若干产品里所有 NG 缺陷的类名，按片去重。</summary>
+        private static List<string> CollectNgDefectNames(params ProductDataResult[] results)
+        {
+            List<string> names = new List<string>();
+            HashSet<string> seen = new HashSet<string>();
+            if (results == null) return names;
+
+            foreach (ProductDataResult result in results)
             {
-                if (_Craft.TJ_Accumulate)
+                if (result?.defectSummaries == null) continue;
+                foreach (DefectSummary item in result.defectSummaries)
                 {
-                    TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.停机, $"工位三-{_Craft.Name}_累计：" + $"当前个数{tempData.AccumulateCount}> 设定个数{_Craft.AccumulateCount}");
+                    if (item == null || !item.T_IsNG || string.IsNullOrEmpty(item.T_Name)) continue;
+                    if (seen.Add(item.T_Name)) names.Add(item.T_Name);
                 }
-                else if (_Craft.BJ_Accumulate)
-                {
-                    TJBJInfo.AlarmWriteState(AlarmName.检测项报警停机, StopAlarmStateEnum.报警, $"工位三-{_Craft.Name}_累计：" + $"当前个数{tempData.AccumulateCount}> 设定个数{_Craft.AccumulateCount}");
-                }
-
-                tempData.AccumulateCount = 0;
             }
+            return names;
+        }
+
+        /// <summary>取若干产品里所有 NG 尺寸项的项名，按片去重。</summary>
+        private static List<string> CollectNgSizeNames(params ProductDataResult[] results)
+        {
+            List<string> names = new List<string>();
+            HashSet<string> seen = new HashSet<string>();
+            if (results == null) return names;
+
+            foreach (ProductDataResult result in results)
+            {
+                if (result?.sizeInfos == null) continue;
+                foreach (SizeInfo item in result.sizeInfos)
+                {
+                    if (item == null || !item.IsNG || string.IsNullOrEmpty(item.Name)) continue;
+                    if (seen.Add(item.Name)) names.Add(item.Name);
+                }
+            }
+            return names;
         }
         #endregion
 
@@ -2840,7 +2901,7 @@ namespace Mef_VisionFrame
                             MessageNotify.AddCommLog($"缺陷工位——添加产品ID{AProductID}");
 
                             //【】数据统计                    
-                            Station1_StatisticalData((int)AProductID, station1Product.IsNG, Data, station1Product);
+                            Station1_StatisticalData((int)AProductID, station1Product.IsNG, Data, station1Product, Data.tempData_DieCuttingCut);
 
                         }
                         else if (AProductID > BProductID - slice)

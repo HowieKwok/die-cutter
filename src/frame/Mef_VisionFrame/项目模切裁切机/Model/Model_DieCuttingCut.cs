@@ -620,6 +620,16 @@ namespace Mef_VisionFrame
 
     }
 
+    /// <summary>
+    /// 累计 NG 计数表。按工位/检测类别分开，避免同名项互相覆盖。
+    /// </summary>
+    public enum CumulativeNgTable
+    {
+        Station1Defect,
+        Station3Defect,
+        Station3Size,
+    }
+
     public class TempData_DieCuttingCut
     {
         private readonly object _sync = new object();
@@ -656,6 +666,41 @@ namespace Mef_VisionFrame
                 }
 
                 return data;
+            }
+        }
+
+        /// <summary>
+        /// 累计 NG 计数器：按"片"计，生命周期与本临时数据一致（换卷/Init 时重建）。
+        /// 与逐相机 TempData 分开，因为累计要跨 A/B 或三路去重。
+        /// </summary>
+        private readonly object _cumulativeNgLock = new object();
+        private readonly Dictionary<string, int>[] _cumulativeNgTables =
+        {
+            new Dictionary<string, int>(),   // Station1Defect
+            new Dictionary<string, int>(),   // Station3Defect
+            new Dictionary<string, int>(),   // Station3Size
+        };
+
+        /// <summary>该检测项累计 +1，返回累计后的片数。</summary>
+        public int AddCumulativeNg(CumulativeNgTable table, string name)
+        {
+            lock (_cumulativeNgLock)
+            {
+                Dictionary<string, int> counts = _cumulativeNgTables[(int)table];
+                int count;
+                counts.TryGetValue(name, out count);
+                count++;
+                counts[name] = count;
+                return count;
+            }
+        }
+
+        /// <summary>触发后或换卷时把该项累计计数清零。</summary>
+        public void ResetCumulativeNg(CumulativeNgTable table, string name)
+        {
+            lock (_cumulativeNgLock)
+            {
+                _cumulativeNgTables[(int)table][name] = 0;
             }
         }
     }
@@ -729,17 +774,17 @@ namespace Mef_VisionFrame
         }
     }
 
+    /// <summary>缺陷项的连续 NG 计数（累计 NG 已改为按片计数，见 TempData_DieCuttingCut）。</summary>
     public class DefectTypeTempData
     {
         public int ContinuousCount = 0;
-        public int AccumulateCount = 0;
     }
 
 
+    /// <summary>尺寸项的连续 NG 计数（累计 NG 已改为按片计数，见 TempData_DieCuttingCut）。</summary>
     public class SizeTypeTempData
     {
         public int ContinuousCount = 0;
-        public int AccumulateCount = 0;
     }
 
     public class RequestSignal
