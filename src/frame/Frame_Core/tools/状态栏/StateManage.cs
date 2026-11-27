@@ -102,10 +102,15 @@ namespace Frame_Core
 
                     //检测磁盘状态
                     DriveInfo[] Drives = DriveInfo.GetDrives();
+
+                    // 磁盘检查跟随“路径设置”的生产数据根，而不是旧的盘符参数
+                    string dataRootDrive = string.IsNullOrEmpty(Project.Instance.paramPathSet.initProdDataPath)
+                        ? null
+                        : Path.GetPathRoot(Project.Instance.paramPathSet.initProdDataPath);
                     foreach (DriveInfo di in Drives)
                     {
 
-                        if (di.Name.Equals(Project.Instance.driveParameter.driveName))
+                        if (dataRootDrive != null && di.Name.Equals(dataRootDrive, StringComparison.OrdinalIgnoreCase))
                         {
                             double Percent = (double)di.AvailableFreeSpace / (double)di.TotalSize * 100;
                             DiskSpace = Percent.ToString("F2");

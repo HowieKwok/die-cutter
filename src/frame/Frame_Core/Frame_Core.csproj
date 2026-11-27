@@ -278,6 +278,7 @@
     <Compile Include="StandardData\DetectParam.cs" />
     <Compile Include="StandardData\FontInfo.cs" />
     <Compile Include="System\ParamPathSet.cs" />
+    <Compile Include="System\PathParameter.cs" />
     <Compile Include="StandardData\ElectrodePolarity.cs" />
     <Compile Include="System\StartupPreflight.cs" />
     <Compile Include="StandardData\RowData.cs" />
@@ -735,6 +736,10 @@
     <Compile Include="模块\系统设置\磁盘\Drive_Form.Designer.cs">
       <DependentUpon>Drive_Form.cs</DependentUpon>
     </Compile>
+    <Compile Include="模块\系统设置\路径\PathConfigService.cs" />
+    <Compile Include="模块\系统设置\路径\Form_PathSetting.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="模块\线线距离测量功能\Model_LineToLineDist.cs" />
     <Compile Include="模块\线线距离测量功能\Param_LineToLineDist.cs" />
     <Compile Include="模块\账户管理\Control\SecurityHelper.cs" />
@@ -1011,4 +1016,4 @@
   -->
   <ItemGroup>
   </ItemGroup>
-</Project>
+</Project>

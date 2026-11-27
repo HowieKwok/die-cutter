@@ -101,6 +101,29 @@ namespace Frame_Simulation
         public Func<bool> TriggerWhen { get; set; }
 
         /// <summary>
+        /// 五金运行暂停时置 true：即使编排器有残留信号，SimCamera 也不产图。
+        /// 激光不设置，保持 false。
+        /// </summary>
+        private volatile bool _triggerPaused;
+        public bool TriggerPaused { get { return _triggerPaused; } }
+
+        /// <summary>暂停仿真触发：冻结编排器周期槽与在途送达，并关闭产图闸门。</summary>
+        public void PauseTriggers()
+        {
+            _triggerPaused = true;
+            if (Orchestrator != null) Orchestrator.Suspend();
+            Recorder.Cam(SimRecordKind.Info, "[仿真]", "触发已暂停（不读取本地图片）");
+        }
+
+        /// <summary>恢复仿真触发：顺延在途送达、重排节拍，并打开产图闸门。</summary>
+        public void ResumeTriggers()
+        {
+            _triggerPaused = false;
+            if (Orchestrator != null) Orchestrator.Resume();
+            Recorder.Cam(SimRecordKind.Info, "[仿真]", "触发已恢复");
+        }
+
+        /// <summary>
         /// 工位状态快照来源。宿主注入（五金读帧序号器 + 三条结果队列）；
         /// 不注入时界面显示"未接入"，激光保持原样不受影响。
         /// </summary>

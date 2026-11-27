@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using DevMgmt;
 using DevMgmt.Cameras.Models;
 using Frame_Core;
+using Frame_MetalRun;
 using Frame_Simulation;
 using Frame_Simulation.Config;
 
@@ -167,7 +168,12 @@ namespace Mef_VisionFrame.Simulation
                 PointPlcClientToLocal(cfg.PlcServerPort);
 
                 // 仿真触发源 = 流程是否在运行；未点运行不产图，与真机"无触发不开采"一致。
-                Runtime.TriggerWhen = () => Project.Instance.Is_Run;
+                // 五金暂停时 Orchestrator 已冻结；TriggerPaused 再挡一次残留信号。
+                // 激光保持原来的“运行即产图”，不增加门控。
+                bool metal = Project.Instance.systemInfo.CraftType == MaterialCrafEnum.五金模切;
+                Runtime.TriggerWhen = metal
+                    ? (Func<bool>)(() => Project.Instance.Is_Run && !Runtime.TriggerPaused)
+                    : (() => Project.Instance.Is_Run);
 
                 // 五金：把三路工位的帧序号与发送队列做成只读快照给界面。
                 // 激光不注入，界面显示"未接入"，与改造前行为一致。
@@ -290,7 +296,7 @@ namespace Mef_VisionFrame.Simulation
                 Stage = stage,
                 QueueDepth = channel.Count,
                 QueueCapacity = channel.Capacity,
-                QueueState = channel.IsPaused ? "已暂停" : (hasHead ? "发送中" : "空闲"),
+                QueueState = channel.IsPaused ? "发布暂停" : (hasHead ? "发送中" : "空闲"),
                 QueueHeadFrameId = hasHead ? head.FrameId : 0,
                 QueueHeadAttempts = hasHead ? head.Attempts : 0,
                 LastSentFrameId = channel.LastCompletedFrameId,

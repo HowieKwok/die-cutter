@@ -15,6 +15,10 @@ namespace Frame_Core.业务参数类
         /// 属于正常冷启动相位，不作为故障提示，否则每次启动都会弹窗。
         /// </summary>
         启动预热,
+        /// <summary>
+        /// 仿真单步后的首次下线钳位：手动步进造成的恢复暂态，不是真实丢帧，不提示。
+        /// </summary>
+        单步恢复,
         /// <summary>下线落后于上线（漏触发 / 丢图）。</summary>
         下线滞后,
         /// <summary>同一相机 50ms 内的重复触发，属于正常抖动。</summary>
@@ -36,6 +40,7 @@ namespace Frame_Core.业务参数类
         private readonly object _sync = new object();
         private int _upFrameId;   // 最新已分配的上线帧号
         private int _downFrameId; // 最新已接受的下线帧号
+        private int _suppressLeadClamp; // 仿真单步后允许一次“下线超前”静默钳位
 
         public int UpFrameId { get { lock (_sync) { return _upFrameId; } } }
         public int DownFrameId { get { lock (_sync) { return _downFrameId; } } }
@@ -93,7 +98,16 @@ namespace Frame_Core.业务参数类
                 if (next > _upFrameId)
                 {
                     // 下线超前：这一帧没有对应的上游产品，丢弃并钳齐上线。
-                    reason = FrameRejectReason.下线超前;
+                    // 仿真单步后的首次钳位是手动步进的恢复暂态，静默处理。
+                    if (_suppressLeadClamp > 0)
+                    {
+                        _suppressLeadClamp--;
+                        reason = FrameRejectReason.单步恢复;
+                    }
+                    else
+                    {
+                        reason = FrameRejectReason.下线超前;
+                    }
                     _downFrameId = _upFrameId;
                     return false;
                 }
@@ -119,12 +133,19 @@ namespace Frame_Core.业务参数类
         /// 换卷/复位：序号归零。
         /// 不需要"放行首帧"的特殊分支：上线为 0 时下线走启动预热，上线发出第 1 个号后自然接上。
         /// </summary>
+        /// <summary>仿真单步后调用：下一次“下线超前”钳位静默处理，避免恢复运行弹错位告警。</summary>
+        public void SuppressLeadClampOnce()
+        {
+            lock (_sync) { _suppressLeadClamp = 1; }
+        }
+
         public void Reset()
         {
             lock (_sync)
             {
                 _upFrameId = 0;
                 _downFrameId = 0;
+                _suppressLeadClamp = 0;
             }
         }
     }

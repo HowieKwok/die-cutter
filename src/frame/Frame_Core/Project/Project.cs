@@ -55,6 +55,11 @@ namespace Frame_Core
         /// </summary>
         public ParamPathSet paramPathSet = new ParamPathSet();
 
+        /// <summary>
+        /// 可配置的落盘根路径（由“系统设置 → 路径设置”维护）
+        /// </summary>
+        public PathParameter pathParameter = new PathParameter();
+
 
 
         /// <summary>
@@ -333,6 +338,10 @@ namespace Frame_Core
                 systemInfo = systemInfo.ReadExtension<SystemInfo>(paramPathSet.SystemPath, $"SystemParam");
                 systemInfo.IsHostMachine = true;
 
+                //加载可配置路径并立即应用；文件缺失时 ReadExtension 会生成默认配置并落盘
+                pathParameter = pathParameter.ReadExtension<PathParameter>(paramPathSet.SystemPath, "PathParameter");
+                paramPathSet.ApplyPathParameter(pathParameter);
+
 
                 //初始化配方、生产路径
                 paramPathSet.UpdateCraftPath(systemInfo.RecipeName, systemInfo.currentMojuanhao, systemInfo.CraftType);
@@ -432,7 +441,6 @@ namespace Frame_Core
                 driveParameter = driveParameter.Read() as DriveParameter;
                 if (driveParameter == null) driveParameter = new DriveParameter();
 
-                Project.Instance.paramPathSet.initProdDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "生产数据") + "\\";
 
 
 
@@ -508,8 +516,36 @@ namespace Frame_Core
             cameraRelevancy.InitParam_GrayScaleAdaptationParameter(paramPathSet.GrayScaleAdaptationParamPath + $"{index}");
             cameraRelevancy.m_SizePointInspectionManage.InitParam(paramPathSet.CamSizePointInspectionParamPathName + $"{index}");
             cameraRelevancy.m_DefectPointInspectionManage.InitParam(paramPathSet.CamDefectPointInspectionParamPathName + $"{index}");
+            ApplyPointCheckImageDefaults(cameraRelevancy);
             cameraRelevancy.InitParam_PointInspectionStateParameter(paramPathSet.CamPointInspectionStateParamPathName + $"{index}");
             return true;
+        }
+
+        /// <summary>
+        /// 相机点检图像路径为空或仍是旧 E: 默认值时，按“路径设置”的图像根补齐。
+        /// 现场手工改到别处的相机路径保持不动。
+        /// </summary>
+        private void ApplyPointCheckImageDefaults(CameraRelevancy cameraRelevancy)
+        {
+            if (cameraRelevancy == null || pathParameter == null) return;
+            string root = pathParameter.PointCheckImageRoot;
+            if (string.IsNullOrEmpty(root)) return;
+
+            SizePointInspectionParam sizeParam =
+                cameraRelevancy.m_SizePointInspectionManage.sizePointInspectionParam;
+            if (sizeParam != null && PathConfigService.IsDefaultPointCheckImage(sizeParam.PointCheckImgPath, null))
+            {
+                sizeParam.PointCheckImgPath = Path.Combine(root, "尺寸点检图像");
+                sizeParam.Save();
+            }
+
+            DefectPointInspectionParam defectParam =
+                cameraRelevancy.m_DefectPointInspectionManage.defectPointInspectionParam;
+            if (defectParam != null && PathConfigService.IsDefaultPointCheckImage(defectParam.PointCheckImgPath, null))
+            {
+                defectParam.PointCheckImgPath = Path.Combine(root, "缺陷点检图像");
+                defectParam.Save();
+            }
         }
 
 
@@ -637,6 +673,14 @@ namespace Frame_Core
         object NewMujuanhao_lock = new object();
         public bool NewMujuanhao(string _currentProduct, string _currentMojuanhao, MaterialCrafEnum _materialCrafEnum)
         {
+            string error;
+            return NewMujuanhao(_currentProduct, _currentMojuanhao, _materialCrafEnum, out error);
+        }
+
+        /// <summary>带失败原因的新建膜卷：异常不再只写日志，调用方可以展示给操作者。</summary>
+        public bool NewMujuanhao(string _currentProduct, string _currentMojuanhao, MaterialCrafEnum _materialCrafEnum, out string error)
+        {
+            error = null;
             lock (NewMujuanhao_lock)
             {
                 try
@@ -666,7 +710,8 @@ namespace Frame_Core
                 }
                 catch (Exception ex)
                 {
-                    Log4netRecord.ErrorLog.Debug(ex);
+                    error = ex.Message;
+                    Log4netRecord.ErrorLog.Error("新建膜卷失败：" + ex);
                     return false;
                 }
             }

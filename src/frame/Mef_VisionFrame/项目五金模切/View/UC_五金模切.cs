@@ -1020,6 +1020,13 @@ namespace Mef_VisionFrame
 
         public override void RefreshView()
         {
+            // 单步在后台线程触发 StateChanged，事件可能从这里进来；控件操作必须回界面线程
+            if (InvokeRequired)
+            {
+                if (IsHandleCreated) BeginInvoke((MethodInvoker)(() => RefreshView()));
+                return;
+            }
+
             EnsureCameraDisplayUnits();   // 句柄随页签显示才就绪，凑齐了才建显示单元
             RefreshTitles();    // 相机标题跟折叠无关，照刷
 

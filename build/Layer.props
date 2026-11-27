@@ -26,6 +26,7 @@
   <!-- 宿主独占程序集：插件可编译期引用，但绝不允许随插件发布。 -->
   <ItemGroup>
     <HostExclusiveAssembly Include="Frame_Core" />
+    <HostExclusiveAssembly Include="Frame_MetalRun" />
     <HostExclusiveAssembly Include="Frame_PluginHost" />
     <HostExclusiveAssembly Include="Frame_UI" />
     <HostExclusiveAssembly Include="Frame_UI.WinForms" />

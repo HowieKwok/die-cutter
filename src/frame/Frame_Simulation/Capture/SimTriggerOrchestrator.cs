@@ -70,6 +70,16 @@ namespace Frame_Simulation.Capture
         private Thread _tickThread;
         private int _intervalMs = 2000;
 
+        // 仿真暂停：冻结槽定时器与在途送达，恢复时顺延到期时刻，不清产品令牌。
+        private volatile bool _paused;
+        private long _pauseStartedAtMs;
+
+        // 单步期间抑制自动送达：下线仍会发 DownFrameAssigned，但不能再往 _pending 塞产品。
+        public volatile bool ManualStep;
+
+        // 唤醒 tick 线程立即重排（Resume 时用），避免最多一个节拍的恢复延迟。
+        private readonly AutoResetEvent _tickWake = new AutoResetEvent(false);
+
         // 共同纪元：所有槽的到期时刻都落在同一条网格 epoch + k*interval + offset 上。
         // 没有纪元时，槽的参考点是"TickLoop 发现它的那一刻"，跨 tick 边界注册的两路
         // 会天然差整数拍——偏移配对了，实际时序还是错的，而且只在启动时序变化时复现。
@@ -122,7 +132,73 @@ namespace Frame_Simulation.Capture
             {
                 _products.Clear();
                 _productSeq = 0;
+                _pending.Clear();
+                if (_deliveryTimer != null)
+                {
+                    try { _deliveryTimer.Change(Timeout.Infinite, Timeout.Infinite); }
+                    catch (ObjectDisposedException) { }
+                }
             }
+        }
+
+        /// <summary>在途产品数（在产品令牌队列 + 尚未送达的 _pending）。结束快照用。</summary>
+        public int PendingDeliveryCount
+        {
+            get { lock (_sync) { return _products.Count + _pending.Count; } }
+        }
+
+        /// <summary>暂停仿真触发：冻结周期槽与在途送达。不清任何队列。</summary>
+        public void Suspend()
+        {
+            lock (_sync)
+            {
+                if (_paused) return;
+                _paused = true;
+                _pauseStartedAtMs = _clock.ElapsedMilliseconds;
+
+                foreach (Slot slot in _slots)
+                {
+                    try { slot.Due.Change(Timeout.Infinite, Timeout.Infinite); }
+                    catch (ObjectDisposedException) { }
+                    slot.Armed = false;
+                }
+
+                if (_deliveryTimer != null)
+                {
+                    try { _deliveryTimer.Change(Timeout.Infinite, Timeout.Infinite); }
+                    catch (ObjectDisposedException) { }
+                }
+            }
+        }
+
+        /// <summary>恢复仿真触发：顺延在途到期时刻、重置纪元网格、唤醒 tick 重排。</summary>
+        public void Resume()
+        {
+            lock (_sync)
+            {
+                if (!_paused) return;
+                _paused = false;
+
+                long pausedMs = _clock.ElapsedMilliseconds - _pauseStartedAtMs;
+                if (pausedMs > 0 && _pending.Count > 0)
+                {
+                    // 在途产品被“暂停输送”：整体顺延，恢复后不会瞬间爆发
+                    Delivery[] items = _pending.ToArray();
+                    _pending.Clear();
+                    foreach (Delivery item in items)
+                    {
+                        Delivery shifted = item;
+                        shifted.DueAtMs += pausedMs;
+                        _pending.Enqueue(shifted);
+                    }
+                }
+
+                _epochMs = _clock.ElapsedMilliseconds;
+                foreach (Slot slot in _slots) slot.Armed = false;
+            }
+
+            _tickWake.Set();
+            ArmDelivery();
         }
 
         /// <summary>
@@ -131,6 +207,8 @@ namespace Frame_Simulation.Capture
         /// </summary>
         public void EnqueueDownProduct(int frameId)
         {
+            if (ManualStep) return;   // 单步自己注入尺寸帧号，不能再排一份自动送达
+
             lock (_sync)
             {
                 // 送达时刻从"下线接受"起算，不引用上线触发队列。
@@ -155,6 +233,7 @@ namespace Frame_Simulation.Capture
         {
             lock (_sync)
             {
+                if (_paused) return;
                 if (_pending.Count == 0 || _stop.WaitOne(0)) return;
 
                 long due = _pending.Peek().DueAtMs;
@@ -170,15 +249,14 @@ namespace Frame_Simulation.Capture
 
         private void OnDelivery(object state)
         {
+            // 出队、入队、发信号必须在同一临界区，并在锁内复检 _paused：
+            // 否则 Suspend 恰好落在两次加锁之间时，令牌已送出而尺寸不会消费，暂停冻结失效。
             lock (_sync)
             {
-                if (_pending.Count == 0 || _stop.WaitOne(0)) return;
+                if (_paused || _pending.Count == 0 || _stop.WaitOne(0)) return;
                 _products.Enqueue(_pending.Dequeue().FrameId);
-            }
 
-            // 送达即唤醒尺寸三路：AutoResetEvent 一次只放一路，所以要逐个 Set。
-            lock (_sync)
-            {
+                // 送达即唤醒尺寸三路：AutoResetEvent 一次只放一路，所以要逐个 Set。
                 foreach (Slot slot in _slots)
                 {
                     if (slot.Role != SlotRole.ConsumeProduct) continue;
@@ -201,6 +279,8 @@ namespace Frame_Simulation.Capture
                 _intervalMs = Math.Max(10, intervalMs);
                 if (_tickThread != null && _tickThread.IsAlive) return;
                 _stop.Reset();
+                _tickWake.Reset();
+                _paused = false;
                 _epochMs = _clock.ElapsedMilliseconds;
 
                 // 重启时所有槽重新起跑：上次线程可能停在 OnDue 的提前返回处，Armed 仍为 true，
@@ -285,6 +365,9 @@ namespace Frame_Simulation.Capture
             {
                 lock (_sync)
                 {
+                    if (_paused) { }
+                    else
+                    {
                     // 只给"尚未起跑"的槽按偏移排一次；已起跑的槽由 OnDue 自续下一拍。
                     // 不能锁死在首拍：相机槽可能在本线程启动之后才注册（实测首拍 slots=0，四路全哑）。
                     // 也不能每拍无条件 Change：那会把大于节拍的偏移（尺寸 2500ms）永远推迟。
@@ -304,9 +387,11 @@ namespace Frame_Simulation.Capture
                         }
                         catch (ObjectDisposedException) { }
                     }
+                    }
                 }
 
-                if (_stop.WaitOne(_intervalMs)) break;
+                int which = WaitHandle.WaitAny(new WaitHandle[] { _stop, _tickWake }, _intervalMs);
+                if (which == 0) break;
             }
         }
 
@@ -314,6 +399,7 @@ namespace Frame_Simulation.Capture
         {
             Slot slot = state as Slot;
             if (slot == null || _stop.WaitOne(0)) return;
+            if (_paused) return;
 
             // 令牌改由上线帧号分配处发出（LineScan.NextUp → UpFrameAssigned），
             // 这里只放行图像，不再凭空造号。
@@ -348,6 +434,7 @@ namespace Frame_Simulation.Capture
             }
 
             _stop.Close();
+            try { _tickWake.Close(); } catch { }
         }
     }
 }

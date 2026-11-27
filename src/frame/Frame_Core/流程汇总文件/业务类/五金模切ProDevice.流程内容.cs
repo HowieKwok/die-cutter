@@ -565,6 +565,7 @@ namespace Frame_Core.业务类
                             ngImage.NgType = 1;
                             ngImage.ho_image = 安全复制(image1, InfoImgInfo);
                             ngImage.EAID = ProParam相机模切业务.nEAId;
+                            ngImage.image_ID = InfoImgInfo.image_ID;
                             ngImage.nFirstLineEncoderCount = image1.nFirstLineEncoderCount;
                             ngImage.nLastLineEncoderCount = image1.nLastLineEncoderCount;
                             ngImage.imageWidth = InfoImgInfo.imageWidth;
@@ -717,6 +718,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.NgType = 1;
                                 EAImageInfo.ho_image = 安全复制(image1, InfoImgInfo);
                                 EAImageInfo.EAID = ProParam相机模切业务.nEAId;
+                                EAImageInfo.image_ID = InfoImgInfo.image_ID;
                                 EAImageInfo.nFirstLineEncoderCount = image1.nFirstLineEncoderCount;
                                 EAImageInfo.nLastLineEncoderCount = image1.nLastLineEncoderCount;
                                 EAImageInfo.imageWidth = InfoImgInfo.imageWidth;
@@ -768,6 +770,7 @@ namespace Frame_Core.业务类
                                 ImageInfo EAImageInfo = new ImageInfo();
                                 EAImageInfo.ho_image = EACropPartParams.Image_part;
                                 EAImageInfo.EAID = ProParam相机模切业务.nEAId;
+                                EAImageInfo.image_ID = InfoImgInfo.image_ID;
                                 EAImageInfo.nFirstLineEncoderCount = image1.nFirstLineEncoderCount + ((int)EACropPartParams.hv_ImagePartBeginRow.D) + (int)((image1.imageHeight + image2.imageHeight) * 0.05 / 2);
                                 EAImageInfo.nLastLineEncoderCount = EAImageInfo.nFirstLineEncoderCount + (int)(bottomLineTemp - topLineTemp);
                                 EAImageInfo.imageWidth = InfoImgInfo.imageWidth;
@@ -785,6 +788,7 @@ namespace Frame_Core.业务类
                                 EAImageInfo.NgType = 1;
                                 EAImageInfo.ho_image = 安全复制(image1, InfoImgInfo);
                                 EAImageInfo.EAID = ProParam相机模切业务.nEAId;
+                                EAImageInfo.image_ID = InfoImgInfo.image_ID;
                                 EAImageInfo.nFirstLineEncoderCount = image1.nFirstLineEncoderCount;
                                 EAImageInfo.nLastLineEncoderCount = image1.nLastLineEncoderCount;
                                 EAImageInfo.imageWidth = InfoImgInfo.imageWidth;
@@ -838,6 +842,7 @@ namespace Frame_Core.业务类
                             EAImageInfo.NgType = 1;
                             EAImageInfo.ho_image = image1.ho_image.CopyObj(1, -1);
                             EAImageInfo.EAID = ProParam相机模切业务.nEAId;
+                            EAImageInfo.image_ID = InfoImgInfo.image_ID;
                             EAImageInfo.nFirstLineEncoderCount = image1.nFirstLineEncoderCount;
                             EAImageInfo.nLastLineEncoderCount = image1.nLastLineEncoderCount;
                             EAImageInfo.imageWidth = InfoImgInfo.imageWidth;

@@ -1,20 +1,10 @@
 using Frame_Core;
+using Frame_MetalRun;
 using System;
 
 namespace Mef_VisionFrame
 {
-    /// <summary>
-    /// 回传 PLC 的三路结果值。PLC 侧按这四个值判断"能不能放行下一片"。
-    /// 只有本文件可以出现这几个字面量的语义，别处一律用枚举。
-    /// </summary>
-    public enum PlcResult : short
-    {
-        Stopped = 0,
-        Ok = 1,
-        Ng = 2,
-        Pending = 3,
-    }
-
+    // PlcResult 已迁到 Frame_MetalRun（0 停止 / 1 OK / 2 NG / 3 待检）。
     /// <summary>
     /// 五金模切的 PLC 信号层：把"结论"翻译成"值 + 时机"，是唯一知道 1 是 OK 的地方。
     ///

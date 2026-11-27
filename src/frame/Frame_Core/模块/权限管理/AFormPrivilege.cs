@@ -48,6 +48,7 @@ namespace Frame_Core
                 //系统设置
                 case "保存设置":
                 case "磁盘设置":
+                case "路径设置":
                 case "基础设置":
                 case "图片管理":
                 //工艺标准
@@ -62,4 +63,4 @@ namespace Frame_Core
         }
     }
 
-}
+}

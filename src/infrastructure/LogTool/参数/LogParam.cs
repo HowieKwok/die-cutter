@@ -14,7 +14,7 @@ namespace LogTool
         /// <summary>
         /// 日志保存路径
         /// </summary>
-        public string LogSavePath = "E:\\Log";
+        public string LogSavePath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "日志文件");
 
         /// <summary>
         /// 保存文件大小(M)

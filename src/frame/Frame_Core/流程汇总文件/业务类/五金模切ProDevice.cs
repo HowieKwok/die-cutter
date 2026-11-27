@@ -2,6 +2,7 @@ using Frame_Core;
 using HalconDotNet;
 using LogTool;
 using System;
+using System.Collections.Generic;
 
 namespace Frame_Core.业务类
 {
@@ -21,6 +22,14 @@ namespace Frame_Core.业务类
         /// 流程代码不该知道自己跑在激光还是五金上。
         /// </summary>
         private CraftParam_DieCutBase m_craft => Project.Instance.craftBase as CraftParam_DieCutBase;
+
+        /// <summary>ProcessID → 流程种类。仿真单步按“裁图→EA→尺寸”分组时用，不靠流程顺序猜。</summary>
+        private readonly Dictionary<int, ProcessKind> ProcessKinds = new Dictionary<int, ProcessKind>();
+
+        public override bool TryGetProcessKind(int processId, out ProcessKind kind)
+        {
+            return ProcessKinds.TryGetValue(processId, out kind);
+        }
 
         public 五金模切ProDevice()
             : this(DeviceProfileRegistry.Resolve(MaterialCrafEnum.五金模切))
@@ -89,6 +98,7 @@ namespace Frame_Core.业务类
                 ProcessServices service = Project.Instance.GetProcessServiceById(id);
                 service.process.processInfo.CameraID = spec.CameraIndex;
                 service.process.processInfo.ProcessName = spec.ProcessName;
+                ProcessKinds[service.process.processInfo.ProcessID] = spec.Kind;
 
                 DelegateINIProcess onInit;
                 DelegateRUNProcess onRun;

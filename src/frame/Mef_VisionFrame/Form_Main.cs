@@ -5,6 +5,7 @@ using Eholly.ZChart;
 using EHolly.ImageTool;
 
 using Frame_Core;
+using Frame_MetalRun;
 using FrameCommunity.DataOperation;
 using HalconDotNet;
 using LogTool;
@@ -57,6 +58,33 @@ namespace Mef_VisionFrame
         }
 
         /// <summary>
+        /// 路径设置入口：塞进“系统设置”菜单，排在“磁盘设置”前面。
+        /// 用代码追加而不是改设计器，避免生成文件反复冲突。
+        /// </summary>
+        private void AppendPathSettingMenuItem()
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem("路径设置");
+            item.ToolTipText = "配置生产数据、标定、点检、点检图像、日志、MES 的落盘目录";
+            item.Click += delegate
+            {
+                if (!Project.Instance.purviewManage.GetWhetherPurview(
+                        Project.Instance.userManage.userData.CurrentUser, ModelName.路径设置)) return;
+
+                using (Form_PathSetting form = new Form_PathSetting(Project.Instance.pathParameter))
+                {
+                    form.StartPosition = FormStartPosition.CenterScreen;
+                    form.ShowDialog(this);
+                }
+            };
+
+            int index = 系统设置ToolStripMenuItem.DropDownItems.IndexOf(磁盘设置ToolStripMenuItem);
+            if (index >= 0)
+                系统设置ToolStripMenuItem.DropDownItems.Insert(index, item);
+            else
+                系统设置ToolStripMenuItem.DropDownItems.Add(item);
+        }
+
+        /// <summary>
         /// 仿真模式下追加"仿真"菜单入口。必须在 INIProject 之后调用——
         /// RunMode 是 INIProject 里读的，构造函数开头调用会把入口漏掉。
         /// </summary>
@@ -81,26 +109,6 @@ namespace Mef_VisionFrame
         }
 
         /// <summary>
-        /// 五金自动模式的启动钩子。
-        ///
-        /// 只有五金 + 非仿真才自动起：仿真需要人为开始（要观察单步），
-        /// 激光有正常启停按钮，都不该走这里。
-        ///
-        /// 首次进主界面和复位后用的是同一个方法，避免写两套开机逻辑。
-        /// </summary>
-        private void StartRunForAutoCraft()
-        {
-            if (Simulation.SimBootstrap.IsSimulation) return;
-            if (Project.Instance.systemInfo.CraftType != MaterialCrafEnum.五金模切) return;
-            if (Project.Instance.Is_Run) return;
-
-            // 逻辑在 Server 侧：复位后走的是同一个入口，这里不重复实现一遍
-            if (ProjectFactory.F_Server?.WorkServerBase is Server_五金模切 metal)
-            {
-                metal.EnsureAutoRunning();
-            }
-        }
-        /// <summary>
         /// 配置缺失时在状态 chip 行末尾（与"磁盘剩余/内存"同一个父容器）追加一个红色条目，
         /// 启动弹窗被点掉后仍然可见，点击可重新查看明细。配置完整时不添加任何控件。
         /// </summary>
@@ -124,6 +132,7 @@ namespace Mef_VisionFrame
             Frame_Core.FormStylingHook.Style(this);
             AppendThemeSwitchMenuItem();
             AppendConfigWarningBar();
+            AppendPathSettingMenuItem();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             form_Main = this;
 
@@ -137,10 +146,7 @@ namespace Mef_VisionFrame
             // 构造函数只组装界面，不再读配置、不再碰设备。
             AppendSimulationMenuItem();
 
-            // 五金自动模式没有启停按钮：不自动起流程的话 Is_Run 恒为 false，
-            // CallBackImgDataDeal 会把每一帧销毁而不入队——进界面就等于不出图。
-            // 等窗口显示后再起，避免流程跑起来时主界面还没建完。
-            Shown += delegate { StartRunForAutoCraft(); };
+            // 五金改由【开始膜卷】显式启动；不再在 Shown 时自动开跑。
                 //CraftSetting=new Form_CraftSetting();
                 //MainDetection = new UC_MainDetection();
                 //BaseSetting = new UC_BaseSetting();
@@ -194,6 +200,7 @@ namespace Mef_VisionFrame
 
             ProjectFactory.Load();
             uC_StateView1.LoadItems(ProjectFactory.F_Server?.WorkServerBase?.GetStatusBarInfo());
+            RefreshRunStateChip();
 
             panel_Main.SuspendLayout();
             try
@@ -320,6 +327,46 @@ namespace Mef_VisionFrame
 
         bool InitStateBar_Flag = false;
         /// <summary>
+        /// 五金三态 chip：状态由控制器唯一真源给出；激光不显示。
+        /// 500ms 状态栏定时器调用，暂停/继续最多滞后半秒。
+        /// </summary>
+        private void RefreshRunStateChip()
+        {
+            if (!Project.Instance.Is五金模切)
+            {
+                uC_StateView1.SetRunState(null);
+                SetCraftMenusEnabled(true);
+                return;
+            }
+
+            Server_五金模切 metal = ProjectFactory.F_Server == null
+                ? null
+                : ProjectFactory.F_Server.WorkServerBase as Server_五金模切;
+            MetalRunController run = metal == null ? null : metal.RunControl;
+            if (run == null)
+            {
+                uC_StateView1.SetRunState(null);
+                SetCraftMenusEnabled(true);
+                return;
+            }
+
+            RunStateChipState state = run.State == MetalRunState.Running ? RunStateChipState.Running
+                : run.State == MetalRunState.Paused ? RunStateChipState.Paused
+                : RunStateChipState.Idle;
+            uC_StateView1.SetRunState(state);
+
+            // 运行中禁止进入调试设置/工艺标准；暂停与空闲保持可调参
+            SetCraftMenusEnabled(run.State != MetalRunState.Running);
+        }
+
+        /// <summary>运行中禁止进入调试设置/工艺标准；暂停与空闲保持可调参。</summary>
+        private void SetCraftMenusEnabled(bool enabled)
+        {
+            if (调试设置ToolStripMenuItem.Enabled != enabled) 调试设置ToolStripMenuItem.Enabled = enabled;
+            if (工艺标准ToolStripMenuItem.Enabled != enabled) 工艺标准ToolStripMenuItem.Enabled = enabled;
+        }
+
+        /// <summary>
         /// 状态栏刷新
         /// </summary>
         /// <param name="sender"></param>
@@ -336,6 +383,7 @@ namespace Mef_VisionFrame
                     if (uC_StateView1.IsHandleCreated)
                     {
                         uC_StateView1.RefreshStatus(ProjectFactory.F_Server.WorkServerBase.GetStatusBarInfo());
+                        RefreshRunStateChip();
                     }
                 }
                 catch (Exception)
@@ -870,7 +918,9 @@ namespace Mef_VisionFrame
         private void 数据查询ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (!Project.Instance.purviewManage.GetWhetherPurview(Project.Instance.userManage.userData.CurrentUser, ModelName.数据分析)) { return; }
-            string root = @"E:\生产数据";          // 实际路径可配
+            // 生产数据根目录由 Project.Init / 磁盘设置维护，不能写死 E:\生产数据；
+            // 写死时换盘或开发机没有 E: 盘会导致数据查询永远为空。
+            string root = Project.Instance.paramPathSet.initProdDataPath;
             using (FrmCsvViewer form = new FrmCsvViewer(root))
             {
                 form.StartPosition = FormStartPosition.CenterScreen;

@@ -1,4 +1,5 @@
 using Frame_Core;
+using Frame_MetalRun;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -56,9 +57,8 @@ namespace Mef_VisionFrame
         /// </summary>
         private void ApplyAutoModeVisibility()
         {
-            bool metalAuto = Project.Instance.systemInfo.CraftType == MaterialCrafEnum.五金模切
-                             && !Project.Instance.Is_simulation;
-            if (metalAuto) btn_run.Visible = false;
+            // 五金已改为“继续/暂停”，不再按运行模式隐藏；激光原本就始终显示。
+            btn_run.Visible = true;
         }
 
         /// <summary>
@@ -68,7 +68,9 @@ namespace Mef_VisionFrame
         private void ApplyToolTips()
         {
             toolTips.SetToolTip(btn_Prev, "上一片");
-            toolTips.SetToolTip(btn_run, "启动 / 停止");
+            toolTips.SetToolTip(btn_run, Project.Instance.Is五金模切
+                ? "继续 / 暂停（只暂停视觉流程，PLC 结果发布不停止）"
+                : "启动 / 停止");
             toolTips.SetToolTip(btn_next, "下一片");
             toolTips.SetToolTip(btn_Reset, "CCD 软件复位");
             toolTips.SetToolTip(btn_AutoSim, "运行模式（启动时由配置决定，运行期不可切换）");
@@ -88,11 +90,28 @@ namespace Mef_VisionFrame
             bool dark = Frame_UI.ThemeService.CurrentThemeName == Frame_UI.UiThemeCatalog.DarkThemeName;
             Color ink = dark ? Color.FromArgb(232, 251, 255) : Color.FromArgb(20, 32, 44);
 
-            // 启动键：图标墨色按当前状态底色反差推算（绿底深箭头 / 红底白方块）
-            btn_run.UnCheckedText = string.Empty;
-            btn_run.CheckedText = string.Empty;
-            btn_run.UnCheckedImage = Frame_Core.ToolGlyph.Play(20, Frame_Core.ToolGlyph.ContrastInk(btn_run.UnCheckedBackColor));
-            btn_run.CheckedImage = Frame_Core.ToolGlyph.Stop(20, Frame_Core.ToolGlyph.ContrastInk(btn_run.CheckedBackColor));
+            // 五金启动键改为文字“继续/暂停”，始终显示；激光保留绿/红图标。
+            if (Project.Instance.Is五金模切)
+            {
+                // 五金：继续/暂停只显示图标（Checked=运行中→暂停图标），语义交给悬停提示
+                btn_run.UnCheckedText = string.Empty;
+                btn_run.CheckedText = string.Empty;
+                btn_run.UnCheckedImage = Frame_Core.ToolGlyph.Play(20,
+                    Frame_Core.ToolGlyph.ContrastInk(btn_run.UnCheckedBackColor));
+                btn_run.CheckedImage = Frame_Core.ToolGlyph.Pause(20,
+                    Frame_Core.ToolGlyph.ContrastInk(btn_run.CheckedBackColor));
+                btn_run.Size = new Size(34, 34);
+            }
+            else
+            {
+                // 启动键：图标墨色按当前状态底色反差推算（绿底深箭头 / 红底白方块）
+                btn_run.UnCheckedText = string.Empty;
+                btn_run.CheckedText = string.Empty;
+                btn_run.UnCheckedImage = Frame_Core.ToolGlyph.Play(20, Frame_Core.ToolGlyph.ContrastInk(btn_run.UnCheckedBackColor));
+                btn_run.CheckedImage = Frame_Core.ToolGlyph.Stop(20, Frame_Core.ToolGlyph.ContrastInk(btn_run.CheckedBackColor));
+            }
+
+            if (btn_run.Parent != null) btn_run.Parent.PerformLayout();
 
             btn_Prev.Text = string.Empty;
             btn_Prev.Image = Frame_Core.ToolGlyph.SkipPrev(18, ink);
@@ -117,6 +136,9 @@ namespace Mef_VisionFrame
 
             // 普通主题按钮：底色是 ButtonBg，墨色直接用正文色。
             btn_ClearCutData.Image = Frame_Core.ToolGlyph.ClearData(18, ink);
+
+            // 换卷按钮可能尚未创建（Idle 且未进入工具栏刷新），存在时同步图标与文字色
+            if (btn_SwitchRoll != null) ApplySwitchRollGlyph();
         }
 
         private void OnThemeChanged(object sender, Frame_UI.UiTokens tokens)
@@ -142,11 +164,28 @@ namespace Mef_VisionFrame
 
         private void btn_Prev_Click(object sender, EventArgs e)
         {
-            // 单步取图已并入仿真相机节拍，此按钮保留但暂无动作。
+            if (StartMetalStep(false)) return;
+
+            // 激光保留原空实现
         }
 
         private void btn_run_Click(object sender, EventArgs e)
         {
+            MetalRunController run = MetalRun;
+            if (run != null)
+            {
+                string error;
+                if (run.State == MetalRunState.Running)
+                {
+                    if (!run.Pause(out error)) MessageBox.Show(error ?? "暂停失败");
+                }
+                else if (run.State == MetalRunState.Paused)
+                {
+                    if (!run.Resume(out error)) MessageBox.Show(error ?? "继续失败");
+                }
+                return;
+            }
+
             ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
             {
                 if (Project.Instance.Is_Run)
@@ -163,8 +202,61 @@ namespace Mef_VisionFrame
 
         private void btn_next_Click(object sender, EventArgs e)
         {
+            if (StartMetalStep(true)) return;
+
             if (Project.Instance.Is_simulation)
                 VM.BaseData.M_SimRunCommand = SimRunCommand.SimNext;
+        }
+
+        /// <summary>
+        /// 单步会阻塞到尺寸等齐最长 1.5s；放后台线程，避免主界面假死。
+        /// 控制器 StepBusy 与按钮禁用共同防重入。
+        /// </summary>
+        private bool StartMetalStep(bool forward)
+        {
+            MetalRunController run = MetalRun;
+            if (run == null) return false;
+
+            // 仿真在途令牌会与单步手动帧号冲突；先让操作员确认丢弃，再清空执行
+            bool discardInFlight = false;
+            int inFlight = run.GetSimInFlightCount();
+            if (inFlight > 0)
+            {
+                string message = "仿真有 " + inFlight + " 片在途，单步将丢弃这些仿真令牌，是否继续？";
+                if (MessageBox.Show(message, "单步", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    return true;
+                discardInFlight = true;
+            }
+
+            btn_Prev.Enabled = false;
+            btn_next.Enabled = false;
+
+            Task.Run(() =>
+            {
+                string error = null;
+                bool ok = false;
+                try
+                {
+                    ok = run.Step(forward, discardInFlight, out error);
+                }
+                catch (Exception ex)
+                {
+                    error = ex.Message;
+                }
+
+                if (IsDisposed) return;
+                try
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        if (!ok) MessageBox.Show(error ?? "单步执行失败");
+                        RefreshView();   // 成功也要刷新：任一事件订阅者异常时按钮不能卡死
+                    }));
+                }
+                catch (ObjectDisposedException) { }
+            });
+
+            return true;
         }
 
         private void switch_LightOnOff_Click(object sender, EventArgs e)
@@ -182,6 +274,37 @@ namespace Mef_VisionFrame
 
         private void btn_FilmRollSwitch_Click(object sender, EventArgs e)
         {
+            MetalRunController run = MetalRun;
+            if (run != null)
+            {
+                if (run.State == MetalRunState.Idle)
+                {
+                    string startError;
+                    if (!run.StartFilmRoll(input_FilmRoll.Text, out startError))
+                        MessageBox.Show(startError ?? "开始膜卷失败");
+                    return;
+                }
+
+                MetalRunPending pending;
+                string error;
+                EndRollResult result = run.EndFilmRoll(false, out pending, out error);
+
+                if (result == EndRollResult.NeedsConfirm)
+                {
+                    string message = "当前还有未处理项：" + Environment.NewLine + Environment.NewLine +
+                                     pending.ToDisplayText() + Environment.NewLine + Environment.NewLine +
+                                     "结束膜卷将丢弃这些数据，是否继续？";
+                    if (MessageBox.Show(message, "结束膜卷", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                        return;
+
+                    result = run.EndFilmRoll(true, out pending, out error);
+                }
+
+                if (result == EndRollResult.Failed)
+                    MessageBox.Show(error ?? "结束膜卷失败");
+                return;
+            }
+
             if (!Project.Instance.Is_MojuanStart)
             {
                 //开始膜卷
@@ -209,6 +332,13 @@ namespace Mef_VisionFrame
                     toolTips.SetToolTip(btn_AutoSim, Project.Instance.Is_simulation ? "仿真模式" : "自动模式");
                     btn_FilmRollSwitch.Checked = Project.Instance.Is_MojuanStart;
                     switch_LightOnOff.Checked = Project.Instance.LightOnOff;
+
+                    MetalRunController run = MetalRun;
+                    if (run != null)
+                    {
+                        UpdateMetalToolbar(run);
+                        return;
+                    }
 
                     if (Project.Instance.Is_simulation)
                     {
@@ -278,6 +408,56 @@ namespace Mef_VisionFrame
                 });
 
             });
+        }
+
+        private MetalRunController MetalRun
+        {
+            get
+            {
+                Server_五金模切 metal = VM.BaseServer as Server_五金模切;
+                return metal == null ? null : metal.RunControl;
+            }
+        }
+
+        /// <summary>
+        /// 五金工具栏：按钮可用性完全来自控制器，不在界面里重新推断运行状态。
+        /// </summary>
+        private void UpdateMetalToolbar(MetalRunController run)
+        {
+            MetalRunButtons buttons = run.GetButtons();
+            bool started = run.State != MetalRunState.Idle;
+
+            btn_run.Visible = true;
+            btn_run.Enabled = buttons.CanTogglePause;
+            btn_run.Checked = run.State == MetalRunState.Running;
+
+            btn_FilmRollSwitch.Visible = true;
+            btn_FilmRollSwitch.Enabled = buttons.CanStartRoll || buttons.CanEndRoll;
+            btn_FilmRollSwitch.Checked = started;
+            if (started && !input_FilmRoll.Focused) input_FilmRoll.Text = Project.Instance.systemInfo.currentMojuanhao;
+
+            input_FilmRoll.Enabled = buttons.CanEditRollName;
+            switch_LightOnOff.Enabled = !started;
+
+            // 自动模式没有“上一片/下一片”语义，直接隐藏；仿真暂停时才显示
+            bool showStep = Project.Instance.Is_simulation;
+            btn_Prev.Visible = showStep;
+            btn_next.Visible = showStep;
+            btn_Prev.Enabled = showStep && buttons.CanStepPrev;
+            btn_next.Enabled = showStep && buttons.CanStepNext;
+
+            // 五金没有裁切纠偏/软复位入口；隐藏而不是留着误点
+            btn_Reset.Visible = false;
+            btn_ClearCutData.Visible = false;
+
+            UpdateSwitchRollButton(buttons, started);
+
+            btn_AutoSim.Enabled = true;
+            btn_AutoSim.Checked = Project.Instance.Is_simulation;
+            toolTips.SetToolTip(btn_AutoSim, Project.Instance.Is_simulation ? "仿真模式" : "自动模式");
+            toolTips.SetToolTip(btn_run, run.State == MetalRunState.Running
+                ? "暂停（只暂停视觉流程，PLC 结果发布不停止）"
+                : "继续");
         }
 
         private void btn_ClearCutData_Click(object sender, EventArgs e)

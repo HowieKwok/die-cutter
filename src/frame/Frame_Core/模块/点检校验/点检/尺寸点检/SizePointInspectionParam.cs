@@ -16,7 +16,7 @@ namespace Frame_Core
         /// <summary>
         /// 点检图片路径
         /// </summary>
-        public string PointCheckImgPath = @"E:\点检图像\尺寸点检图像";
+        public string PointCheckImgPath = "";
 
         /// <summary>
         /// 点检算法

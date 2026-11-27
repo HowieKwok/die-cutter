@@ -440,6 +440,8 @@ namespace Frame_Core
         保存设置,
         [Language("磁盘设置", "磁盘设置", "磁盘设置")]
         磁盘设置,
+        [Language("路径设置", "Path Settings", "Paramètres de chemin")]
+        路径设置,
         [Language("基础设置", "基础设置", "基础设置")]
         基础设置,
         [Language("图片管理", "图片管理", "图片管理")]

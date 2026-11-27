@@ -30,8 +30,12 @@ namespace Frame_Core.业务参数类
 
         protected override bool TryAssignFrameId(ImageInfo image)
         {
-            // 相机没给出有效图（与基类同口径），直接不要
-            if (image.image_ID == 0) return false;
+            // 相机没给出有效图（与基类同口径），直接不要；拒绝方负责释放
+            if (image.image_ID == 0)
+            {
+                image.Dispose();
+                return false;
+            }
 
             // 50ms 内的重复触发属于正常抖动：不占号、不提示，图必须释放
             if (!_gate.Accept())
@@ -54,7 +58,8 @@ namespace Frame_Core.业务参数类
                     // 序号已在 TryNextDown 内钳位，下一次触发即应对齐。
                     // 启动预热不提示：片距为 N 时前 N 片下线本来就没有对应产品，
                     // 每次都弹窗会把正常冷启动当成故障。
-                    if (reason != FrameRejectReason.启动预热)
+                    if (reason != FrameRejectReason.启动预热 &&
+                        reason != FrameRejectReason.单步恢复)
                     {
                         五金模切告警.Raise(
                             五金模切告警.线扫帧号错位,
@@ -86,6 +91,24 @@ namespace Frame_Core.业务参数类
             return true;
         }
 
+        /// <summary>暂停积压上限：只统计本相机的相机队列 + 帧队列，超限在取号前丢弃。</summary>
+        protected override bool 允许接收新帧()
+        {
+            bool firstDrop;
+            if (五金模切帧门控.Allow(QueueGrabImage.Count + alreadyDealGrabImage.Count, out firstDrop))
+                return true;
+
+            if (firstDrop)
+            {
+                Frame_Core.业务类.五金模切告警.Raise(
+                    "暂停积压已满",
+                    "暂停积压已满",
+                    string.Format("{0} 暂停积压已达 {1} 帧上限，后续新帧将被丢弃（不占帧号、不产生待检）。",
+                        strCamreaName, 五金模切帧门控.Limit));
+            }
+            return false;
+        }
+
         public override void Dispose()
         {
             _gate.Reset();
@@ -110,7 +133,11 @@ namespace Frame_Core.业务参数类
 
         protected override bool TryAssignFrameId(ImageInfo image)
         {
-            if (image.image_ID == 0) return false;
+            if (image.image_ID == 0)
+            {
+                image.Dispose();
+                return false;
+            }
 
             if (!_gate.Accept())
             {
@@ -119,9 +146,34 @@ namespace Frame_Core.业务参数类
             }
 
             int frameId = 五金模切帧序号.Size.Acquire();
+            if (frameId <= 0)
+            {
+                // 仿真令牌空/尺寸先到：没有可用产品号，丢弃这一帧，不能把 0 写进 image_ID 并登记
+                image.Dispose();
+                return false;
+            }
+
             image.image_ID = frameId;
             五金模切帧序号.Register(frameId, 五金模切帧序号.FrameStation.尺寸);
             return true;
+        }
+
+        /// <summary>暂停积压上限：只统计本相机的相机队列 + 帧队列，超限在取号前丢弃。</summary>
+        protected override bool 允许接收新帧()
+        {
+            bool firstDrop;
+            if (五金模切帧门控.Allow(QueueGrabImage.Count + alreadyDealGrabImage.Count, out firstDrop))
+                return true;
+
+            if (firstDrop)
+            {
+                Frame_Core.业务类.五金模切告警.Raise(
+                    "暂停积压已满",
+                    "暂停积压已满",
+                    string.Format("{0} 暂停积压已达 {1} 帧上限，后续新帧将被丢弃（不占帧号、不产生待检）。",
+                        strCamreaName, 五金模切帧门控.Limit));
+            }
+            return false;
         }
 
         public override void Dispose()

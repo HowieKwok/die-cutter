@@ -92,6 +92,16 @@ namespace Frame_Core
             return m_DicCamOperaParam[Profile.IndexOf(role)];
         }
 
+        /// <summary>
+        /// 流程种类查询。基类不认识具体流程；机型在 BuildProcessServiceList 时记录并覆写。
+        /// 仿真单步用它按“裁图→EA→尺寸”分组，避免依赖流程清单顺序。
+        /// </summary>
+        public virtual bool TryGetProcessKind(int processId, out ProcessKind kind)
+        {
+            kind = default(ProcessKind);
+            return false;
+        }
+
         //INIProduct初始化事件
         public event Action m_eventINIProduct;
 

@@ -98,6 +98,9 @@ namespace LogTool
                 logParam.SaveFileSize = (int)nud_SaveFileSize.Value;
                 logParam.LogSaveDay = (int)nud_LogSaveDay.Value;
                 LogParamManage.SaveLogParam(logParam.filePath, logParam);
+
+                // 立即切换日志目录，避免“改了路径必须重启”的两套行为
+                Log4netRecord.InitLog4netConfigure(logParam);
             }
             catch (Exception ex)
             {

@@ -95,26 +95,8 @@ namespace Frame_Core
 
         private void Btn_Divercfg_Click(object sender, EventArgs e)
         {
-
-            if(Project.Instance.Is_MojuanStart)
-            {
-                MessageBox.Show("请先结束膜卷！");
-                return;
-            }
-          
-
-            if(driveParameter.driveName!= comDiverName.Text)
-            {
-                //弹窗确认是否更换磁盘
-                DialogResult result = MessageBox.Show("是否更换磁盘？", "提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
-                {
-                    driveParameter.driveName = comDiverName.Text;
-                    Project.Instance.paramPathSet.initProdDataPath = $"{driveParameter.driveName}\\生产数据\\";
-                    Btn_Save_Click(null, null);
-                }
-            }
-            CheckDrives(null, null);
+            MessageBox.Show("数据盘由【系统设置 → 路径设置】决定；这里只保留容量告警设置。",
+                "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void Drive_Form_Load(object sender, EventArgs e)
@@ -122,6 +104,11 @@ namespace Frame_Core
             try
             {
                 allDrives = DriveInfo.GetDrives();
+
+                // 数据盘由“路径设置”决定，这里只做容量告警：盘符只读展示
+                string dataRootDrive = Path.GetPathRoot(Project.Instance.paramPathSet.initProdDataPath);
+                if (!string.IsNullOrEmpty(dataRootDrive))
+                    driveParameter.driveName = dataRootDrive;
               
                 comDiverName.Items.Clear();
                 foreach (DriveInfo drive in allDrives)
@@ -147,6 +134,9 @@ namespace Frame_Core
                 //修改记录备份
                 driveParameter.backup(driveParameter);
                 YControlAutobind.Loading<DriveParameter, IYCustomAttribute>(this, driveParameter);//测试存修改记录
+                // 盘符改为只读；更换数据盘请到“系统设置 → 路径设置”
+                comDiverName.Enabled = false;
+                Btn_Divercfg.Enabled = false;
             }
             catch (Exception ee)
             {

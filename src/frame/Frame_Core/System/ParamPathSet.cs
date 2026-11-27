@@ -31,17 +31,22 @@ namespace Frame_Core
         public readonly string CraftPath = System.Environment.CurrentDirectory + "\\ZFormulaFile\\";
 
         //点检记录
-        public readonly string pointCheckRootPath = "E:\\点检数据PointInspectionData\\";
+        public string pointCheckRootPath = "";
 
         public readonly string SizeCheckPointDataName = "尺寸点检数据SizeCheckPointData.csv";
 
-        public readonly string CheckPointRecordPath = "E:\\点检数据PointInspectionData\\CheckPoint.ini";      //存放点检数据
+        public string CheckPointRecordPath = "";      //存放点检数据
 
 
         /// <summary>
         /// 初始生产数据路径
         /// </summary>
-        public string initProdDataPath = $"E:\\生产数据\\";
+        public string initProdDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "生产数据") + "\\";
+
+        /// <summary>
+        /// 点检数据根（配置值，不含 PointInspectionData / 日期子目录）
+        /// </summary>
+        public string PointCheckBasePath = "";
 
         #endregion
 
@@ -127,7 +132,7 @@ namespace Frame_Core
         public string ProductRootPath = "E:\\生产数据\\"; //存放膜卷号数据路径
         public string ProductMojuanPath = "E:\\生产数据\\"; //生产膜卷路径
         public string ProductMojuanMESPath = "E:\\生产数据\\"; //生产膜卷路径
-        public string MesRootPath = "E:\\MES文件\\";      //存放MES文件路径。界面可修改
+        public string MesRootPath = "";      //MES 文件路径。由“路径设置”维护（当前版本未使用）
         public string ProdInfoPath = "E:\\生产数据\\产品信息";
         public string AreaDataPath = "E:\\生产数据\\面阵相机检测数据";
         public string Cam1_DetectionTimePath = "E:\\生产数据\\图像处理耗时相机1";
@@ -143,7 +148,7 @@ namespace Frame_Core
         public string LogPath_Correct = "E:\\生产数据\\纠偏日志记录.ini";
 
         //点检数据
-        public string CamSizeCheckPointPath = $"E:\\点检数据\\{DateTime.Now.ToString("yyyy.MM.dd")}\\";      //存放点检数据
+        public string CamSizeCheckPointPath = "";      //按日期的点检数据目录，由 ApplyPathParameter 设置
 
         //赞不使用
         public string LogRootPath = "E:\\日志文件\\";     //存放系统日志，修改记录日志，软件报错日志路径。界面可修改
@@ -178,7 +183,7 @@ namespace Frame_Core
         //模切工位读取PLC纠偏记录日志
         public string DieCutCorrectOffsetValueLogPath = "E:\\生产数据\\生产数据";
 
-        public string PretargetingCalibrationPath = "E:\\标定\\";
+        public string PretargetingCalibrationPath = "";
 
 
 
@@ -323,6 +328,19 @@ namespace Frame_Core
         {
             return SystemPath + craftType.GetDescription() + "\\";
         }
+
+        /// <summary>
+        /// 按当前配方/机型/日期计算生产数据根路径（以反斜杠结尾）。
+        /// 与 UpdateParamPath 共用同一规则，供开始膜卷前的目录判重等场景现场计算；
+        /// 不能读 ProductRootPath：它只在 UpdateParamPath 时更新，换配方或跨天后会过期。
+        /// </summary>
+        public string BuildProductRootPath(string _currentProduct, MaterialCrafEnum _CurrentMaterial, bool isMainMachine)
+        {
+            string productionDate = DateTime.Now.ToString("yyyy.MM.dd");
+            string mainSlaveMachineName = isMainMachine ? "MainMachine" : "SlaveMachine";
+            return initProdDataPath + $"{productionDate}{mainSlaveMachineName}" + "\\" + _CurrentMaterial.GetDescription() + "\\" + _currentProduct + "\\";
+        }
+
         /// <summary>
         /// 刷新生产数据路径
         /// </summary>
@@ -330,19 +348,12 @@ namespace Frame_Core
         /// <param name="_currentMojuanhao"></param>
         public void UpdateParamPath(string _currentProduct, string _currentMojuanhao, MaterialCrafEnum _CurrentMaterial, List<ProcessServices> mListprocessServices, bool isMainMachine)
         {
-            /// <summary>
-            /// 生产日期
-            /// </summary>
-            string productionDate = DateTime.Now.ToString("yyyy.MM.dd");
-
             //配方路径
             UpdateCraftPath(_currentProduct, _currentMojuanhao, _CurrentMaterial);
 
             //生产数据路径
-            string mainSlaveMachineName = "MainMachine";
-            if (!isMainMachine) mainSlaveMachineName = "SlaveMachine";
-
-            string proDataPathStr = initProdDataPath + $"{productionDate}{mainSlaveMachineName}" + "\\" + _CurrentMaterial.GetDescription() + "\\" + _currentProduct + "\\";
+            string productionDate = DateTime.Now.ToString("yyyy.MM.dd");
+            string proDataPathStr = BuildProductRootPath(_currentProduct, _CurrentMaterial, isMainMachine);
             ProductRootPath = proDataPathStr;
             ProductMojuanPath = proDataPathStr + _currentMojuanhao + "\\";
             ProductMojuanMESPath = proDataPathStr + _currentMojuanhao;
@@ -481,13 +492,33 @@ namespace Frame_Core
 
 
             //点检数据路径
-            CamSizeCheckPointPath = "E:\\点检数据\\" + productionDate + "\\";
+            CamSizeCheckPointPath = PointCheckBasePath + productionDate + "\\";
             if (!Directory.Exists(CamSizeCheckPointPath))
                 Directory.CreateDirectory(CamSizeCheckPointPath);
 
             Log4netRecord.ChangeProdLogPath(ProductMojuanPath);//初始化相机回调日志路径
 
 
+        }
+
+        /// <summary>
+        /// 把“路径设置”的配置应用到本对象。生产/点检/标定路径都从这里派生，
+        /// 其他代码不再直接写 E: 盘字面量。
+        /// </summary>
+        public void ApplyPathParameter(PathParameter p)
+        {
+            if (p == null) return;
+            p.Normalize();
+
+            initProdDataPath = p.DataRoot;
+            PretargetingCalibrationPath = p.CalibrationRoot;
+            MesRootPath = p.MesRoot;
+
+            PointCheckBasePath = p.PointCheckRoot;
+            pointCheckRootPath = Path.Combine(PointCheckBasePath, "PointInspectionData") + "\\";
+            try { Directory.CreateDirectory(pointCheckRootPath); } catch { }
+            CheckPointRecordPath = Path.Combine(pointCheckRootPath, "CheckPoint.ini");
+            CamSizeCheckPointPath = PointCheckBasePath + DateTime.Now.ToString("yyyy.MM.dd") + "\\";
         }
     }
 }

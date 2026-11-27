@@ -430,6 +430,9 @@
     <Compile Include="项目工厂\View\UC_ToolView.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="项目工厂\View\UC_ToolView.换卷.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="项目工厂\View\UC_ToolView.Designer.cs">
       <DependentUpon>UC_ToolView.cs</DependentUpon>
     </Compile>
@@ -449,6 +452,11 @@
     <Compile Include="项目五金模切\Server\Server_五金模切.连续NG.cs" />
     <Compile Include="项目五金模切\Server\Server_五金模切.结果队列.cs" />
     <Compile Include="项目五金模切\Server\Server_五金模切.结果发布.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.运行宿主.cs" />
+    <Compile Include="项目五金模切\Server\Server_五金模切.换卷宿主.cs" />
+    <Compile Include="项目工厂\View\RunStateChip.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="项目五金模切\View\Form_五金告警.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -609,6 +617,10 @@
     <ProjectReference Include="..\..\frame\FrameCommunity\FrameCommunity.csproj">
       <Project>{2e0bc248-e72a-4833-a851-20069a232648}</Project>
       <Name>FrameCommunity</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Frame_MetalRun\Frame_MetalRun.csproj">
+      <Project>{a1b2c3d4-0005-4e00-9000-000000000005}</Project>
+      <Name>Frame_MetalRun</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\frame\Frame_Core\Frame_Core.csproj">
       <Project>{01127398-2cc7-4124-b966-fbff69a7a0e5}</Project>

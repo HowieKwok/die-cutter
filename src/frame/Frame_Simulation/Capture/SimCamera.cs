@@ -28,6 +28,7 @@ namespace Frame_Simulation.Capture
         private HObject _image;
         private bool _isExist;
         private long _frameId;
+        private volatile bool _pushing;
 
         private Thread _grabThread;
         private ManualResetEvent _stopEvent;
@@ -215,12 +216,63 @@ namespace Frame_Simulation.Capture
             long frame;
             lock (_sync)
             {
+                if (_pushing) return;
                 if (_files.Length == 0) return;
                 if (_cursor >= _files.Length) _cursor = 0;   // 循环播放，模拟连续料带
                 path = _files[_cursor++];
                 frame = ++_frameId;
+                _pushing = true;
             }
 
+            try { PushFrameAt(path, frame); }
+            finally { lock (_sync) { _pushing = false; } }
+        }
+
+        /// <summary>
+        /// 仿真单步：绕过触发闸门，直接推上一张/下一张图。
+        /// 走与真机相同的 RaiseCamCallbackStart → 入队 → CamCallbackEndEvent，
+        /// 因此帧号分配、待检、入队逻辑完全复用生产路径。
+        /// </summary>
+        public bool StepPush(bool forward)
+        {
+            string path;
+            long frame;
+
+            lock (_sync)
+            {
+                if (_pushing) return false;
+                if (_files.Length == 0) ReloadImageSet();
+                if (_files.Length == 0) return false;
+
+                // 相机自己的队列满了说明上一张还没被回调取走，单步不覆盖
+                if (_queueGrabImage.Count >= 3) return false;
+
+                int count = _files.Length;
+                if (forward)
+                {
+                    if (_cursor >= count) _cursor = 0;
+                    path = _files[_cursor];
+                    _cursor = (_cursor + 1) % count;
+                }
+                else
+                {
+                    // 游标指向“下一张”；回退一张要取游标前第二张，再把它设为下一张
+                    int index = (_cursor - 2) % count;
+                    if (index < 0) index += count;
+                    path = _files[index];
+                    _cursor = (index + 1) % count;
+                }
+
+                frame = ++_frameId;
+                _pushing = true;
+            }
+
+            try { return PushFrameAt(path, frame); }
+            finally { lock (_sync) { _pushing = false; } }
+        }
+
+        private bool PushFrameAt(string path, long frame)
+        {
             HObject img;
             try
             {
@@ -228,9 +280,9 @@ namespace Frame_Simulation.Capture
             }
             catch (HalconException)
             {
-                return;
+                return false;
             }
-            if (img == null) return;
+            if (img == null) return false;
 
             lock (_sync)
             {
@@ -264,6 +316,7 @@ namespace Frame_Simulation.Capture
             if (handler != null) handler();
 
             Record(Log.SimRecordKind.Info, string.Format("帧 {0} ← {1}", frame, Path.GetFileName(path)));
+            return true;
         }
 
         private static string[] ScanImages(string dir)

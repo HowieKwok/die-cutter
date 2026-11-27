@@ -1,4 +1,5 @@
 using Frame_Core;
+using Frame_MetalRun;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -343,9 +344,30 @@ namespace Mef_VisionFrame.调试设置.WPF
         //    RefreshModuleList();
         //}
 
+        private static MetalRunController MetalRun
+        {
+            get
+            {
+                Server_五金模切 server = ProjectFactory.F_Server == null
+                    ? null
+                    : ProjectFactory.F_Server.WorkServerBase as Server_五金模切;
+                return server == null ? null : server.RunControl;
+            }
+        }
+
         private async void BtnRunOnce_Click(object sender, RoutedEventArgs e)
         {
             if (currentProcess == null) return;
+
+            if (Project.Instance.Is五金模切)
+            {
+                MetalRunController run = MetalRun;
+                if (run != null && run.State == MetalRunState.Running)
+                {
+                    MessageBox.Show("生产运行中不能单次执行模块，请先在主工具栏点【暂停】。", "提示");
+                    return;
+                }
+            }
 
             await Task.Run(() =>
             {
@@ -363,11 +385,28 @@ namespace Mef_VisionFrame.调试设置.WPF
         }
         private void BtnRunLoop_Click(object sender, RoutedEventArgs e)
         {
+            if (Project.Instance.Is五金模切)
+            {
+                MessageBox.Show("五金生产请使用主工具栏【开始膜卷】/【继续/暂停】，调试界面不再直接启动流程。", "提示");
+                return;
+            }
+
             if (currentProcess != null) Project.Instance.StartRun(currentProcess.processInfo.ProcessID);
         }
 
         private void BtnRunStop_Click(object sender, RoutedEventArgs e)
         {
+            if (Project.Instance.Is五金模切)
+            {
+                MetalRunController run = MetalRun;
+                if (run != null && run.State != MetalRunState.Idle)
+                {
+                    MessageBox.Show("生产运行/暂停中不能用调试界面停止流程，请先在主工具栏【结束膜卷】。", "提示");
+                    return;
+                }
+                // Idle 时允许停止遗留调试线程；这是唯一保留的直连入口
+            }
+
             if (currentProcess != null) Project.Instance.StopRun(currentProcess.processInfo.ProcessID);
         }
 

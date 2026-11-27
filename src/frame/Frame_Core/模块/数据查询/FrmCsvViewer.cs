@@ -38,10 +38,19 @@ namespace Frame_Core
         {
             InitializeComponent();
             FormStylingHook.Style(this);
-            _rootPath = rootPath;
-            Text = $"CSV 浏览器 – {Path.GetFileName(rootPath)}";
+            // 去掉末尾分隔符：Path.GetFileName 对“D:\生产数据\”会返回空，标题会变成空白
+            _rootPath = (rootPath ?? "").TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            Text = $"CSV 浏览器 – {GetRootDisplayName()}";
             Load += FrmCsvViewer_Load;
             treeView1.BeforeExpand += (s, e) => { /* 留空 */ };
+        }
+
+        /// <summary>根目录显示名；根路径本身没有目录名时退回完整路径。</summary>
+        private string GetRootDisplayName()
+        {
+            if (string.IsNullOrEmpty(_rootPath)) return "";
+            string name = Path.GetFileName(_rootPath);
+            return string.IsNullOrEmpty(name) ? _rootPath : name;
         }
 
         private void FrmCsvViewer_Load(object sender, EventArgs e)
@@ -132,9 +141,14 @@ namespace Frame_Core
             DateTime minDate = DateTime.Today.AddDays(-days);
 
             treeView1.Nodes.Clear();
-            if (!Directory.Exists(_rootPath)) return;
+            if (!Directory.Exists(_rootPath))
+            {
+                // 路径配错时给出可见提示，避免打开一个空窗口不知道原因
+                treeView1.Nodes.Add("生产数据目录不存在：" + _rootPath);
+                return;
+            }
 
-            var rootNode = treeView1.Nodes.Add(Path.GetFileName(_rootPath));
+            var rootNode = treeView1.Nodes.Add(GetRootDisplayName());
             rootNode.Tag = _rootPath;
             BuildAllNodes(rootNode, _rootPath, minDate);
 

@@ -1,4 +1,5 @@
 using Frame_Core;
+using Frame_UI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,6 +17,10 @@ namespace Mef_VisionFrame
     {
         private readonly Dictionary<string, Label> _labels = new Dictionary<string, Label>();
         private Label _warningLabel;
+
+        private RunStateChip _runChip;
+        private ToolTip _runTip;
+
         public UC_StateView()
         {
             InitializeComponent();
@@ -24,6 +29,20 @@ namespace Mef_VisionFrame
 
         public void Init()
         {
+            _runTip = new ToolTip
+            {
+                InitialDelay = 300,
+                ReshowDelay = 100,
+                AutoPopDelay = 8000,
+            };
+
+            ThemeService.ThemeChanged += OnThemeChanged;
+            Disposed += delegate
+            {
+                ThemeService.ThemeChanged -= OnThemeChanged;
+                if (_runTip != null) _runTip.Dispose();
+            };
+
             _content.AutoSize = true;
             _content.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             _content.FlowDirection = FlowDirection.LeftToRight;
@@ -59,7 +78,71 @@ namespace Mef_VisionFrame
 
             _content.ResumeLayout();
             AppendWarningLabel();
+            AppendRunChip();
             CenterContent();
+        }
+
+        /// <summary>
+        /// 五金运行态 chip。传 null 表示不显示（激光）；同一状态重复调用不会重绘。
+        /// chip 与 _warningLabel 一样在 LoadItems 清空后补回，不会被状态栏刷新冲掉。
+        /// </summary>
+        public void SetRunState(RunStateChipState? state)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => SetRunState(state)));
+                return;
+            }
+
+            if (!state.HasValue)
+            {
+                if (_runChip == null) return;
+                _content.Controls.Remove(_runChip);
+                _runChip.Dispose();
+                _runChip = null;
+                CenterContent();
+                return;
+            }
+
+            if (_runChip != null && _runChip.State == state.Value)
+            {
+                AppendRunChip();
+                return;
+            }
+
+            if (_runChip == null)
+            {
+                _runChip = new RunStateChip();
+            }
+
+            _runChip.SetState(state.Value);
+            _runTip.SetToolTip(_runChip, _runChip.TooltipText);
+            AppendRunChip();
+            CenterContent();
+        }
+
+        private void AppendRunChip()
+        {
+            if (_runChip == null) return;
+            if (!_content.Controls.Contains(_runChip))
+            {
+                _content.Controls.Add(_runChip);
+            }
+            if (_content.Controls.GetChildIndex(_runChip) != 0)
+            {
+                _content.Controls.SetChildIndex(_runChip, 0);
+            }
+        }
+
+        private void OnThemeChanged(object sender, UiTokens tokens)
+        {
+            if (IsDisposed) return;
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => { if (_runChip != null) _runChip.Invalidate(); }));
+                return;
+            }
+            if (_runChip != null) _runChip.Invalidate();
         }
 
         /// <summary>
@@ -221,6 +304,9 @@ namespace Mef_VisionFrame
             };
         }
 
+        /// <summary>状态栏 Normal 底色；运行态 chip 复用同一绿色，避免两个绿不一致。</summary>
+        internal static readonly Color NormalBackColor = Color.FromArgb(0, 180, 120);
+
         private Color GetBackColor(StatusLevel status)
         {
             switch (status)
@@ -233,7 +319,7 @@ namespace Mef_VisionFrame
 
                 case StatusLevel.Normal:
                 default:
-                    return Color.FromArgb(0, 180, 120);
+                    return NormalBackColor;
             }
         }
 

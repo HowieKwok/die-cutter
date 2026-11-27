@@ -1,5 +1,6 @@
 using ControlBoard.服务类;
 using Frame_Core;
+using Frame_MetalRun;
 using Frame_Core.流程汇总文件.产品类;
 using FrameCommunity;
 using FrameCommunity.Data;
@@ -38,6 +39,10 @@ namespace Mef_VisionFrame
             InitSignalChannels();
             InitPlcResultCallbacks();
             InitThread();
+
+            // 运行状态机最后建：它引用本对象作为宿主，此时线程/通道已就绪
+            RunControl = new MetalRunController(this);
+            RunControl.StateChanged += delegate { RefreshToolView?.Invoke(); };
         }
 
         /// <summary>
@@ -69,163 +74,144 @@ namespace Mef_VisionFrame
 
         #region 运行控制
 
+        /// <summary>五金唯一的运行状态源。工具栏、状态栏、宿主都只读它。</summary>
+        public MetalRunController RunControl { get; private set; }
+
+        /// <summary>低层启动：启动发布器与全部流程线程。仅由运行宿主调用。</summary>
         public override bool StartRun()
         {
-            return ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
+            try
             {
-                // 合片靠"背面片数 - 正面片数"这个片差配对；两项都是 0 时只能靠 A/B 同号，
-                // 一旦配不上，右侧缺陷工位的良率与统计表会一直停在原值，界面上没有任何提示。
-                // 开机先喊一声，比事后再翻日志省事。
                 int frontSide = Data.Craft?.Get_GlobalVariableItem("FrontSideCount")?.Value.ToInt() ?? 0;
                 int backSide = Data.Craft?.Get_GlobalVariableItem("BackSideCount")?.Value.ToInt() ?? 0;
                 if (frontSide == 0 && backSide == 0)
                 {
                     MessageNotify.AddErrorLog("五金模切：正面/背面片数均为 0，缺陷工位只能靠 A/B 同号合片，配不上时良率不会增长");
                 }
-                // 下线不再有任何"片距"配置：上下线之间的片差 = 相机间距 / 皮带速度，是不定值。
-                // 只保留一条约束：下线帧号 ≤ 上线最新帧号（见 LineScanFrameSequencer.TryNextDown）。
-                // 旧实现读配方变量「下线片距」当固定偏移，一旦与实际不符就会每拍判"下线超前"并钳位。
 
-                // 发布器先起：第一帧的结论进来时必须有消费者，
-                // 否则只能排队等溢出（视觉不等 PLC，但也不该把结果堆在队列里）
                 StartResultPublisher();
-
                 foreach (ProcessServices item in Project.Instance.m_ProcessList)
                 {
                     Project.Instance.StartRun(item.process.processInfo.ProcessID);
                 }
-
-                RefreshToolView?.Invoke();
                 return true;
-            });
+            }
+            catch (Exception ex)
+            {
+                Log4netRecord.ErrorLog.Error("五金启动流程失败", ex);
+                return false;
+            }
         }
 
+        /// <summary>
+        /// 低层硬停：停流程 → 停发布器 → 三路写 0 → INIProduct（唯一一次代际 +1、清帧/EA、序号归零）
+        /// → 清结果队列/尺寸组。仅由结束膜卷/回滚调用；暂停绝不能走这里。
+        /// </summary>
         public override bool StopRun()
         {
-            return ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
-            {
-                Data.M_SimRunCommand = SimRunCommand.Stop;
+            return StopProductionOnly(out _) && ResetProductionAfterStop(out _);
+        }
 
+        /// <summary>阶段一：只负责停住流程线程与发布器；失败说明生产可能仍在运行。</summary>
+        private bool StopProductionOnly(out string reason)
+        {
+            reason = null;
+            try
+            {
                 foreach (ProcessServices item in Project.Instance.m_ProcessList)
                 {
                     Project.Instance.StopRun(item.process.processInfo.ProcessID);
                 }
 
-                // 停机立刻把三路结果写 0，PLC 靠这个值判断这一片还在不在检。
-                // 放在 StopRun 之后，确保所有流程已停，不会再有帧开始写"待检"。
-                // 先停发布器再清队列：反过来的话，清空与写入会竞争，
-                // 刚清空的队列可能又被投递进一条旧结论
                 StopResultPublisher();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                reason = "停止流程/发布器异常：" + ex.Message;
+                Log4netRecord.ErrorLog.Error("五金停止流程失败", ex);
+                return false;
+            }
+        }
 
-                // 心跳不在这里停：它只跟 PLC 通讯状态有关，停机仍继续翻转。
+        /// <summary>阶段二：生产已停后的复位与清场；失败不回退到可继续状态。</summary>
+        private bool ResetProductionAfterStop(out string reason)
+        {
+            reason = null;
+            try
+            {
                 ResetAllResults();
 
-                // 代际 +1：停机瞬间已出队、随后才判完的帧会在结算时被丢弃，
-                // 不会把刚写下去的 0 覆盖成 OK/NG。
-                // 序号刻意不动：再启动要接着原来的片序跑，从 1 重数会让下线永久错位。
-                Frame_Core.业务参数类.五金模切帧序号.Stop();
+                if (!Project.Instance.baseProDevice.INIProduct())
+                {
+                    reason = "生产已停止，但 INIProduct 复位失败，请重启软件。";
+                    Log4netRecord.ErrorLog.Error("五金停止流程时 INIProduct 失败");
+                    return false;
+                }
 
-                // 停机丢弃未发布结论是刻意的：继续补发会把停机后的 PLC 状态改回 OK/NG
                 foreach (PlcResultChannel channel in AllResultChannels) channel.Clear();
-
-                // 停机时未凑齐的尺寸组一并作废：再启动时若还留着，
-                // 新卷第一片会把上一停机的残留槽凑成一组，拼出一片不存在的产品
                 ClearSizeGroups();
-
-                RefreshToolView?.Invoke();
                 return true;
-            });
+            }
+            catch (Exception ex)
+            {
+                reason = "停止后清场异常：" + ex.Message;
+                Log4netRecord.ErrorLog.Error("五金停止后清场失败", ex);
+                return false;
+            }
         }
 
         public override void Reset()
         {
-            ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
-            {
-                Project.Instance.baseProDevice.INIProduct();
-                ClearConsecutiveCounts();
-                ResetAllResults();
-                ClearSizeGroups();
-                Data.Reset_DefectStation();
-
-                // 自动模式下复位即恢复生产：五金没有启停按钮，
-                // 复位后不自动重启，现场就只能重启软件才能继续跑。
-                EnsureAutoRunning();
-            });
+            // 五金总开关是开始/结束膜卷；软复位按钮已隐藏，这里不再改运行状态。
+            Log4netRecord.RunLog.Info("五金模切不再支持 CCD 软件复位，请使用【结束膜卷】/【开始膜卷】。");
         }
-
 
         #endregion
 
         #region 膜卷
 
+        /// <summary>兼容旧调用：界面新代码直接走 RunControl.StartFilmRoll。</summary>
         public override bool StartFilmRoll(string filmRollName)
         {
-            return ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
+            if (RunControl == null)
             {
-                // 与激光模切同一套换卷流程：校验膜卷号 → 重建生产数据路径 → 清业务数据 → 复位相机回调
-                if (!System.Text.RegularExpressions.Regex.IsMatch(filmRollName, "^[a-zA-Z0-9-]+$"))
-                {
-                    MessageBox.Show("膜卷号不合法，只能包含字母、数字、-，不能有空格");
-                    return false;
-                }
+                MessageBox.Show("运行控制器未初始化");
+                return false;
+            }
 
-                string strPath = Project.Instance.paramPathSet.ProductRootPath + $"{filmRollName}";
-                if (Directory.Exists(strPath))
-                {
-                    MessageBox.Show("膜卷号重复");
-                    return false;
-                }
-
-                Project.Instance.Is_MojuanStart = true;
-                Project.Instance.systemInfo.currentMojuanhao = filmRollName;
-                Project.Instance.systemInfo.Save();
-
-                // 重建 ParamPathSet：生产数据 CSV 与 Log4net 的 RunLog/CamLog/CommLog 都跟着膜卷走。
-                // 少了这一步，五金的生产目录下不会生成日志目录，CSV 也还写在上一卷的路径里。
-                Project.Instance.NewMujuanhao(Project.Instance.systemInfo.RecipeName, filmRollName, Project.Instance.systemInfo.CraftType);
-
-                // 光源参数随膜卷/配方刷新，与激光模切一致
-                UIDelegate.LightParamChange();
-
-                // 清业务数据（图像队列、统计、合片队列、面板队列）
-                Data.Init();
-                // 连续 NG 的逐项计数跨卷没有意义，否则上一卷末尾的计数会算进新卷第一片
-                ClearConsecutiveCounts();
-                // 换卷把 PLC 侧的三路结果与心跳清回停止态，新卷从 0 开始
-                ResetAllResults();
-                // 上一卷没合算完的尺寸组跟着作废，否则新卷第一片会把它凑齐
-                ClearSizeGroups();
-                Project.Instance.baseProDevice.INIPro();
-                Project.Instance.baseProDevice.INIProduct();
-
-                // 相机回调计数清零 + 仿真标志复位 + 点检复位
-                foreach (var item in Project.Instance.M_CameraRelevancies)
-                {
-                    item.Value.Item1.Camera.GrabCount = 0;
-                    item.Value.Item2.m_ImageSimManage.InitSimFlag();
-                    item.Value.Item2.m_SizePointInspectionManage.sizePointInspectionParam.sizePointInspectionWorkParam.ResetStartDJ();
-                }
-
-                RefreshToolView?.Invoke();
-                InitView?.Invoke();
-                return true;
-            });
+            string error;
+            bool ok = RunControl.StartFilmRoll(filmRollName, out error);
+            if (!ok) MessageBox.Show(error ?? "开始膜卷失败");
+            return ok;
         }
 
+        /// <summary>兼容旧调用：界面新代码直接走 RunControl.EndFilmRoll。</summary>
         public override bool StopFilmRoll()
         {
-            return ExecuteMethodClass.ExecuteMethodContainErrShow(() =>
-            {
-                if (Project.Instance.Is_Run)
-                {
-                    MessageBox.Show("CCD正在运行中，请先暂停");
-                    return false;
-                }
+            if (RunControl == null) return false;
 
-                Project.Instance.Is_MojuanStart = false;
-                RefreshToolView?.Invoke();
-                return true;
-            });
+            MetalRunPending pending;
+            string error;
+            EndRollResult result = RunControl.EndFilmRoll(false, out pending, out error);
+
+            if (result == EndRollResult.NeedsConfirm)
+            {
+                string message = "当前还有未处理项：\n\n" + pending.ToDisplayText() +
+                                 "\n\n结束膜卷将丢弃这些数据，是否继续？";
+                if (MessageBox.Show(message, "结束膜卷", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    return false;
+
+                result = RunControl.EndFilmRoll(true, out pending, out error);
+            }
+
+            if (result == EndRollResult.Failed)
+            {
+                MessageBox.Show(error ?? "结束膜卷失败");
+                return false;
+            }
+
+            return result == EndRollResult.Completed;
         }
 
         #endregion

@@ -191,6 +191,79 @@ namespace Frame_Core
             });
         }
 
+        /// <summary>换卷：上下两条反向箭头（交换）。</summary>
+        public static Image SwitchRoll(int size, Color ink)
+        {
+            return Draw(size, g =>
+            {
+                float u = size / 32f;
+                float x0 = 7f * u;
+                float x1 = 25f * u;
+                float yTop = 12f * u;
+                float yBottom = 20f * u;
+                float a = 4.5f * u;
+
+                using (Pen pen = new Pen(ink, Math.Max(1.4f, 2.4f * u)))
+                {
+                    pen.StartCap = LineCap.Round;
+                    pen.EndCap = LineCap.Round;
+                    g.DrawLine(pen, x0, yTop, x1 - a * 0.6f, yTop);
+                    g.DrawLine(pen, x1, yBottom, x0 + a * 0.6f, yBottom);
+                }
+
+                using (SolidBrush brush = new SolidBrush(ink))
+                {
+                    // 上箭头在右端，指右
+                    g.FillPolygon(brush, new[]
+                    {
+                        new PointF(x1, yTop),
+                        new PointF(x1 - a, yTop - a * 0.6f),
+                        new PointF(x1 - a, yTop + a * 0.6f)
+                    });
+                    // 下箭头在左端，指左
+                    g.FillPolygon(brush, new[]
+                    {
+                        new PointF(x0, yBottom),
+                        new PointF(x0 + a, yBottom - a * 0.6f),
+                        new PointF(x0 + a, yBottom + a * 0.6f)
+                    });
+                }
+            });
+        }
+
+        /// <summary>两条竖杠（暂停）。</summary>
+        public static Image Pause(int size, Color ink)
+        {
+            return Draw(size, g =>
+            {
+                float barWidth = size * 0.20f;
+                float gap = size * 0.18f;
+                float height = size * 0.58f;
+                float top = (size - height) / 2f;
+                float left = (size - (barWidth * 2 + gap)) / 2f;
+
+                using (SolidBrush brush = new SolidBrush(ink))
+                {
+                    g.FillRectangle(brush, left, top, barWidth, height);
+                    g.FillRectangle(brush, left + barWidth + gap, top, barWidth, height);
+                }
+            });
+        }
+
+        /// <summary>空心圆点（空闲）。</summary>
+        public static Image IdleDot(int size, Color ink)
+        {
+            return Draw(size, g =>
+            {
+                float ring = size * 0.56f;
+                float left = (size - ring) / 2f;
+                using (Pen pen = new Pen(ink, Math.Max(1.4f, size * 0.12f)))
+                {
+                    g.DrawEllipse(pen, left, left, ring, ring);
+                }
+            });
+        }
+
         /// <summary>
         /// 按背景亮度选前景墨色：亮底用深墨、暗底用浅墨。
         /// 启动键绿底配深色箭头、运行键红底配白方块，都由这一条规则统一得出。

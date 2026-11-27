@@ -1,4 +1,4 @@
-﻿using FrameCommunity.Data;
+using FrameCommunity.Data;
 using LogTool;
 using System;
 using System.Collections.Generic;
@@ -42,6 +42,23 @@ namespace Frame_Core
         /// CloseThread 设置为 true 后，Workflow_Manual 会跳出循环并自然结束。
         /// </summary>
         private volatile bool m_ExitThread = false;
+
+        /// <summary>流程视觉挂起。true 时线程仍存活，但跳过 ExecuteProcess；StepOnce 可放行一次。</summary>
+        private volatile bool m_Suspended = false;
+
+        /// <summary>当前是否正在执行 ExecuteProcess。结束膜卷等待它变 false。</summary>
+        private volatile bool m_Executing = false;
+
+        /// <summary>
+        /// 停泊信号：线程处于“不执行任何流程”的等待状态时为 true，即将执行前清除。
+        /// WaitIdle 用它消除“已判定不挂起、尚未置 m_Executing”之间的竞态窗口。
+        /// </summary>
+        private readonly ManualResetEventSlim m_Parked = new ManualResetEventSlim(true);
+
+        /// <summary>单步令牌：挂起状态下允许执行的次数。由 StepOnce 投放。</summary>
+        private readonly object m_StepSync = new object();
+        private int m_StepPending = 0;
+        private readonly ManualResetEvent m_StepDone = new ManualResetEvent(false);
 
         /// <summary>
         /// 输入图像原
@@ -106,8 +123,78 @@ namespace Frame_Core
         /// </summary>
         public void Start()
         {
+            // 重新启动意味着退出暂停态；否则上一轮暂停会把新一轮启动卡住
+            m_Suspended = false;
             m_ThreadStatus = true;
             m_AutoResetEvent.Set();
+        }
+
+        /// <summary>暂停视觉执行：线程保持存活（GetStates 仍为 true），但跳过 ExecuteProcess。</summary>
+        public void Suspend()
+        {
+            m_Suspended = true;
+        }
+
+        /// <summary>恢复视觉执行。</summary>
+        public void Resume()
+        {
+            m_Suspended = false;
+            m_AutoResetEvent.Set();
+        }
+
+        public bool IsSuspended { get { return m_Suspended; } }
+        public bool IsExecuting { get { return m_Executing; } }
+
+        /// <summary>
+        /// 挂起状态下放行一次 ExecuteProcess，并等待本次执行完成。
+        /// 返回 false 表示正在执行或等待超时。
+        /// </summary>
+        public bool StepOnce(int timeoutMs)
+        {
+            if (!m_Suspended) return false;
+
+            lock (m_StepSync)
+            {
+                if (m_Executing) return false;
+                m_StepPending++;
+                m_StepDone.Reset();
+            }
+
+            m_AutoResetEvent.Set();
+            bool ok = m_StepDone.WaitOne(timeoutMs <= 0 ? 5000 : timeoutMs);
+
+            if (!ok)
+            {
+                lock (m_StepSync)
+                {
+                    if (m_StepPending > 0) m_StepPending--;
+                }
+            }
+            return ok;
+        }
+
+        /// <summary>等待当前 ExecuteProcess 结束。用于结束膜卷/回滚前确认没有在途帧。</summary>
+        public bool WaitIdle(int timeoutMs)
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            // 必须同时满足“没有在执行”和“已进入停泊/空闲”：
+            // 只看 m_Executing 会把“已判定不挂起、尚未置执行标志”的瞬间误判为空闲。
+            while (true)
+            {
+                if (!m_Executing && m_Parked.IsSet) return true;
+                if (sw.ElapsedMilliseconds >= timeoutMs) return false;
+                Thread.Sleep(1);
+            }
+        }
+
+        private bool TakeStep()
+        {
+            lock (m_StepSync)
+            {
+                if (m_StepPending <= 0) return false;
+                m_StepPending--;
+                return true;
+            }
         }
         /// <summary>
         /// 停止流程执行。
@@ -115,6 +202,8 @@ namespace Frame_Core
         /// </summary>
         public void Stop()
         {
+            // 停止必须同时退出暂停态，否则下一条流程启动后会继承挂起标志
+            m_Suspended = false;
             m_ThreadStatus = false;
         }
         /// <summary>
@@ -138,8 +227,10 @@ namespace Frame_Core
             lock (m_ThreadLock)
             {
                 m_ThreadStatus = false;
+                m_Suspended = false;
                 RunMode = RunMode.None;
                 m_ExitThread = true;
+                m_Parked.Set();          // 线程即将退出，避免 WaitIdle 因残留的 Reset 一直等不到
                 m_AutoResetEvent.Set();
                 thread = m_Thread;
             }
@@ -194,13 +285,41 @@ namespace Frame_Core
                 if (m_ThreadStatus == false && m_nMode == 0)
                 {
                     m_nMode = 0;
+                    m_Parked.Set();          // 线程空闲：WaitIdle 可以判定为空闲
     
                     m_AutoResetEvent.WaitOne();//阻塞等待
                     if (m_ExitThread) break;
                 }
                 else
                 {
-                    ExecuteProcess();
+                    // 先声明“不在停泊”，再判断挂起：
+                    // Suspend 恰好落在这两步之间时，WaitIdle 不会把即将执行的一帧误判为空闲。
+                    m_Parked.Reset();
+                    // 先判线程状态、再判挂起：挂起时 Stop 仍能生效；
+                    // 单步令牌优先于挂起，允许 StepOnce 放行一次。
+                    bool isStep = false;
+                    if (m_Suspended)
+                    {
+                        if (!TakeStep())
+                        {
+                            m_Parked.Set();
+                            m_AutoResetEvent.WaitOne(5);
+                            continue;
+                        }
+                        isStep = true;
+                    }
+
+                    m_Executing = true;
+                    try
+                    {
+                        ExecuteProcess();
+                    }
+                    finally
+                    {
+                        m_Executing = false;
+                        if (isStep) m_StepDone.Set();
+                    }
+
                     if (RunMode == RunMode.RunCycle) { Thread.Sleep(5); };//连续运行设置延时时间,以免速度过快
 
                     if (RunMode == RunMode.RunOnce)

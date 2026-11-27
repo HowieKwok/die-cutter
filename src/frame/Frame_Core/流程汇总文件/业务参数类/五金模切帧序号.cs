@@ -33,6 +33,9 @@ namespace Frame_Core.业务参数类
         private int _windowTaken;
         private long _windowOpenedAt;
 
+        /// <summary>仿真单步的一次性帧号。下一次开新窗口时优先使用并清空。</summary>
+        private int _manualFrameId;
+
         /// <summary>窗口宽度。超过则视为下一组，重新取号。</summary>
         public int WindowMilliseconds { get; set; } = 1500;
 
@@ -77,7 +80,17 @@ namespace Frame_Core.业务参数类
                     LastWindowMissing = Math.Max(0, CamerasPerGroup - _windowTaken);
                 }
 
-                int next = NextFrameIdProvider != null ? NextFrameIdProvider() : _seq + 1;
+                int next;
+                if (_manualFrameId > 0)
+                {
+                    // 仿真单步：下线刚接受的帧号，三路必须同号；用完即弃
+                    next = _manualFrameId;
+                    _manualFrameId = 0;
+                }
+                else
+                {
+                    next = NextFrameIdProvider != null ? NextFrameIdProvider() : _seq + 1;
+                }
 
                 // 没有可用产品号（队列空）：不开窗，返回 0 让上层丢弃这一帧。
                 // 若把 0 写进窗口，三路会分别复用到 0 和不存在的 1，触发"帧号不一致"告警。
@@ -91,6 +104,21 @@ namespace Frame_Core.业务参数类
             }
         }
 
+        /// <summary>
+        /// 仿真单步：强制下一组窗口使用指定帧号，并关闭当前窗口。
+        /// 三路必须在新窗口内先后取号，才能同号。
+        /// </summary>
+        public void PushManualFrameId(int frameId)
+        {
+            lock (_sync)
+            {
+                _manualFrameId = frameId;
+                _windowFrameId = 0;
+                _windowTaken = 0;
+                _windowOpenedAt = 0;
+            }
+        }
+
         public void Reset()
         {
             lock (_sync)
@@ -99,6 +127,7 @@ namespace Frame_Core.业务参数类
                 _windowFrameId = 0;
                 _windowTaken = 0;
                 _windowOpenedAt = 0;
+                _manualFrameId = 0;
                 LastWindowMissing = 0;
             }
         }
@@ -258,6 +287,66 @@ namespace Frame_Core.业务参数类
                 _generation++;
                 _liveFrames.Clear();
             }
+        }
+    }
+
+    /// <summary>
+    /// 五金帧准入闸门。Accepting 在清场期间关闭，防止已通过 GetStates 检查的回调
+    /// 在清场后把旧图塞回队列；Paused 时限制每相机积压，防止自动模式暂停期间内存失控。
+    /// 激光不读这个类，行为不变。
+    /// </summary>
+    public static class 五金模切帧门控
+    {
+        public static volatile bool Accepting;
+        public static volatile bool Paused;
+        public static int Limit = 8;
+
+        private static int _dropCount;
+        private static int _alarmRaised;
+
+        public static int DropCount { get { return System.Threading.Volatile.Read(ref _dropCount); } }
+
+        /// <summary>
+        /// 返回 false 表示这一帧必须丢弃（不占帧号、不产生待检）。
+        /// firstDrop 为 true 时调用方发一次“暂停积压已满”告警，避免每帧刷屏。
+        /// </summary>
+        public static bool Allow(int backlog, out bool firstDrop)
+        {
+            firstDrop = false;
+
+            // 清场期间拒绝是预期行为：不计数、不告警，
+            // 否则回滚等待/确认弹窗期间会污染 DropCount 并误弹“暂停积压已满”。
+            if (!Accepting) return false;
+
+            if (!(Paused && backlog >= Limit)) return true;
+
+            System.Threading.Interlocked.Increment(ref _dropCount);
+            if (System.Threading.Interlocked.Exchange(ref _alarmRaised, 1) == 0)
+            {
+                firstDrop = true;
+            }
+            return false;
+        }
+
+        /// <summary>开始/继续/结束时调用：清暂停标志与丢弃计数/告警去重。</summary>
+        public static void ResetForRun()
+        {
+            Paused = false;
+            System.Threading.Interlocked.Exchange(ref _dropCount, 0);
+            System.Threading.Interlocked.Exchange(ref _alarmRaised, 0);
+        }
+
+        /// <summary>暂停时打开上限；继续/开始时清除告警去重，保留本轮丢弃计数供结束快照读取。</summary>
+        public static void SetPaused(bool paused)
+        {
+            Paused = paused;
+            if (!paused) System.Threading.Interlocked.Exchange(ref _alarmRaised, 0);
+        }
+
+        public static void ResetDropCount()
+        {
+            System.Threading.Interlocked.Exchange(ref _dropCount, 0);
+            System.Threading.Interlocked.Exchange(ref _alarmRaised, 0);
         }
     }
 }

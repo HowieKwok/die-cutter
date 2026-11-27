@@ -139,6 +139,31 @@ namespace Frame_Core
         }
 
         /// <summary>
+        /// 当前帧是否允许进入帧队列。检查点在 TryAssignFrameId 之前：
+        /// 拒绝的帧不占帧号、不产生待检，避免 PLC 永远等不到结论。
+        /// 默认永远允许，激光/其它机型行为不变；五金在暂停积压超限时覆写。
+        /// </summary>
+        protected virtual bool 允许接收新帧()
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// 信号量已到上限时静默忽略：消费线程本来就会每 50ms 检查队列，
+        /// 不依赖 Release 才能取到帧；抛 SemaphoreFullException 反而会把回调线程打断。
+        /// </summary>
+        private void ReleaseCamSemaphore()
+        {
+            try
+            {
+                semaphoreSlimCam.Release();
+            }
+            catch (SemaphoreFullException)
+            {
+            }
+        }
+
+        /// <summary>
         /// 回调数据处理
         /// </summary>
         public virtual void CallBackImgDataDeal()
@@ -162,10 +187,17 @@ namespace Frame_Core
                     {
                         if (InfoImgInfo != null)
                         {
+                            // 暂停积压超限/正在清场：在取号前丢弃，避免产生无结论的 Pending
+                            if (!允许接收新帧())
+                            {
+                                InfoImgInfo.Dispose();
+                                return;
+                            }
+
                             if (TryAssignFrameId(InfoImgInfo))
                             {
                                 alreadyDealGrabImage.Enqueue(InfoImgInfo);
-                                semaphoreSlimCam.Release();
+                                ReleaseCamSemaphore();
                             }
                         }
                         else
