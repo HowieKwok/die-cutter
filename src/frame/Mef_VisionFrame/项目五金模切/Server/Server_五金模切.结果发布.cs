@@ -43,7 +43,7 @@ namespace Mef_VisionFrame
                 AllResultChannels,
                 TryWriteResult,
                 (key, title, message) => 五金模切告警.Raise(key, title, message),
-                message => Log4netRecord.ErrorLog.Error(message));
+                message => AppLog.Error(message));
             _resultPublisher.Start();
         }
 
@@ -75,7 +75,7 @@ namespace Mef_VisionFrame
 
             if (!Frame_Core.业务参数类.FrameSettlement.TryClaim(frameId, station, isNG, source, reason))
             {
-                Log4netRecord.RunLog.Warn(
+                AppLog.Warn(
                     $"[五金帧结算] 帧 {frameId} {station} 已有结论，忽略本次 {source}：{reason}");
                 return false;
             }

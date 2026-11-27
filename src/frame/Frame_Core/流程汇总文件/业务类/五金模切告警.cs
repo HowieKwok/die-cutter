@@ -37,11 +37,11 @@ namespace Frame_Core.业务类
             }
 
             // 日志无条件写：它是现场唯一的追查依据，不能因为界面上有提示就省掉
-            Log4netRecord.RunLog.Warn($"[{title}] {message}");
+            AppLog.Warn($"[{title}] {message}");
 
             if (handler == null) return;
             try { handler(key, title, message); }
-            catch (Exception ex) { Log4netRecord.RunLog.Error($"五金告警投递失败：{ex}"); }
+            catch (Exception ex) { AppLog.Error($"五金告警投递失败：{ex}"); }
         }
 
         public static void Dismiss(string key)

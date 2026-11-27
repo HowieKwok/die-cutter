@@ -676,7 +676,7 @@ namespace Frame_Core.业务类
                             bool success = ProcessCoarseLocation(imageInfo, Plugin精定位交点模块, ProcessID, ShowHalconWindow2, out OutCrossGroup Cross精定位交点模块, pointMatch, point跟随, "精定位模块", true, true);
                             if (!success)
                             {
-                                Log4netRecord.ErrorLog.Debug($"流程{Plugin精定位交点模块.moduleInfo.ProcessID}的{Plugin精定位交点模块.moduleInfo.ModuleName}执行失败");
+                                AppLog.Debug($"流程{Plugin精定位交点模块.moduleInfo.ProcessID}的{Plugin精定位交点模块.moduleInfo.ModuleName}执行失败");
                                 //裁断行只能来自精定位交点：退回上一片或 DefCutPos 会静默裁错小图，
                                 //所以这里直接判 NG，让问题在结果上暴露出来。
                                 EnqueueNgEA("精定位交点模块执行失败，裁断行不可信");
@@ -957,13 +957,13 @@ namespace Frame_Core.业务类
             // 原图可能已被拼图/显示环节释放，CopyObj 会抛 HALCON 异常；
             // 这里只是补一张 NG 标记，复制失败也要让 EA 流程按序结算
             try { ngImage.ho_image = 安全复制(imageInfo, imageInfo); }
-            catch (Exception copyEx) { Log4netRecord.ErrorLog.Error("裁图异常补 NG 时复制原图失败：" + copyEx.Message); }
+            catch (Exception copyEx) { AppLog.Error("裁图异常补 NG 时复制原图失败：" + copyEx.Message); }
 
             param.nEAId++;
 
             if (!EnqueueEaOrAbandon(param, ngImage, camID))
             {
-                Log4netRecord.ErrorLog.Error($"裁图异常补 NG 标记时 EA 队列已满，帧 {imageInfo.image_ID}");
+                AppLog.Error($"裁图异常补 NG 标记时 EA 队列已满，帧 {imageInfo.image_ID}");
             }
 
             MessageNotify.AddErrorLog($"裁图流程异常，帧 {imageInfo.image_ID} 已按 NG 交给 EA 流程结算：{error.Message}");
@@ -1543,7 +1543,7 @@ namespace Frame_Core.业务类
                     bool success = ProcessCoarseLocation(InfoImgInfo, PluginIntersection, ProcessID, Product尺寸.CrossPointInfos, ShowHalconWindow, out OutCrossGroup Cross粗定位工具PointInfo, "粗定位工具");
                     if (!success)
                     {
-                        Log4netRecord.ErrorLog.Debug($"流程{PluginIntersection.moduleInfo.ProcessID}的{PluginIntersection.moduleInfo.ModuleName}执行失败");
+                        AppLog.Debug($"流程{PluginIntersection.moduleInfo.ProcessID}的{PluginIntersection.moduleInfo.ModuleName}执行失败");
                     }
 
 
@@ -1553,7 +1553,7 @@ namespace Frame_Core.业务类
                     success = ProcessCoarseLocation(InfoImgInfo, PluginIntersection, ProcessID, Product尺寸.CrossPointInfos, ShowHalconWindow, out OutCrossGroup Cross极耳左侧交点Info, point基准, Cross粗定位工具PointInfo.point, "极耳左侧交点", true, true);
                     if (!success)
                     {
-                        Log4netRecord.ErrorLog.Debug($"流程{PluginIntersection.moduleInfo.ProcessID}的{PluginIntersection.moduleInfo.ModuleName}执行失败");
+                        AppLog.Debug($"流程{PluginIntersection.moduleInfo.ProcessID}的{PluginIntersection.moduleInfo.ModuleName}执行失败");
                     }
                     #endregion
 
@@ -1640,7 +1640,7 @@ namespace Frame_Core.业务类
                     }
                     else
                     {
-                        Log4netRecord.ErrorLog.Debug($"流程{Plugin极耳右侧组合交点.moduleInfo.ProcessID}&&{Plugin极耳右侧组合交点.moduleInfo.ModuleName}---{params极耳右侧组合交点.m_strRunMessage}");
+                        AppLog.Debug($"流程{Plugin极耳右侧组合交点.moduleInfo.ProcessID}&&{Plugin极耳右侧组合交点.moduleInfo.ModuleName}---{params极耳右侧组合交点.m_strRunMessage}");
                     }
 
                     Product尺寸.PointResults.Add(point极耳右侧组合交点.Copy());
@@ -1665,7 +1665,7 @@ namespace Frame_Core.业务类
                     }
                     else
                     {
-                        Log4netRecord.ErrorLog.Debug($"流程{极片右侧组合交点.moduleInfo.ProcessID}&&{极片右侧组合交点.moduleInfo.ModuleName}---{params极片右侧组合交点.m_strRunMessage}");
+                        AppLog.Debug($"流程{极片右侧组合交点.moduleInfo.ProcessID}&&{极片右侧组合交点.moduleInfo.ModuleName}---{params极片右侧组合交点.m_strRunMessage}");
                     }
 
                     Product尺寸.PointResults.Add(point极片右侧组合交点.Copy());
@@ -1691,7 +1691,7 @@ namespace Frame_Core.业务类
                     }
                     else
                     {
-                        Log4netRecord.ErrorLog.Debug($"流程{Plugin极耳左根部组合交点.moduleInfo.ProcessID}&&{Plugin极耳左根部组合交点.moduleInfo.ModuleName}---{params极耳左根部组合交点.m_strRunMessage}");
+                        AppLog.Debug($"流程{Plugin极耳左根部组合交点.moduleInfo.ProcessID}&&{Plugin极耳左根部组合交点.moduleInfo.ModuleName}---{params极耳左根部组合交点.m_strRunMessage}");
                     }
 
                     Product尺寸.PointResults.Add(point极耳左根部组合交点);
@@ -1717,7 +1717,7 @@ namespace Frame_Core.业务类
                     }
                     else
                     {
-                        Log4netRecord.ErrorLog.Debug($"流程{Plugin极耳右根部组合交点.moduleInfo.ProcessID}&&{Plugin极耳右根部组合交点.moduleInfo.ModuleName}---{params极耳右根部组合交点.m_strRunMessage}");
+                        AppLog.Debug($"流程{Plugin极耳右根部组合交点.moduleInfo.ProcessID}&&{Plugin极耳右根部组合交点.moduleInfo.ModuleName}---{params极耳右根部组合交点.m_strRunMessage}");
                     }
 
                     Product尺寸.PointResults.Add(point极耳右根部组合交点);
@@ -1786,7 +1786,7 @@ namespace Frame_Core.业务类
                         else
                         {
 
-                            Log4netRecord.ErrorLog.Debug($"流程{Plugin左侧V角凸点1.moduleInfo.ProcessID}&&{Plugin左侧V角凸点1.moduleInfo.ModuleName}---{Params左侧V角凸点1.m_strRunMessage}");
+                            AppLog.Debug($"流程{Plugin左侧V角凸点1.moduleInfo.ProcessID}&&{Plugin左侧V角凸点1.moduleInfo.ModuleName}---{Params左侧V角凸点1.m_strRunMessage}");
                         }
                     },
                     #endregion, 
@@ -1825,7 +1825,7 @@ namespace Frame_Core.业务类
                         else
                         {
 
-                            Log4netRecord.ErrorLog.Debug($"流程{Plugin左侧V角凸点2.moduleInfo.ProcessID}&&{Plugin左侧V角凸点2.moduleInfo.ModuleName}---{Params左侧V角凸点2.m_strRunMessage}");
+                            AppLog.Debug($"流程{Plugin左侧V角凸点2.moduleInfo.ProcessID}&&{Plugin左侧V角凸点2.moduleInfo.ModuleName}---{Params左侧V角凸点2.m_strRunMessage}");
                         }
                     },
                     #endregion
@@ -1862,7 +1862,7 @@ namespace Frame_Core.业务类
                         else
                         {
 
-                            Log4netRecord.ErrorLog.Debug($"流程{Plugin右侧V角凸点1.moduleInfo.ProcessID}&&{Plugin右侧V角凸点1.moduleInfo.ModuleName}---{Params右侧V角凸点1.m_strRunMessage}");
+                            AppLog.Debug($"流程{Plugin右侧V角凸点1.moduleInfo.ProcessID}&&{Plugin右侧V角凸点1.moduleInfo.ModuleName}---{Params右侧V角凸点1.m_strRunMessage}");
                         }
                     },
                     #endregion
@@ -1898,7 +1898,7 @@ namespace Frame_Core.业务类
                         else
                         {
 
-                            Log4netRecord.ErrorLog.Debug($"流程{Plugin右侧V角凸点2.moduleInfo.ProcessID}&&{Plugin右侧V角凸点2.moduleInfo.ModuleName}---{Params右侧V角凸点2.m_strRunMessage}");
+                            AppLog.Debug($"流程{Plugin右侧V角凸点2.moduleInfo.ProcessID}&&{Plugin右侧V角凸点2.moduleInfo.ModuleName}---{Params右侧V角凸点2.m_strRunMessage}");
                         }
                     }
                     #endregion
@@ -2402,7 +2402,7 @@ namespace Frame_Core.业务类
                     {
                         Product尺寸.ForceNg = true;
                         Product尺寸.ForceNgReason = failure.Reason;
-                        Log4netRecord.ErrorLog.Error($"尺寸流程并行检测失败：{failure.Reason}");
+                        AppLog.Error($"尺寸流程并行检测失败：{failure.Reason}");
                     }
 
                     ShowHalconWindow.m_regionShowInfos.AddRange(RegionShow左底部V角检测有无);
@@ -2558,7 +2558,7 @@ namespace Frame_Core.业务类
                     bool success = ProcessCoarseLocation(InfoImgInfo, PluginIntersection, ProcessID, Product尺寸.CrossPointInfos, ShowHalconWindow, out OutCrossGroup Cross粗定位工具PointInfo, "粗定位工具");
                     if (!success)
                     {
-                        Log4netRecord.ErrorLog.Debug($"流程{PluginIntersection.moduleInfo.ProcessID}的{PluginIntersection.moduleInfo.ModuleName}执行失败");
+                        AppLog.Debug($"流程{PluginIntersection.moduleInfo.ProcessID}的{PluginIntersection.moduleInfo.ModuleName}执行失败");
                     }
 
                     #endregion
@@ -2601,7 +2601,7 @@ namespace Frame_Core.业务类
                             else
                             {
 
-                                Log4netRecord.ErrorLog.Debug($"流程{PluginV角凸点1.moduleInfo.ProcessID}&&{PluginV角凸点1.moduleInfo.ModuleName}---{ParamsV角凸点1.m_strRunMessage}");
+                                AppLog.Debug($"流程{PluginV角凸点1.moduleInfo.ProcessID}&&{PluginV角凸点1.moduleInfo.ModuleName}---{ParamsV角凸点1.m_strRunMessage}");
                             }
                         },
                     #endregion
@@ -2636,7 +2636,7 @@ namespace Frame_Core.业务类
                             else
                             {
 
-                                Log4netRecord.ErrorLog.Debug($"流程{PluginV角凸点2.moduleInfo.ProcessID}&&{PluginV角凸点2.moduleInfo.ModuleName}---{ParamsV角凸点2.m_strRunMessage}");
+                                AppLog.Debug($"流程{PluginV角凸点2.moduleInfo.ProcessID}&&{PluginV角凸点2.moduleInfo.ModuleName}---{ParamsV角凸点2.m_strRunMessage}");
                             }
                         }
                         #endregion
@@ -2822,7 +2822,7 @@ namespace Frame_Core.业务类
                     {
                         Product尺寸.ForceNg = true;
                         Product尺寸.ForceNgReason = failure.Reason;
-                        Log4netRecord.ErrorLog.Error($"尺寸流程并行检测失败：{failure.Reason}");
+                        AppLog.Error($"尺寸流程并行检测失败：{failure.Reason}");
                     }
 
                     ShowHalconWindow.m_regionShowInfos.AddRange(RegionShow极片有无);

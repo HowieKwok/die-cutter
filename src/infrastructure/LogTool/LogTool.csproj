@@ -60,6 +60,7 @@
     <Compile Include="FileSaveTool\XML1\Binary1\BinarySerializationOperation.cs" />
     <Compile Include="FileSaveTool\XML1\XmlSerialization.cs" />
     <Compile Include="FileSaveTool\XML1\XmlSerializationOperation.cs" />
+    <Compile Include="Log4\AppLog.cs" />
     <Compile Include="Log4\LogObject.cs" />
     <Compile Include="Log4\LogTypeEnum.cs" />
     <Compile Include="LogForm.cs">

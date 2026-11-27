@@ -140,7 +140,7 @@ namespace Mef_VisionFrame
                         isSevere = true;
                         noCraftMessage = "未找到工艺类型";
                         item.T_Path = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, "缺陷小图", "无工艺", name);
-                        Log4netRecord.ErrorLog.Error($"{noCraftMessage}：{name}，相机：{camName}");
+                        AppLog.Error($"{noCraftMessage}：{name}，相机：{camName}");
                     }
                     else
                     {
@@ -171,7 +171,7 @@ namespace Mef_VisionFrame
                     // 没有工艺项的缺陷不计数——阈值未知，也就无从判断"连续多少次"。
                     if (craft != null && RecordDefectConsecutiveNg(camIndex, name, isNg, craft.ContinuousCount))
                     {
-                        Log4netRecord.ErrorLog.Error(
+                        AppLog.Error(
                             $"五金模切缺陷项[{name}]连续NG达到阈值{craft.ContinuousCount}，相机：{camName}");
                         TriggerNgSignal(isAppearanceStation, camIndex);
                     }
@@ -217,7 +217,7 @@ namespace Mef_VisionFrame
                 }
                 catch (Exception ex)
                 {
-                    Log4netRecord.ErrorLog.Error($"五金模切缺陷判定异常，相机：{camName}\r\n{ex}");
+                    AppLog.Error($"五金模切缺陷判定异常，相机：{camName}\r\n{ex}");
 
                     // 判定不了的缺陷不能当 OK：标记成 NG 让它进入 JudgeSummary，
                     // 否则这一条被静默跳过，整片可能因为"没有其它缺陷"而回传 OK

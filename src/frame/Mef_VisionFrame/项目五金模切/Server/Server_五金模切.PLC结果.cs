@@ -40,13 +40,13 @@ namespace Mef_VisionFrame
             Frame_Core.业务参数类.五金模切帧序号.FrameAbandoned += OnFrameAbandoned;
 
             try { RegisterUpCamFrameStart(); }
-            catch (Exception ex) { Log4netRecord.ErrorLog.Error("五金模切注册上线扫帧开始回调失败：" + ex); }
+            catch (Exception ex) { AppLog.Error("五金模切注册上线扫帧开始回调失败：" + ex); }
 
             try { RegisterDownCamFrameStart(); }
-            catch (Exception ex) { Log4netRecord.ErrorLog.Error("五金模切注册下线扫帧开始回调失败：" + ex); }
+            catch (Exception ex) { AppLog.Error("五金模切注册下线扫帧开始回调失败：" + ex); }
 
             try { RegisterSizeCamFrameStart(); }
-            catch (Exception ex) { Log4netRecord.ErrorLog.Error("五金模切注册尺寸帧开始回调失败：" + ex); }
+            catch (Exception ex) { AppLog.Error("五金模切注册尺寸帧开始回调失败：" + ex); }
         }
 
         /// <summary>上线扫（模切主相机）取到图 → 写待检。</summary>

@@ -106,7 +106,7 @@ namespace Mef_VisionFrame
             SizeDectectProduct product = productBase as SizeDectectProduct;
             if (product == null)
             {
-                Log4netRecord.ErrorLog.Error("尺寸工位收到非尺寸产品，无法结算，请检查流程回调绑定");
+                AppLog.Error("尺寸工位收到非尺寸产品，无法结算，请检查流程回调绑定");
                 return;
             }
 
@@ -138,7 +138,7 @@ namespace Mef_VisionFrame
             if (occurrence == 0)
             {
                 try { SweepStaleSizes(); }
-                catch (Exception sweepEx) { Log4netRecord.ErrorLog.Error("尺寸过期组清扫异常:" + sweepEx); }
+                catch (Exception sweepEx) { AppLog.Error("尺寸过期组清扫异常:" + sweepEx); }
             }
 
             ShowHalconWindow window = product.showHalconGroup[0];
@@ -211,7 +211,7 @@ namespace Mef_VisionFrame
                         m_strMessage = result == ProcessExecutionResult.Overtime ? "尺寸工位等齐超时" : "尺寸工位组异常",
                         m_stuGetColor = HalconColor.red,
                     });
-                    Log4netRecord.ErrorLog.Error($"五金模切尺寸工位{(result == ProcessExecutionResult.Overtime ? "超时" : "异常")}，相机：{product.CamName}");
+                    AppLog.Error($"五金模切尺寸工位{(result == ProcessExecutionResult.Overtime ? "超时" : "异常")}，相机：{product.CamName}");
 
                     // 这一片已按 NG 结案：清掉残留组并打废弃标记，
                     // 迟到的那几路图不再入组，否则会在字典里留下一个永远没人消费的孤儿组
@@ -239,7 +239,7 @@ namespace Mef_VisionFrame
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Error("五金模切尺寸工位异常:" + ex);
+                AppLog.Error("五金模切尺寸工位异常:" + ex);
                 if (window != null) window.m_bIsNG = true;
 
                 // 只有第一路是顺序结算线程，可以直接写结论；
@@ -253,7 +253,7 @@ namespace Mef_VisionFrame
                 }
                 else
                 {
-                    Log4netRecord.ErrorLog.Error(
+                    AppLog.Error(
                         $"尺寸工位第 {occurrence + 1} 路异常，交由第一路等齐超时统一结算，帧号 {frameId}");
                 }
             }
@@ -663,7 +663,7 @@ namespace Mef_VisionFrame
                     sizeInfo.IsOverspecification = true;
                     sizeInfo.IsNG = true;
                     sizeInfo.resultType = ResultType.NG;
-                    Log4netRecord.ErrorLog.Error($"{product?.CamName} 尺寸项[{item.Name}]计算异常:{ex}");
+                    AppLog.Error($"{product?.CamName} 尺寸项[{item.Name}]计算异常:{ex}");
                 }
 
                 isNG |= sizeInfo.IsNG;
@@ -729,7 +729,7 @@ namespace Mef_VisionFrame
             // 所以这里累加不会出现同一片同一项被记多次。
             if (RecordSizeConsecutiveNg(sizeInfo.Name, sizeInfo.IsNG, item.ContinuousCount))
             {
-                Log4netRecord.ErrorLog.Error(
+                AppLog.Error(
                     $"五金模切尺寸项[{sizeInfo.Name}]连续NG达到阈值{item.ContinuousCount}");
                 TriggerSizeNg();
             }
@@ -760,7 +760,7 @@ namespace Mef_VisionFrame
                 {
                     if (ChartMissReported.Add(sizeInfo.Name))
                     {
-                        Log4netRecord.ErrorLog.Error($"五金模切曲线未建立页签，尺寸项[{sizeInfo.Name}]的曲线数据被丢弃");
+                        AppLog.Error($"五金模切曲线未建立页签，尺寸项[{sizeInfo.Name}]的曲线数据被丢弃");
                     }
                 }
             }

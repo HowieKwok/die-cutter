@@ -564,6 +564,9 @@ namespace Mef_VisionFrame
 
             // 日志页与激光模切同一套控件（UC_Message 自带定时器，消费 MessageNotify 的报警/调试/错误/通讯队列）
             logView = new UC_Message { Dock = DockStyle.Fill, Margin = new Padding(4) };
+            // 五金不走 MessageNotify 的停机报警队列（告警走 Form_五金告警），
+            // 默认落在“调试”页，避免一打开就停在永远为空的“报警”页。
+            logView.SetTabIndexSilent(1);
             AddDataPage(tabs, DataPage.日志, "日志", logView);
 
             // 换页 = 换一批要刷的控件：闸门重算一次，然后只补刷新页那一份

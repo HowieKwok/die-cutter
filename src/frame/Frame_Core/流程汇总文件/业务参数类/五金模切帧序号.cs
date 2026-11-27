@@ -1,3 +1,4 @@
+using LogTool;
 using System;
 using System.Diagnostics;
 
@@ -211,7 +212,7 @@ namespace Frame_Core.业务参数类
             Action<int, FrameStation> handler = FrameAssigned;
             if (handler == null) return;
             try { handler(frameId, station); }
-            catch (Exception ex) { LogTool.Log4netRecord.ErrorLog.Error("帧分配通知失败：" + ex); }
+            catch (Exception ex) { AppLog.Error("帧分配通知失败：" + ex); }
         }
 
         /// <summary>
@@ -236,13 +237,13 @@ namespace Frame_Core.业务参数类
         {
             if (frameId <= 0) return;
 
-            LogTool.Log4netRecord.RunLog.Error($"[五金帧放弃] 帧{frameId} {station}：{reason}");
+            AppLog.Error($"[五金帧放弃] 帧{frameId} {station}：{reason}");
 
             Action<int, FrameStation, string> handler = FrameAbandoned;
             if (handler == null) return;
 
             try { handler(frameId, station, reason); }
-            catch (Exception ex) { LogTool.Log4netRecord.ErrorLog.Error("帧放弃通知失败：" + ex); }
+            catch (Exception ex) { AppLog.Error("帧放弃通知失败：" + ex); }
         }
 
         /// <summary>

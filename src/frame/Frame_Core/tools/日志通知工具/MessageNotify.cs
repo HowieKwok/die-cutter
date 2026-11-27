@@ -11,6 +11,34 @@ namespace Frame_Core
 {
     public static class MessageNotify
     {
+        /// <summary>
+        /// 接管 AppLog 的界面输出。启动时调用一次即可（幂等）；不调用则 AppLog 只写文件。
+        /// </summary>
+        public static void AttachUiSink()
+        {
+            AppLog.UiSink = Publish;
+        }
+
+        /// <summary>AppLog 已经把时间拼好，这里只负责入队与置“有更新”标记。</summary>
+        private static void Publish(AppLogChannel channel, string text)
+        {
+            switch (channel)
+            {
+                case AppLogChannel.错误:
+                    ErrorLogs.Add(text + "\r\n", (uint)ShowCount);
+                    ErrorLogEnable = true;
+                    break;
+                case AppLogChannel.通讯:
+                    CommLogs.Add(text + "\r\n", (uint)ShowCount);
+                    CommLogEnable = true;
+                    break;
+                default:
+                    DebugLogs.Add(text + "\r\n", (uint)ShowCount);
+                    DebugLogEnable = true;
+                    break;
+            }
+        }
+
         public static int ShowCount { get; } = 500;
         public static QueuePackage<StopAlarmMessage> StopAlarmQueue { get; } = new QueuePackage<StopAlarmMessage>();
         public static ListPackage<string> DebugLogs { get; } = new ListPackage<string>();
@@ -29,36 +57,25 @@ namespace Frame_Core
         {
             StopAlarmQueue.Enqueue(message, (uint)ShowCount);
         }
+        // 保留旧入口给既有调用方；落文件与进队列的统一实现在 AppLog。
         public static void AddDebugLog(string log)
         {
-            string time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:fff");
-            Log4netRecord.RunLog.Debug(time + "   " + log);
-            DebugLogs.Add(time + "   " + log + "\r\n", (uint)ShowCount);
-            DebugLogEnable = true;
+            AppLog.Debug(log);
         }
 
         public static void AddErrorLog(string log)
         {
-            string time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:fff");
-            Log4netRecord.ErrorLog.Error(time + "   " + log);
-            ErrorLogs.Add(time + "   " +log + "\r\n", (uint)ShowCount);
-            ErrorLogEnable = true;
+            AppLog.Error(log);
         }
 
         public static void AddErrorLog(string log, Exception ex)
         {
-            string time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:fff");
-            Log4netRecord.ErrorLog.Error(time + "   " + log, ex);
-            ErrorLogs.Add(time + "   " + log + "\r\n", (uint)ShowCount);
-            ErrorLogEnable = true;
+            AppLog.Error(log, ex);
         }
 
         public static void AddCommLog(string log)
         {
-            string time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:fff");
-            Log4netRecord.CommLog.Error(time + "   " + log);
-            CommLogs.Add(time + "   " + log + "\r\n", (uint)ShowCount);
-            CommLogEnable = true;
+            AppLog.Comm(log);
         }
     }
 

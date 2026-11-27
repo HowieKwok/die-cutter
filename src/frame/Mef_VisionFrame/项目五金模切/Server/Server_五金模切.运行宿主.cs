@@ -436,7 +436,7 @@ namespace Mef_VisionFrame
                 }
                 if (framesAtClear > 0)
                 {
-                    Log4netRecord.RunLog.Info("结束膜卷清场：帧队列仍有 " + framesAtClear + " 帧未处理，随清场丢弃");
+                    AppLog.Info("结束膜卷清场：帧队列仍有 " + framesAtClear + " 帧未处理，随清场丢弃");
                 }
 
                 if (IsSimulation && Simulation.SimBootstrap.Runtime != null)
@@ -460,7 +460,7 @@ namespace Mef_VisionFrame
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Error("结束膜卷清理异常（流程已停止）", ex);
+                AppLog.Error("结束膜卷清理异常（流程已停止）", ex);
             }
             finally
             {
@@ -493,12 +493,12 @@ namespace Mef_VisionFrame
                 }
                 if (!WaitAllIdle(3000))
                 {
-                    Log4netRecord.ErrorLog.Error("五金开始回滚：等待流程空闲超时");
+                    AppLog.Error("五金开始回滚：等待流程空闲超时");
                 }
 
                 if (!StopRun())
                 {
-                    Log4netRecord.ErrorLog.Error("五金开始回滚：停止流程/发布器失败");
+                    AppLog.Error("五金开始回滚：停止流程/发布器失败");
                 }
 
                 if (IsSimulation && Simulation.SimBootstrap.Runtime != null)
@@ -508,7 +508,7 @@ namespace Mef_VisionFrame
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Error("五金开始回滚失败", ex);
+                AppLog.Error("五金开始回滚失败", ex);
             }
             finally
             {
@@ -538,7 +538,7 @@ namespace Mef_VisionFrame
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Error("回滚清理膜卷目录失败：" + path, ex);
+                AppLog.Error("回滚清理膜卷目录失败：" + path, ex);
             }
         }
 
@@ -586,7 +586,7 @@ namespace Mef_VisionFrame
 
                     // 操作员已确认：仿真令牌是人工产生的，丢弃不会造成真实数据损失
                     runtime.Orchestrator.ClearProducts();
-                    Log4netRecord.RunLog.Info("五金单步：已丢弃 " + inFlight + " 片仿真在途令牌。");
+                    AppLog.Info("五金单步：已丢弃 " + inFlight + " 片仿真在途令牌。");
                 }
 
                 // 上一步的残留组先清掉，否则新帧号会被“尺寸帧号错位”挡住
@@ -650,7 +650,7 @@ namespace Mef_VisionFrame
                     if (downAcceptedId <= 0)
                     {
                         // 下线没拿到新号：尺寸没有合法新帧号，绝不能复用旧号
-                        Log4netRecord.RunLog.Info("五金单步：下线未接受新帧号，本步跳过尺寸。");
+                        AppLog.Info("五金单步：下线未接受新帧号，本步跳过尺寸。");
                     }
                     else
                     {

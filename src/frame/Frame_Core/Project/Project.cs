@@ -17,6 +17,15 @@ namespace Frame_Core
 
     public class Project
     {
+        /// <summary>
+        /// 把 AppLog 的界面输出接到主界面“日志”页。
+        /// 早于本类的日志只落文件，与改造前行为一致。
+        /// </summary>
+        static Project()
+        {
+            MessageNotify.AttachUiSink();
+        }
+
         private Project() { }
         private static Project project = null;
         /// <summary>

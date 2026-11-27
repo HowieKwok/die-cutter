@@ -83,7 +83,7 @@ namespace Frame_Core.业务类
             }
             catch (Exception ee)
             {
-                Log4netRecord.ErrorLog.Error("五金模切初始化系统数据报错：\n" + ee);
+                AppLog.Error("五金模切初始化系统数据报错：\n" + ee);
                 return false;
             }
         }

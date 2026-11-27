@@ -98,7 +98,7 @@ namespace Mef_VisionFrame
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Error("五金启动流程失败", ex);
+                AppLog.Error("五金启动流程失败", ex);
                 return false;
             }
         }
@@ -129,7 +129,7 @@ namespace Mef_VisionFrame
             catch (Exception ex)
             {
                 reason = "停止流程/发布器异常：" + ex.Message;
-                Log4netRecord.ErrorLog.Error("五金停止流程失败", ex);
+                AppLog.Error("五金停止流程失败", ex);
                 return false;
             }
         }
@@ -145,7 +145,7 @@ namespace Mef_VisionFrame
                 if (!Project.Instance.baseProDevice.INIProduct())
                 {
                     reason = "生产已停止，但 INIProduct 复位失败，请重启软件。";
-                    Log4netRecord.ErrorLog.Error("五金停止流程时 INIProduct 失败");
+                    AppLog.Error("五金停止流程时 INIProduct 失败");
                     return false;
                 }
 
@@ -156,7 +156,7 @@ namespace Mef_VisionFrame
             catch (Exception ex)
             {
                 reason = "停止后清场异常：" + ex.Message;
-                Log4netRecord.ErrorLog.Error("五金停止后清场失败", ex);
+                AppLog.Error("五金停止后清场失败", ex);
                 return false;
             }
         }
@@ -164,7 +164,7 @@ namespace Mef_VisionFrame
         public override void Reset()
         {
             // 五金总开关是开始/结束膜卷；软复位按钮已隐藏，这里不再改运行状态。
-            Log4netRecord.RunLog.Info("五金模切不再支持 CCD 软件复位，请使用【结束膜卷】/【开始膜卷】。");
+            AppLog.Info("五金模切不再支持 CCD 软件复位，请使用【结束膜卷】/【开始膜卷】。");
         }
 
         #endregion
@@ -262,7 +262,7 @@ namespace Mef_VisionFrame
             }
             catch (Exception ex)
             {
-                Log4netRecord.ErrorLog.Error($"五金外观判定异常，按 NG 结算：{ex}");
+                AppLog.Error($"五金外观判定异常，按 NG 结算：{ex}");
 
                 // 认领成功才补：判定异常多发生在入队之后的落盘/界面环节，
                 // 重复入队会让 PLC 把两片的结论错位。判重由结算守卫负责，不再扫队列
@@ -328,7 +328,7 @@ namespace Mef_VisionFrame
             DieCutEAProduct product = productBase as DieCutEAProduct;
             if (product == null)
             {
-                Log4netRecord.ErrorLog.Error("外观工位收到非 EA 产品，无法结算，请检查流程回调绑定");
+                AppLog.Error("外观工位收到非 EA 产品，无法结算，请检查流程回调绑定");
                 return;
             }
 
