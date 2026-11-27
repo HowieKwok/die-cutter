@@ -806,7 +806,7 @@ namespace Mef_VisionFrame
         /// </summary>
         private IList<SizeCraftStation_DieCuttingCut> SizeItems()
         {
-            return VM.Data.Craft?.Get_Station3_SizeCrafts();
+            return VM.Data.Craft?.Get_Station3_SizeCrafts_Runtime();
         }
 
         /// <summary>按路取一格 NG 显示窗口，每显示一次推进一格（轮播）。</summary>

@@ -58,5 +58,25 @@ namespace Frame_Core
             get => _M_GlobalVariable;
             set { _M_GlobalVariable = value; }
         }
+
+        /// <summary>
+        /// 保存配方后需要重启软件才能生效的全局变量名。
+        /// 默认没有；机型配方按需重写，保存按钮据此提示重启。
+        /// </summary>
+        public virtual IReadOnlyList<string> GetRestartRequiredGlobalVariableNames()
+        {
+            return Array.Empty<string>();
+        }
+
+        /// <summary>按名称取全局变量当前值；变量或列表不存在时返回空串。</summary>
+        public string GetGlobalVariableValue(string name)
+        {
+            if (string.IsNullOrEmpty(name) || M_GlobalVariable?.l_GlobalVariableItems == null)
+                return string.Empty;
+
+            GlobalVariableItem item = M_GlobalVariable.l_GlobalVariableItems
+                .Find(p => p != null && p.Name == name);
+            return item?.Value ?? string.Empty;
+        }
     }
 }

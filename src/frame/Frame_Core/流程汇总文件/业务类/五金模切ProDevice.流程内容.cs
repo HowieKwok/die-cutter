@@ -468,8 +468,12 @@ namespace Frame_Core.业务类
                 //裁图高度比例系数
                 double CropHeightScale = (m_craft.Get_GlobalVariableItem("CropHeightScale")?.Value.ToDouble() ?? 1);
 
-                //工艺基准位，根据涂层抓边定位位置来
-                PointInfo point基准 = new PointInfo() { Col = (m_craft.Get_GlobalVariableItem(camID, "DefCamEALftBaseCol")?.Value.ToDouble() ?? 0), Row = 0 };
+                //工艺基准位：列取产品左边缘（横向不跟随），行取极耳水平边在拼接图里的基准行（行跟随的零点）
+                PointInfo point基准 = new PointInfo()
+                {
+                    Col = (m_craft.Get_GlobalVariableItem(camID, "DefCamEALftBaseCol")?.Value.ToDouble() ?? 0),
+                    Row = (m_craft.Get_GlobalVariableItem(camID, "DefCamEALftBaseRow")?.Value.ToDouble() ?? 0)
+                };
                 //默认切刀位置
                 double CutLine = (m_craft.Get_GlobalVariableItem(camID, "DefCutPos")?.Value.ToDouble() ?? 0);
                 //居中裁图偏移距离
@@ -551,6 +555,32 @@ namespace Frame_Core.业务类
                         CropPartParams.list_ImageInfo = ProParam相机模切业务.imageInfos;
                         ImageInfo image1 = ProParam相机模切业务.imageInfos[0];
                         ImageInfo image2 = ProParam相机模切业务.imageInfos[1];
+
+                        //裁图前置环节失败时的统一 NG 出口。
+                        //收尾动作必须与越界分支一致：EnqueueEAImage / semaphoreSlim.Release / nEAId++ 缺一步，
+                        //EA 队列长度就会与触发次数失配，EA 流程会永久卡死。
+                        void EnqueueNgEA(string 原因)
+                        {
+                            ImageInfo ngImage = new ImageInfo();
+                            ngImage.NgType = 1;
+                            ngImage.ho_image = 安全复制(image1, InfoImgInfo);
+                            ngImage.EAID = ProParam相机模切业务.nEAId;
+                            ngImage.nFirstLineEncoderCount = image1.nFirstLineEncoderCount;
+                            ngImage.nLastLineEncoderCount = image1.nLastLineEncoderCount;
+                            ngImage.imageWidth = InfoImgInfo.imageWidth;
+                            ngImage.imageHeight = ngImage.nLastLineEncoderCount - ngImage.nFirstLineEncoderCount;
+                            ngImage.ImageDescription = $"第{ngImage.EAID}片EA";
+
+                            EnqueueEAImage(ProParam相机模切业务, ngImage);
+                            ProParam相机模切业务.semaphoreSlim.Release();
+                            ProParam相机模切业务.nEAId++;
+
+                            ShowHalconWindow2.m_messageShowInfos.Add(new MessageShowInfo { m_strMessage = 原因, m_stuGetColor = HalconColor.red });
+                            MessageNotify.AddErrorLog(原因);
+                            HOperatorSet.CountSeconds(out Product模切帧图.detectionTime.Image_EndTime);
+                            ProParam相机模切业务.ProductCallBack(Product模切帧图);
+                        }
+
                         //归一化
                          NormalizaLocation2((int)image1.image_ID, (image1.imageHeight + image2.imageHeight) / 2, image1.imageHeight, out int id, out double line);
                    
@@ -608,33 +638,53 @@ namespace Frame_Core.业务类
 
 
                             //抓边结果总结
-                            DetectEdgeValueAssign(paramsMeasureLine, PluginLine.ExecuteObj(), MeasureLineInfo, ShowHalconWindow2.m_messageShowInfos,
+                            //DetectEdgeValueAssign 的返回值恒为 false（内部 IsExecuteSuccess 从未置位），
+                            //成败只能取插件 ExecuteObj 的原始返回值。
+                            bool 抓边成功 = PluginLine.ExecuteObj();
+                            DetectEdgeValueAssign(paramsMeasureLine, 抓边成功, MeasureLineInfo, ShowHalconWindow2.m_messageShowInfos,
                                        ShowHalconWindow2.m_lineShowInfos, ShowHalconWindow2.m_regionShowInfos);
 
                             Product模切帧图.LineInfosResult.Add(MeasureLineInfo);
-                            PointInfo point跟随 = new PointInfo() { Col = (MeasureLineInfo.ColBegin + MeasureLineInfo.ColEnd) / 2, Row = 0 };
-                            PointInfo pointMatch = new PointInfo() { Col = point基准.Col, Row = 0 };
+
+                            //ROI 框的是极耳的水平边：拟合线两端被 ROI 左右边界决定，中点列恒等于 ROI 中点列，
+                            //不含位置信息；真正随产品浮动的是这条水平边的行。所以跟随量取行、列固定传基准，
+                            //否则刚体变换退化成零偏移，精定位 ROI 实质从不跟随。
+                            //行跟随必须开启：极耳在拼接图里的行随触发相位漂移，不跟随精定位必然脱靶。
+                            //基准行优先取配方 DefCamEALftBaseRow；未配置（<=0）时退回抓边 ROI 自身的中点行，
+                            //ROI 就是配方认为"极耳应该在这"的位置，它的中点行天然是跟随零点，永远可用。
+                            double 基准行 = point基准.Row > 0 ? point基准.Row : paramsMeasureLine.hv_RoiMidRow;
+                            PointInfo point跟随 = new PointInfo()
+                            {
+                                Col = point基准.Col,
+                                Row = (MeasureLineInfo.RowBegin + MeasureLineInfo.RowEnd) / 2
+                            };
+                            PointInfo pointMatch = new PointInfo() { Col = point基准.Col, Row = 基准行 };
+
+                            if (!抓边成功)
+                            {
+                                EnqueueNgEA("涂层抓边定位失败，精定位无法确定行跟随量");
+                                return;
+                            }
                             IPlugin Plugin精定位交点模块 = process.m_ModuleObjList.Find(c => c.moduleInfo.ModuleName == $"精定位交点模块");
                             ImageInfo imageInfo = new ImageInfo() { ho_image = CropPartParams.Image_part };
                             bool success = ProcessCoarseLocation(imageInfo, Plugin精定位交点模块, ProcessID, ShowHalconWindow2, out OutCrossGroup Cross精定位交点模块, pointMatch, point跟随, "精定位模块", true, true);
                             if (!success)
                             {
-                                CutLine = ProParam相机模切业务.nLastCutLine > 0 ? ProParam相机模切业务.nLastCutLine : CutLine;
                                 Log4netRecord.ErrorLog.Debug($"流程{Plugin精定位交点模块.moduleInfo.ProcessID}的{Plugin精定位交点模块.moduleInfo.ModuleName}执行失败");
+                                //裁断行只能来自精定位交点：退回上一片或 DefCutPos 会静默裁错小图，
+                                //所以这里直接判 NG，让问题在结果上暴露出来。
+                                EnqueueNgEA("精定位交点模块执行失败，裁断行不可信");
+                                return;
                             }
-                            else
+
+                            // 生成十字交叉线并添加到显示窗口
+                            HOperatorSet.GenCrossContourXld(out HObject cross1, Cross精定位交点模块.point.Row, Cross精定位交点模块.point.Col, 20, 45);
+                            ShowHalconWindow2.m_regionShowInfos.Add(new RegionShowInfo()
                             {
-                                // 生成十字交叉线并添加到显示窗口
-                                HOperatorSet.GenCrossContourXld(out HObject cross1, Cross精定位交点模块.point.Row, Cross精定位交点模块.point.Col, 20, 45);
-                                ShowHalconWindow2.m_regionShowInfos.Add(new RegionShowInfo()
-                                {
-                                    m_hRegion = cross1,
-                                    m_stuGetColor = HalconColor.gold
-                                });
-                                CutLine = Cross精定位交点模块.point.Row;
-                                ProParam相机模切业务.nLastCutLine = CutLine;
-                            }
-                            CutLine = ProParam相机模切业务.nLastCutLine > 0 ? ProParam相机模切业务.nLastCutLine : CutLine;
+                                m_hRegion = cross1,
+                                m_stuGetColor = HalconColor.gold
+                            });
+                            CutLine = Cross精定位交点模块.point.Row;
 
                             //这里进行位置推算
                             //第一步，判断位置是否满足裁图条件
@@ -1329,6 +1379,11 @@ namespace Frame_Core.业务类
 
                 //设置当前流程绑定核
                 SetThreadAffinityMask(GetCurrentThread(), new UIntPtr(SetCpuID(ProcessID)));
+
+                // V角总开关：每帧读取并同步插件启用位，配方改动无需重启流程
+                bool v角检测启用 = ReadV角检测启用();
+                SyncV角插件启用(process, v角检测启用);
+
                 //标定系数
                 double Calipix_y = Service_Camera.GetCam_CalibrationValue_Y(camID);
                 double Calipix_x = Service_Camera.GetCam_CalibrationValue_X(camID);
@@ -1560,7 +1615,9 @@ namespace Frame_Core.业务类
                     #endregion
 
                     #region 凸点测量检测模块执行
-
+                    // 总开关关闭：整段 V角凸点测量都不执行（不建点、不进 PointResults、不画十字）
+                    if (v角检测启用)
+                    {
                     PointInfo point左侧V角凸点1 = new PointInfo() { nProcessID = ProcessID, ModuleName = "左侧V角凸点1" };
                     PointInfo point左侧V角凸点2 = new PointInfo() { nProcessID = ProcessID, ModuleName = "左侧V角凸点2" };
                     PointInfo point右侧V角凸点1 = new PointInfo() { nProcessID = ProcessID, ModuleName = "右侧V角凸点1" };
@@ -1742,7 +1799,7 @@ namespace Frame_Core.业务类
                     HOperatorSet.GenCrossContourXld(out cross, point右侧V角凸点2.Row, point右侧V角凸点2.Col, 10, 45);
                     ShowHalconWindow.m_regionShowInfos.Add(new RegionShowInfo() { m_hRegion = cross, m_stuGetColor = HalconColor.gold });
 
-
+                    }
                     #endregion
 
                     #region Blob模块执行
@@ -1764,6 +1821,7 @@ namespace Frame_Core.业务类
                     #region 左底部V角检测有无
                         () =>
                         {
+                            if (!v角检测启用) return;
                             IPlugin Plugin左底部V角检测有无 = process.m_ModuleObjList.Find(c => c.moduleInfo.ModuleName == $"左底部V角检测有无");
                             ParamsBlobAnalysis params左底部V角检测有无 = Plugin左底部V角检测有无.PluginParams as ParamsBlobAnalysis;
                             params左底部V角检测有无.ho_Image = InfoImgInfo.ho_image;
@@ -1839,6 +1897,7 @@ namespace Frame_Core.业务类
                     #region 右底部V角检测有无
                             () =>
                             {
+                                if (!v角检测启用) return;
                                 IPlugin Plugin右底部V角检测有无 = process.m_ModuleObjList.Find(c => c.moduleInfo.ModuleName == $"右底部V角检测有无");
                                 ParamsBlobAnalysis params右底部V角检测有无 = Plugin右底部V角检测有无.PluginParams as ParamsBlobAnalysis;
                                 params右底部V角检测有无.ho_Image = InfoImgInfo.ho_image;
@@ -2313,6 +2372,11 @@ namespace Frame_Core.业务类
 
                 //设置当前流程绑定核
                 SetThreadAffinityMask(GetCurrentThread(), new UIntPtr(SetCpuID(ProcessID)));
+
+                // V角总开关：每帧读取并同步插件启用位，配方改动无需重启流程
+                bool v角检测启用 = ReadV角检测启用();
+                SyncV角插件启用(process, v角检测启用);
+
                 //标定系数
                 double Calipix_y = Service_Camera.GetCam_CalibrationValue_Y(camID);
                 double Calipix_x = Service_Camera.GetCam_CalibrationValue_X(camID);
@@ -2358,6 +2422,9 @@ namespace Frame_Core.业务类
                     #endregion
 
                     #region 凸点测量检测模块执行
+                    // 总开关关闭：整段 V角凸点测量都不执行（不建点、不进 PointResults、不画十字）
+                    if (v角检测启用)
+                    {
                     PointInfo pointV角凸点1 = new PointInfo() { nProcessID = ProcessID, ModuleName = "V角凸点1" };
                     PointInfo pointV角凸点2 = new PointInfo() { nProcessID = ProcessID, ModuleName = "V角凸点2" };
                     Parallel.Invoke
@@ -2441,6 +2508,7 @@ namespace Frame_Core.业务类
                     HOperatorSet.GenCrossContourXld(out cross, pointV角凸点2.Row, pointV角凸点2.Col, 10, 45);
                     ShowHalconWindow.m_regionShowInfos.Add(new RegionShowInfo() { m_hRegion = cross, m_stuGetColor = HalconColor.gold });
 
+                    }
                     #endregion
 
                     #region Blob模块执行
@@ -2526,6 +2594,7 @@ namespace Frame_Core.业务类
                     #region 顶部V角检测有无
                     () =>
                     {
+                        if (!v角检测启用) return;
                         IPlugin Plugin顶部V角检测有无 = process.m_ModuleObjList.Find(c => c.moduleInfo.ModuleName == $"顶部V角检测有无");
                         ParamsBlobAnalysis params顶部V角检测有无 = Plugin顶部V角检测有无.PluginParams as ParamsBlobAnalysis;
                         params顶部V角检测有无.ho_Image = InfoImgInfo.ho_image;
@@ -2670,6 +2739,58 @@ namespace Frame_Core.业务类
                 // throw;
             }
         }
+
+        #region V角总开关
+
+        /// <summary>读取五金配方的 V角总开关；配方未加载时按启用处理。</summary>
+        private bool ReadV角检测启用()
+        {
+            CraftParam_五金模切 craft = m_craft as CraftParam_五金模切;
+            return craft == null || craft.V角检测启用;
+        }
+
+        /// <summary>按当前配方开关同步所有流程里的 V角插件启用位。</summary>
+        private void SyncV角插件启用()
+        {
+            bool enabled = ReadV角检测启用();
+            ProcessManager manager = Project.Instance.Process流程插件管理者;
+            if (manager?.List == null) return;
+
+            for (int i = 0; i < manager.List.Count; i++)
+            {
+                SyncV角插件启用(manager.List[i].process, enabled);
+            }
+        }
+
+        /// <summary>同步单个流程的 V角插件启用位。</summary>
+        private static void SyncV角插件启用(Process process, bool enabled)
+        {
+            if (process?.m_ModuleObjList == null) return;
+            SyncV角模块启用(process, CraftParam_五金模切.V角凸点模块名, enabled);
+            SyncV角模块启用(process, CraftParam_五金模切.V角检测模块名, enabled);
+        }
+
+        /// <summary>
+        /// 只改插件参数 m_bIsEnable，不改 moduleInfo.IsUse。
+        /// IsUse=false 会让 WPFDebugProcessView 直接跳过该模块，调试时看不到也打不开参数；
+        /// m_bIsEnable 才是插件 ExecuteObj 的实际门禁，界面上显示为“模块启用/启用插件”。
+        /// </summary>
+        private static void SyncV角模块启用(Process process, string[] moduleNames, bool enabled)
+        {
+            for (int i = 0; i < moduleNames.Length; i++)
+            {
+                IPlugin plugin = process.GetModuleByName(moduleNames[i]);
+                if (plugin == null) continue;
+
+                ParamsBlobAnalysis blob = plugin.PluginParams as ParamsBlobAnalysis;
+                if (blob != null) { blob.m_bIsEnable = enabled; continue; }
+
+                ParamsReusableMeasureDetect measure = plugin.PluginParams as ParamsReusableMeasureDetect;
+                if (measure != null) measure.m_bIsEnable = enabled;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// 取一张可用图像的副本。

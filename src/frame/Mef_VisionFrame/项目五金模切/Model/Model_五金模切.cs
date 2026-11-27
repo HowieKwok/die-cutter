@@ -277,7 +277,7 @@ namespace Mef_VisionFrame
             get
             {
                 List<string> titles = new List<string> { "时间", "帧号" };
-                if (Craft != null) titles.AddRange(Craft.Get_Station3_SizeNames());
+                if (Craft != null) titles.AddRange(Craft.Get_Station3_SizeNames_Runtime());
                 return titles;
             }
         }
@@ -370,8 +370,8 @@ namespace Mef_VisionFrame
                 // 尺寸工位的统计表要同时覆盖"尺寸项"和"缺陷项"：
                 // 尺寸超规与外观缺陷都会让这一片 NG，只列缺陷项会让尺寸超规在良率表里查无此项。
                 List<string> names = new List<string>();
-                names.AddRange(Craft.Get_Station3_SizeNames());
-                foreach (string name in Craft.Get_Station3_DefectNames())
+                names.AddRange(Craft.Get_Station3_SizeNames_Runtime());
+                foreach (string name in Craft.Get_Station3_DefectNames_Runtime())
                 {
                     if (!names.Contains(name)) names.Add(name);
                 }
