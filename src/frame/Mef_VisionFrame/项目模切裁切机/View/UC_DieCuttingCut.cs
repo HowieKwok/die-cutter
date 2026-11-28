@@ -115,7 +115,7 @@ namespace Mef_VisionFrame
             chartBoard = new UC_SizeCurveBoard(VM.Data.chartUIUser) { Dock = DockStyle.Fill };
             tabPage7.Controls.Clear();
             tabPage7.Controls.Add(chartBoard);
-            chartBoard.Sync(VM.Data.Craft?.Get_Station3_SizeCrafts());
+            chartBoard.Sync(VM.Data.Craft?.Get_Station3_SizeCrafts_Runtime());
         }
         private void UC_DieCuttingCut_Load(object sender, EventArgs e)
         {
@@ -156,7 +156,7 @@ namespace Mef_VisionFrame
                     }
 
                     // 曲线页收起/未建时由共用控件自己按签名建页签与标线，这里无需判断
-                    chartBoard?.Sync(VM.Data.Craft?.Get_Station3_SizeCrafts());
+                    chartBoard?.Sync(VM.Data.Craft?.Get_Station3_SizeCrafts_Runtime());
                 });
             });
         }

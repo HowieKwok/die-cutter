@@ -74,6 +74,12 @@ namespace Frame_Core
             craftBase1.filePath = recipeFilePath;
             craftBase1.Init(length);
 
+            // 布尔全局变量统一为 1/0（兼容旧配方的 true/false），保存时落盘
+            if (craftBase1 is CraftParam_DieCutBase dieCutCraft)
+            {
+                dieCutCraft.NormalizeBoolGlobalVariables();
+            }
+
             // 首次读取（配方文件不存在或损坏）：Init 装配出的完整结构必须落盘，
             // 否则磁盘上只会留下 Read 时那个未 Init 的空壳，配方永远"看起来是空的"。
             if (isNew)

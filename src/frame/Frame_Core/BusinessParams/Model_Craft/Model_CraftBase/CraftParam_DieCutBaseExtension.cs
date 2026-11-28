@@ -316,7 +316,156 @@ namespace Frame_Core
             return Crafts.l_DefectCraftStation_3.Find(p => p.Name == name);
         }
 
+        #region AT 运行期过滤
 
+        /// <summary>尺寸项数据源中代表 AT 抓边模块的名字片段。</summary>
+        private const string AT抓边标识 = "极片AT抓边";
+
+        /// <summary>AT 尺寸项名：数据源被改成别的名字时仍能兜底排除。</summary>
+        private const string AT尺寸项名 = "带料高";
+
+        /// <summary>AT 缺陷项名，必须与流程 emit 的 ClassName 逐字一致。</summary>
+        private const string AT缺陷项名 = "AT漏金属";
+
+        /// <summary>尺寸项是否依赖 AT 抓边：项名命中，或数据源任一端含 AT 抓边模块。</summary>
+        private static bool IsATSizeCraft(SizeCraftStation_DieCuttingCut item)
+        {
+            if (item == null) return false;
+            if (item.Name == AT尺寸项名) return true;
+            return IsAT数据源(item.DataSource1) || IsAT数据源(item.DataSource2);
+        }
+
+        private static bool IsAT数据源(string dataSource)
+        {
+            return !string.IsNullOrEmpty(dataSource)
+                && dataSource.IndexOf(AT抓边标识, StringComparison.Ordinal) >= 0;
+        }
+
+        /// <summary>尺寸项运行期排除：AT 关闭时排除依赖项，或机型自有条件（V角）。</summary>
+        private static bool ShouldExcludeSizeCraft(CraftParam_DieCutBase crafts, SizeCraftStation_DieCuttingCut item)
+        {
+            if (item == null) return true;
+            if (!crafts.IsAT && IsATSizeCraft(item)) return true;
+            return crafts.ExcludeSizeCraftAtRuntime(item);
+        }
+
+        /// <summary>缺陷项运行期排除：AT 关闭时的 AT 漏金属，或机型自有条件（V角）。</summary>
+        private static bool ShouldExcludeDefectName(CraftParam_DieCutBase crafts, string name)
+        {
+            if (!crafts.IsAT && name == AT缺陷项名) return true;
+            return crafts.ExcludeDefectNameAtRuntime(name);
+        }
+
+        /// <summary>
+        /// 运行期尺寸项：在原始列表上叠加 AT 与机型排除条件。
+        /// 无排除时不分配，直接返回原列表引用；调用方只读，不得原地修改。
+        /// </summary>
+        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts_Runtime(this CraftParam_DieCutBase Crafts)
+        {
+            if (Crafts == null || Crafts.l_SizeCraftStation_3 == null)
+            {
+                return new List<SizeCraftStation_DieCuttingCut>();
+            }
+
+            List<SizeCraftStation_DieCuttingCut> all = Crafts.l_SizeCraftStation_3;
+            List<SizeCraftStation_DieCuttingCut> result = null;
+            for (int i = 0; i < all.Count; i++)
+            {
+                SizeCraftStation_DieCuttingCut item = all[i];
+                if (ShouldExcludeSizeCraft(Crafts, item))
+                {
+                    // 首次命中才复制前缀，无过滤时零分配
+                    if (result == null)
+                    {
+                        result = new List<SizeCraftStation_DieCuttingCut>(all.Count);
+                        for (int j = 0; j < i; j++) result.Add(all[j]);
+                    }
+                    continue;
+                }
+                result?.Add(item);
+            }
+            return result ?? all;
+        }
+
+        /// <summary>运行期单路尺寸项（CameraId1 == CameraId2 == camIndex）。</summary>
+        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts_Runtime(this CraftParam_DieCutBase Crafts, int camIndex)
+        {
+            List<SizeCraftStation_DieCuttingCut> all = Get_Station3_SizeCrafts_Runtime(Crafts);
+            List<SizeCraftStation_DieCuttingCut> result = new List<SizeCraftStation_DieCuttingCut>();
+            for (int i = 0; i < all.Count; i++)
+            {
+                SizeCraftStation_DieCuttingCut item = all[i];
+                if (item.CameraId1 == camIndex && item.CameraId2 == camIndex) result.Add(item);
+            }
+            return result;
+        }
+
+        /// <summary>运行期跨相机尺寸项（CameraId1 != CameraId2）。</summary>
+        public static List<SizeCraftStation_DieCuttingCut> Get_Station3_SizeCrafts_CamDifferent_Runtime(this CraftParam_DieCutBase Crafts)
+        {
+            List<SizeCraftStation_DieCuttingCut> all = Get_Station3_SizeCrafts_Runtime(Crafts);
+            List<SizeCraftStation_DieCuttingCut> result = new List<SizeCraftStation_DieCuttingCut>();
+            for (int i = 0; i < all.Count; i++)
+            {
+                SizeCraftStation_DieCuttingCut item = all[i];
+                if (item.CameraId1 != item.CameraId2) result.Add(item);
+            }
+            return result;
+        }
+
+        /// <summary>运行期尺寸项名，顺序与 Get_Station3_SizeCrafts_Runtime() 一致。</summary>
+        public static List<string> Get_Station3_SizeNames_Runtime(this CraftParam_DieCutBase Crafts)
+        {
+            List<SizeCraftStation_DieCuttingCut> items = Get_Station3_SizeCrafts_Runtime(Crafts);
+            List<string> names = new List<string>(items.Count);
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] != null) names.Add(items[i].Name);
+            }
+            return names;
+        }
+
+        /// <summary>运行期工位3缺陷项名（按 AT/机型条件剔除，供统计与显示）。</summary>
+        public static List<string> Get_Station3_DefectNames_Runtime(this CraftParam_DieCutBase Crafts)
+        {
+            if (Crafts == null || Crafts.l_DefectCraftStation_3 == null)
+            {
+                return new List<string>();
+            }
+
+            List<DefectCraft_DieCuttingCut> all = Crafts.l_DefectCraftStation_3;
+            List<string> names = new List<string>(all.Count);
+            for (int i = 0; i < all.Count; i++)
+            {
+                DefectCraft_DieCuttingCut item = all[i];
+                if (item == null || string.IsNullOrEmpty(item.Name)) continue;
+                if (ShouldExcludeDefectName(Crafts, item.Name)) continue;
+                names.Add(item.Name);
+            }
+            return names;
+        }
+
+        /// <summary>运行期工位1缺陷项名（AT 关闭时剔除 AT 漏金属）。</summary>
+        public static List<string> Get_Station1_DefectNames_Runtime(this CraftParam_DieCutBase Crafts)
+        {
+            if (Crafts == null || Crafts.l_DefectCraftStation_1 == null)
+            {
+                return new List<string>();
+            }
+
+            List<DefectCraft_DieCuttingCut> all = Crafts.l_DefectCraftStation_1;
+            List<string> names = new List<string>(all.Count);
+            for (int i = 0; i < all.Count; i++)
+            {
+                DefectCraft_DieCuttingCut item = all[i];
+                if (item == null || string.IsNullOrEmpty(item.Name)) continue;
+                if (ShouldExcludeDefectName(Crafts, item.Name)) continue;
+                names.Add(item.Name);
+            }
+            return names;
+        }
+
+        #endregion
 
         public static GlobalVariableItem Get_GlobalVariableItem(this CraftParam_DieCutBase Crafts, int camIndex, string name)
         {
@@ -367,6 +516,10 @@ namespace Frame_Core
             if (string.IsNullOrWhiteSpace(strType))
                 return defaultValue;
 
+            // 配方布尔值统一用 1/0；同时兼容旧配方的 true/false
+            if (strType == "1") return true;
+            if (strType == "0") return false;
+
             return bool.TryParse(strType, out bool result)
               ? result
               : defaultValue;
@@ -376,6 +529,9 @@ namespace Frame_Core
         {
             if (string.IsNullOrWhiteSpace(strType))
                 return defaultValue;
+
+            if (strType == "1") return true;
+            if (strType == "0") return false;
 
             return bool.Parse(strType);
         }

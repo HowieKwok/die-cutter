@@ -86,7 +86,7 @@ namespace Mef_VisionFrame
                 _Station3_Title_Size.Clear();
                 _Station3_Title_Size.Add("时间");
                 _Station3_Title_Size.Add("帧号");
-                _Station3_Title_Size.AddRange(Craft.Get_Station3_SizeNames());
+                _Station3_Title_Size.AddRange(Craft.Get_Station3_SizeNames_Runtime());
                 return _Station3_Title_Size;
             }
         }

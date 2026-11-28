@@ -1539,6 +1539,16 @@ namespace Mef_VisionFrame
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
             });
+
+            // `带AT` 改动后立即刷新 AT 参数行可见性，保存前就能看到效果
+            dataGridView_GlobalVariable.CellValueChanged -= GlobalVariable_CellValueChanged;
+            dataGridView_GlobalVariable.CellValueChanged += GlobalVariable_CellValueChanged;
+            // 数据源刚赋值时 Rows 还没生成，必须等绑定完成再设行可见性
+            dataGridView_GlobalVariable.DataBindingComplete -= GlobalVariable_DataBindingComplete;
+            dataGridView_GlobalVariable.DataBindingComplete += GlobalVariable_DataBindingComplete;
+            // 布尔值只允许 1（启用）/0（禁用），不再接受 true/false
+            dataGridView_GlobalVariable.CellValidating -= GlobalVariable_CellValidating;
+            dataGridView_GlobalVariable.CellValidating += GlobalVariable_CellValidating;
         }
         private DataTable BuildTable_GlobalVariableitem(List<GlobalVariableItem> l_GlobalVariable)
         {
@@ -1599,7 +1609,67 @@ namespace Mef_VisionFrame
             if (l_GlobalVariable != null)
             {
                 dataGridView_GlobalVariable.DataSource = BuildTable_GlobalVariableitem(l_GlobalVariable);
+                ApplyATParameterVisibility();
             }
+        }
+
+        /// <summary>配方参数里随 `带AT` 隐藏的 AT 相关变量（不含开关本身）。</summary>
+        private static readonly HashSet<string> AT参数名 = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "AtLftCol1", "AtLftCol2", "AtTopRow1", "AtBotRow2", "AtWidth",
+        };
+
+        /// <summary>
+        /// 按 `带AT` 控制 AT 参数行的显示。只隐藏、不删数据：
+        /// 保存按行索引写回（GetBuildTable_GlobalVariableitem），过滤数据源会让后面的值写到错误的变量上。
+        /// </summary>
+        private void ApplyATParameterVisibility(bool? isAT = null)
+        {
+            bool showAT = isAT ?? (VM.M_CraftParam != null && VM.M_CraftParam.IsAT);
+            foreach (DataGridViewRow row in dataGridView_GlobalVariable.Rows)
+            {
+                string name = Convert.ToString(row.Cells[1].Value);
+                if (!AT参数名.Contains(name)) continue;
+                row.Visible = showAT;
+            }
+        }
+
+        /// <summary>数据源绑定完成后应用行可见性（绑定前 Rows 为空）。</summary>
+        private void GlobalVariable_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            ApplyATParameterVisibility();
+        }
+
+        /// <summary>`带AT` 单元格改动时即时切换，保存前也能看到隐藏效果。</summary>
+        private void GlobalVariable_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            DataGridViewRow row = dataGridView_GlobalVariable.Rows[e.RowIndex];
+            if (Convert.ToString(row.Cells[1].Value) != "带AT") return;
+
+            bool isAT = Convert.ToString(row.Cells["Value"].Value).ToTryBool(false);
+            ApplyATParameterVisibility(isAT);
+        }
+
+        /// <summary>布尔全局变量只允许 1（启用）或 0（禁用），阻止 true/false。</summary>
+        private void GlobalVariable_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            if (e.ColumnIndex != dataGridView_GlobalVariable.Columns["Value"].Index) return;
+
+            DataGridViewRow row = dataGridView_GlobalVariable.Rows[e.RowIndex];
+            object type = row.Cells["DataType"].Value;
+            if (type == null || Convert.ToInt32(type) != (int)DataTypeEnum.Bool) return;
+
+            string text = Convert.ToString(e.FormattedValue);
+            if (text == "0" || text == "1")
+            {
+                row.ErrorText = string.Empty;
+                return;
+            }
+
+            row.ErrorText = "布尔值只能填 1（启用）或 0（禁用）";
+            e.Cancel = true;
         }
         #endregion
 

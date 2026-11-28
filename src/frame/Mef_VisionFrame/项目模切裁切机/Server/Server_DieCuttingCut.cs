@@ -982,7 +982,7 @@ namespace Mef_VisionFrame
                     }
 
 
-                    List<string> displayDefects = data.Craft.Get_Station1_DefectNames();
+                    List<string> displayDefects = data.Craft.Get_Station1_DefectNames_Runtime();
 
                     // 字典有、工艺没有的缺陷，追加到最后。
                     foreach (var defectName in data.Station1_StatisticalDistribution.Keys)
@@ -1101,8 +1101,8 @@ namespace Mef_VisionFrame
 
 
                     List<string> displayDefects = new List<string>();
-                    displayDefects.AddRange(data.Craft.Get_Station3_SizeNames());
-                    displayDefects.AddRange(data.Craft.Get_Station3_DefectNames());
+                    displayDefects.AddRange(data.Craft.Get_Station3_SizeNames_Runtime());
+                    displayDefects.AddRange(data.Craft.Get_Station3_DefectNames_Runtime());
 
 
                     // 字典有、工艺没有的缺陷，追加到最后。
@@ -1256,7 +1256,7 @@ namespace Mef_VisionFrame
                             new RowData() { dataStr = $"{frame}", resultType =  isNG ?ResultType.NG:ResultType.OK },
                          };
 
-                List<SizeCraftStation_DieCuttingCut> sizeCraftStation_DieCuttingCuts = craft.Get_Station3_SizeCrafts();
+                List<SizeCraftStation_DieCuttingCut> sizeCraftStation_DieCuttingCuts = craft.Get_Station3_SizeCrafts_Runtime();
 
                 foreach (var item in sizeCraftStation_DieCuttingCuts)
                 {
@@ -1428,7 +1428,7 @@ namespace Mef_VisionFrame
             return ExecuteMethodClass.ExecuteMethod(() =>
             {
                 bool isNG = false;
-                List<SizeCraftStation_DieCuttingCut> dieCuttingCuts = craft.Get_Station3_SizeCrafts_CamDifferent();
+                List<SizeCraftStation_DieCuttingCut> dieCuttingCuts = craft.Get_Station3_SizeCrafts_CamDifferent_Runtime();
                 #region   //【1】数据处理    
                 if (dieCuttingCuts != null)
                 {
@@ -1514,7 +1514,7 @@ namespace Mef_VisionFrame
                 bool isNG = false;
 
                 string camName = Service_Camera.GetCam_Name(camIndex);
-                List<SizeCraftStation_DieCuttingCut> sizeCrafts = craft.Get_Station3_SizeCrafts(camIndex);
+                List<SizeCraftStation_DieCuttingCut> sizeCrafts = craft.Get_Station3_SizeCrafts_Runtime(camIndex);
                 #region   //【1】数据处理    
                 if (sizeCrafts != null)
                 {

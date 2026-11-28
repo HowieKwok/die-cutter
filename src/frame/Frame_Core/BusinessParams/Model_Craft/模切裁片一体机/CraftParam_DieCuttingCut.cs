@@ -192,7 +192,7 @@ namespace Frame_Core
             if (versionItem != null) versionItem.Value = SizeCraftVersion.ToString();
 
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "极耳在左侧", "左侧为1右侧为0", DataTypeEnum.Int, "1");
-            targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "带AT", "带AT（true）", DataTypeEnum.Bool, "false");
+            targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "带AT", "带AT（1=启用，0=禁用）", DataTypeEnum.Bool, "0");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "HeartbeatPollingTime", "心跳轮询时间(ms)", DataTypeEnum.Int, "500");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "HeartbeatPulseWidth", "心跳脉冲宽度(ms)", DataTypeEnum.Int, "100");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "防抖时间", "防抖时间(ms)", DataTypeEnum.Int, "10");
@@ -212,7 +212,7 @@ namespace Frame_Core
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "DefectStation_ContinuousCount", "外观工位连续数量", DataTypeEnum.Int, "0");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "SizeStation_ContinuousCount", "尺寸工位连续数量", DataTypeEnum.Int, "0");
 
-            targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "PID启用", "true：开启", DataTypeEnum.Bool, "false");
+            targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "PID启用", "1=启用，0=禁用", DataTypeEnum.Bool, "0");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "PID输出比例", "输出补偿值的比例，方向(+-)", DataTypeEnum.Double, "-0.4");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "PID样本个数", "每次取样的个数", DataTypeEnum.Int, "10");
             targetList.AddVariableByOrder(M_GlobalVariable.l_GlobalVariableItems, "PID死区范围", "平均尺寸偏差在该范围内时，输出 0", DataTypeEnum.Double, "0.1");
@@ -294,9 +294,9 @@ namespace Frame_Core
             
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "极耳夹角公差", "超过公差判定无极耳", DataTypeEnum.Int, "10");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "FindTabSum", "寻极耳个数", DataTypeEnum.Int, "0");
-            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "裁切纠偏取反", "裁切纠偏取反", DataTypeEnum.Bool, "false");
-            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "V角纠偏取反", "V角纠偏取反", DataTypeEnum.Bool, "false");
-            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "VCornerCorrectionEnabled", "V角纠偏启用", DataTypeEnum.Bool, "false");
+            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "裁切纠偏取反", "裁切纠偏取反", DataTypeEnum.Bool, "0");
+            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "V角纠偏取反", "V角纠偏取反", DataTypeEnum.Bool, "0");
+            targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "VCornerCorrectionEnabled", "V角纠偏启用", DataTypeEnum.Bool, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "VCornerCompensation", "V角补偿值", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "VCornerDepthCompensation", "V角深补偿值", DataTypeEnum.Double, "0");
 
@@ -334,6 +334,14 @@ namespace Frame_Core
         {
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CamBaseCol", "极片尺寸右侧相机定位基准点Col(px)", DataTypeEnum.Double, "0");
             targetGlobalVariableList.AddVariableByOrder(Crafts[i].M_GlobalVariable.l_GlobalVariableItems, "CamBaseRow", "极片尺寸右侧相机定位基准点Row(px)", DataTypeEnum.Double, "0");
+        }
+
+        /// <summary>
+        /// 保存后必须重启才能生效的全局变量：`带AT` 决定流程模块装配，Init 之后不再重算。
+        /// </summary>
+        public override IReadOnlyList<string> GetRestartRequiredGlobalVariableNames()
+        {
+            return new[] { "带AT" };
         }
 
         /// <summary>读配方里保存的"极耳在左侧"；新配方（没有该项）按默认左侧处理。</summary>

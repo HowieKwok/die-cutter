@@ -46,6 +46,82 @@ namespace Frame_Core
         }
 
         /// <summary>
+        /// 配方是否带 AT（全局变量 `带AT`，缺项按不启用）。
+        /// 运行期尺寸项/缺陷项与配方参数界面都按它决定是否展示 AT 相关内容。
+        /// </summary>
+        public bool IsAT
+        {
+            get { return GetGlobalVariableValue("带AT").ToTryBool(false); }
+        }
+
+        /// <summary>
+        /// 把 Bool 全局变量的值统一为 "1"/"0"（1=启用，0=禁用），兼容旧配方的 true/false。
+        /// 配方读取后调用一次，只改内存；保存配方时落盘。
+        /// </summary>
+        public void NormalizeBoolGlobalVariables()
+        {
+            NormalizeBoolVariables(M_GlobalVariable?.l_GlobalVariableItems);
+            if (Crafts == null) return;
+            for (int i = 0; i < Crafts.Count; i++)
+            {
+                NormalizeBoolVariables(Crafts[i]?.M_GlobalVariable?.l_GlobalVariableItems);
+            }
+        }
+
+        private static void NormalizeBoolVariables(List<GlobalVariableItem> items)
+        {
+            if (items == null) return;
+            for (int i = 0; i < items.Count; i++)
+            {
+                GlobalVariableItem item = items[i];
+                if (item == null || item.DataType != DataTypeEnum.Bool) continue;
+                item.Value = item.Value.ToTryBool(false) ? "1" : "0";
+                NormalizeBoolDescribe(item);
+            }
+        }
+
+        /// <summary>
+        /// 旧配方的布尔描述可能写着 true/false，统一改成 1=启用、0=禁用。
+        /// 已知变量给完整描述；其余只要描述里还有旧布尔字样，也一并改写。
+        /// </summary>
+        private static void NormalizeBoolDescribe(GlobalVariableItem item)
+        {
+            switch (item.Name)
+            {
+                case "带AT":
+                    item.Describe = "带AT（1=启用，0=禁用）";
+                    return;
+                case "PID启用":
+                    item.Describe = "1=启用，0=禁用";
+                    return;
+            }
+
+            if (string.IsNullOrEmpty(item.Describe)) return;
+            if (item.Describe.IndexOf("true", StringComparison.OrdinalIgnoreCase) >= 0
+                || item.Describe.IndexOf("false", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                item.Describe = "1=启用，0=禁用";
+            }
+        }
+
+        /// <summary>
+        /// 机型自有的尺寸项运行期排除条件（如五金 V角 关闭）。默认不排除。
+        /// AT 开关的排除由共享扩展统一处理，不要在这里重复。
+        /// </summary>
+        public virtual bool ExcludeSizeCraftAtRuntime(SizeCraftStation_DieCuttingCut item)
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// 机型自有的缺陷项运行期排除条件（如五金 V角 关闭）。默认不排除。
+        /// </summary>
+        public virtual bool ExcludeDefectNameAtRuntime(string name)
+        {
+            return false;
+        }
+
+        /// <summary>
         /// 保证 Crafts 至少有 length 项。
         /// 只增不减：配方里可能已经存了比当前相机数更多的相机遇工艺，删掉等于丢数据。
         /// </summary>

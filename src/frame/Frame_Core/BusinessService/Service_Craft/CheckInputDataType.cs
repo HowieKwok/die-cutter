@@ -36,7 +36,7 @@ namespace Frame_Core
             if (dataType == DataTypeEnum.Double)
                 return double.TryParse(inputText, out _);
             if (dataType == DataTypeEnum.Bool)
-                return bool.TryParse(inputText, out _);    
+                return inputText == "0" || inputText == "1";
 
             // 不支持的类型直接返回非法
             return true;
@@ -70,7 +70,7 @@ namespace Frame_Core
             if (dataType == typeof(double))
                 return double.TryParse(inputText, out _);        
             if (dataType == typeof(bool))
-                return bool.TryParse(inputText, out _);
+                return inputText == "0" || inputText == "1";
 
             // 不支持的类型直接返回非法
             return true;

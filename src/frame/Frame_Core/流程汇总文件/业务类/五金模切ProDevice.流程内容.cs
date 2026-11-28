@@ -317,7 +317,7 @@ namespace Frame_Core.业务类
                 process.AddModuleObj(Plugin);
 
 
-                if(isAT||true)
+                if(isAT)
                 {
                     pluginName = "直线抓边工具";
                     Plugin = PluginService.GetInstance<IPlugin>(PluginService.pluginsDictionary[pluginName].PluginsBuildName);
@@ -1595,9 +1595,9 @@ namespace Frame_Core.业务类
                     DetectEdgeValueAssign(paramsMeasureLine, PluginMeasureLine.ExecuteObj(), Line极耳右侧抓边Info, ShowHalconWindow.m_messageShowInfos,
                                ShowHalconWindow.m_lineShowInfos, ShowHalconWindow.m_regionShowInfos);
                     Product尺寸.LineInfosResult.Add(Line极耳右侧抓边Info);
-                    LineInfo Line极片AT抓边Info;
-                    if (isAT||true)
+                    if (isAT)
                     {
+                        LineInfo Line极片AT抓边Info;
                         PluginMeasureLine = process.m_ModuleObjList.Find(c => c.moduleInfo.ModuleName == $"极片AT抓边");
                         paramsMeasureLine = PluginMeasureLine.PluginParams as ParamsMeasureLine;
                         paramsMeasureLine.ho_Image = InfoImgInfo.ho_image;

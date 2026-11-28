@@ -374,7 +374,7 @@ namespace Mef_VisionFrame
         /// </summary>
         public void Reset_StationStatistics()
         {
-            BuildStatisticsRows(DefectStation_BindingDatas, Craft?.Get_Station1_DefectNames() ?? new List<string>());
+            BuildStatisticsRows(DefectStation_BindingDatas, Craft?.Get_Station1_DefectNames_Runtime() ?? new List<string>());
 
             if (Craft != null)
             {
