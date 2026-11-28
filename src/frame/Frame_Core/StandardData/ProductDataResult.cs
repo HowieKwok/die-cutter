@@ -13,6 +13,15 @@ namespace Frame_Core
     {
         public bool IsNG = true;
 
+        /// <summary>是否待检：既不是 OK 也不是 NG，需要人工复检。NG 优先，两标志同时为真时按 NG 处理。</summary>
+        public bool IsReview = false;
+
+        /// <summary>三态结论。由 IsNG/IsReview 推导，避免调用方各自拼装优先级。</summary>
+        public Frame_Core.业务参数类.FrameSettlementState Verdict
+        {
+            get { return Frame_Core.业务参数类.FrameSettlementRules.FromFlags(IsNG, IsReview); }
+        }
+
         /// <summary>
         /// 是否重度缺陷
         /// </summary>

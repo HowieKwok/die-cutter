@@ -31,6 +31,9 @@ namespace Mef_VisionFrame
             public bool IsSevere;
             public int NgCount;
 
+            /// <summary>本帧存在待检项且没有 NG：需要人工复检。</summary>
+            public bool IsReview;
+
             /// <summary>
             /// 这一帧里优先级最高的 NG 项。片级判定与统计都靠它，
             /// 与激光模切的 productDataResult.highestPriorityNgDefect 同义。
@@ -53,19 +56,17 @@ namespace Mef_VisionFrame
 
             string camName = Service_Camera.GetCam_Name(camIndex);
 
-            // 连续 NG 按"帧"算：这一帧没检出的类就是 OK，计数必须先归零。
-            // 放在空帧判断之前——一帧全 OK 时根本走不到逐项判定，否则计数永远清不掉。
-            ClearDefectFrameCounts(camIndex);
-
             if (product?.ngDefectResults == null || product.ngDefectResults.Count == 0)
             {
+                // 空帧没有任何待检项，所有类的连续计数都归零
+                ClearDefectFrameCounts(camIndex);
                 // 没有缺陷也要在明细里留一行“本帧 OK”，否则 CSV 里看不出这一片检过
                 return new DefectFrameResult();
             }
 
             return JudgeItems(product.ngDefectResults, name => craft.Get_Station1_DefectCrafts(name),
                 camIndex, camName, window, true, product.productDataResult.DefectData,
-                product.productDataResult);
+                product.productDataResult, true);
         }
 
         private DefectFrameResult JudgeSizeDefects(int camIndex, SizeDectectProduct product, ShowHalconWindow window)
@@ -82,16 +83,17 @@ namespace Mef_VisionFrame
 
             string camName = Service_Camera.GetCam_Name(camIndex);
 
-            ClearDefectFrameCounts(camIndex);
-
             if (product?.ngDefectResults == null || product.ngDefectResults.Count == 0)
             {
+                // 空帧没有任何待检项，所有类的连续计数都归零
+                ClearDefectFrameCounts(camIndex);
                 return new DefectFrameResult();
             }
 
+            // 尺寸工位不允许待检：即使出现兜底类名，也按两态处理
             return JudgeItems(product.ngDefectResults, name => craft.Get_Station3_DefectCrafts(name),
                 camIndex, camName, window, false, product.productDataResult.DefectData,
-                product.productDataResult);
+                product.productDataResult, false);
         }
 
         /// <summary>
@@ -104,7 +106,8 @@ namespace Mef_VisionFrame
                                     ShowHalconWindow window,
                                     bool isAppearanceStation,
                                     List<List<RowData>> detailRows,
-                                    ProductDataResult productResult)
+                                    ProductDataResult productResult,
+                                    bool allowReview)
         {
             DefectFrameResult result = new DefectFrameResult();
             ImageSaveParamConfig saveParam = Project.Instance.M_NewImageSaveParamer.ImageSaveConfigItems.GetSaveParam(camIndex);
@@ -114,6 +117,8 @@ namespace Mef_VisionFrame
 
             // 汇总判定要按类名重新遍历一遍，所以先物化；调用方传进来的本来就是 List，不会产生额外拷贝
             List<NgDefectResult> items = defects as List<NgDefectResult> ?? defects.ToList();
+            // 本帧出现过的类名：帧结束后只清“没出现的类”，待检类不在当帧被打断
+            HashSet<string> seenNames = new HashSet<string>();
 
             foreach (NgDefectResult item in items)
             {
@@ -128,14 +133,28 @@ namespace Mef_VisionFrame
                     item.Height = Math.Round(item.Height, 2);
 
                     string name = item.ClassName;
-                    DefectCraft_DieCuttingCut craft = GetCraft(name);
+                    seenNames.Add(name ?? "");
+                    // 待检只看最终类名：亮缺陷/暗缺陷兜底不再看 DB 与尺寸条件
+                    bool isReview = allowReview && IsReviewClassName(name);
+
+                    DefectCraft_DieCuttingCut craft = isReview ? null : GetCraft(name);
                     string noCraftMessage = "";
 
                     bool isOverspec;
                     bool isNg;
                     bool isSevere = false;
 
-                    if (craft == null)
+                    item.T_IsReview = isReview;
+
+                    if (isReview)
+                    {
+                        // 兜底类需要人工复检：既不算 NG，也不依赖工艺项是否存在
+                        isOverspec = false;
+                        isNg = false;
+                        isSevere = false;
+                        item.T_Path = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, "缺陷小图", "待检", name);
+                    }
+                    else if (craft == null)
                     {
                         // 没有对应工艺项：按 NG 处理（与激光模切一致），并留一条可排查的日志
                         isOverspec = true;
@@ -162,7 +181,8 @@ namespace Mef_VisionFrame
                                       + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff")
                                       + $"(A[{item.Area}],W[{item.Width}],H[{item.Height}])";
                     item.T_FileFormat = SaveImageTool.GetImageFormat(saveParam.NGImageSaveParamer.ImageFormat);
-                    item.T_IsSave = saveParam.NGImageSaveParamer.IsSave;
+                    // 待检图始终落盘，不受“只存 NG/只存 OK”的保存模式限制
+                    item.T_IsSave = isReview || saveParam.NGImageSaveParamer.IsSave;
 
                     if (isNg)
                     {
@@ -172,14 +192,15 @@ namespace Mef_VisionFrame
 
                     // 逐项连续 NG：每项按自己工艺里的"连续数量"计数，满阈值立刻置多次NG信号。
                     // 没有工艺项的缺陷不计数——阈值未知，也就无从判断"连续多少次"。
-                    if (craft != null && RecordDefectConsecutiveNg(camIndex, name, isNg, craft.ContinuousCount))
+                    // 待检不增不清：既不算连续 NG，也不打断正在累计的连续计数。
+                    if (!isReview && craft != null && RecordDefectConsecutiveNg(camIndex, name, isNg, craft.ContinuousCount))
                     {
                         AppLog.Error(
                             $"五金模切缺陷项[{name}]连续NG达到阈值{craft.ContinuousCount}，相机：{camName}");
                         TriggerNgSignal(isAppearanceStation, camIndex);
                     }
 
-                    HalconColor color = DieCutJudge.GetHalconColor(isOverspec, isNg);
+                    HalconColor color = isReview ? HalconColor.yellow : DieCutJudge.GetHalconColor(isOverspec, isNg);
 
                     if (window != null)
                     {
@@ -192,7 +213,8 @@ namespace Mef_VisionFrame
                         });
                     }
 
-                    // 缺陷小图进该路相机的 NG 轮播（小图所有权随 ShowHalconWindow 转移）
+                    // 缺陷小图落到对应目录（小图所有权随 ShowHalconWindow 转移）。
+                    // 待检图直接进保存队列、不进 NG 轮播：轮播格只放 NG/OK 缺陷，待检由人工到“待检”目录查看。
                     ShowHalconWindow ngWindow = DieCutJudge.NgDefectResultToShowHalconWindow(item, camName);
                     if (ngWindow != null)
                     {
@@ -201,18 +223,24 @@ namespace Mef_VisionFrame
                         ngWindow.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = camName });
                         ngWindow.m_messageShowInfos.Add(new MessageShowInfo()
                         {
-                            m_strMessage = $"{name}：面积（{item.Area}）宽度（{item.Width}）高度（{item.Height}）{noCraftMessage}",
+                            m_strMessage = isReview
+                                ? $"{name}（待检）：面积（{item.Area}）宽度（{item.Width}）高度（{item.Height}）"
+                                : $"{name}：面积（{item.Area}）宽度（{item.Width}）高度（{item.Height}）{noCraftMessage}",
                             m_stuGetColor = color,
                         });
                         ngWindow.m_imageSavePathInfo.Path = item.T_Path;
                         ngWindow.m_imageSavePathInfo.FileName = item.T_FileName;
                         ngWindow.m_imageSavePathInfo.FileFormat = saveParam.NGImageSaveParamer.ImageFormat;
                         ngWindow.m_imageSavePathInfo.IsShow = saveParam.NGImageSaveParamer.IsShow;
-                        ngWindow.m_imageSavePathInfo.IsSave = saveParam.NGImageSaveParamer.IsSave;
+                        // 待检图始终保存，否则人工复检时找不到图
+                        ngWindow.m_imageSavePathInfo.IsSave = isReview || saveParam.NGImageSaveParamer.IsSave;
 
                         if (camIndex >= 0 && camIndex < Data.Cams.Length)
                         {
-                            Data.Cams[camIndex].NgShow.DataQueue.Enqueue(ngWindow);
+                            if (isReview)
+                                Data.Cams[camIndex].NgSave.DataQueue.Enqueue(ngWindow);
+                            else
+                                Data.Cams[camIndex].NgShow.DataQueue.Enqueue(ngWindow);
                         }
                     }
 
@@ -229,6 +257,7 @@ namespace Mef_VisionFrame
                         item.T_IsOverspecification = true;
                         item.T_IsNG = true;
                         item.T_IsSevere = true;
+                        item.T_IsReview = false;
                         result.NgCount++;
                         result.IsSevere = true;
                         judgeFailed = true;
@@ -251,7 +280,37 @@ namespace Mef_VisionFrame
 
             // 汇总层可能因为"同类累计 N 片"的条件把单条异常判回 OK，这里强制兜底
             if (judgeFailed) result.IsNG = true;
+
+            // 片级三态：NG > 待检 > OK
+            result.IsReview = !result.IsNG && items.Any(p => p != null && p.T_IsReview);
+
+            // 本帧没出现的类视为 OK，连续计数归零；出现过的类已按 NG/OK/待检分别处理
+            ClearUnseenConsecutiveCounts(camIndex, seenNames);
             return result;
+        }
+
+        /// <summary>帧结束清理：只清本帧没出现过的检测项，待检项因此不会打断连续 NG。</summary>
+        private void ClearUnseenConsecutiveCounts(int camIndex, HashSet<string> seenNames)
+        {
+            lock (_consecutiveLock)
+            {
+                Dictionary<string, int> table = GetDefectCountTable(camIndex);
+                foreach (string key in new List<string>(table.Keys))
+                {
+                    if (seenNames == null || !seenNames.Contains(key))
+                        table[key] = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 待检类名：亮缺陷/暗缺陷是分类规则的兜底类，无法确定具体缺陷类型，交人工复检。
+        /// 只按最终类名精确匹配，不看工艺项、DB 与尺寸条件。
+        /// </summary>
+        private static bool IsReviewClassName(string name)
+        {
+            string value = (name ?? "").Trim();
+            return value == "亮缺陷" || value == "暗缺陷";
         }
 
         /// <summary>

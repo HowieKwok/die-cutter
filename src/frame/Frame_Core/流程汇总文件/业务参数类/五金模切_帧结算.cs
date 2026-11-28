@@ -9,6 +9,47 @@ namespace Frame_Core.业务参数类
         Open = 0,
         Ok = 1,
         Ng = 2,
+        /// <summary>人工复检：既不是 OK 也不是 NG，需要人工确认。</summary>
+        Review = 3,
+    }
+
+    /// <summary>
+    /// 三态结论的合成规则。
+    /// 优先级 NG &gt; 待检 &gt; OK；枚举数值只用于排序，业务比较一律走 Rank/Combine。
+    /// </summary>
+    public static class FrameSettlementRules
+    {
+        public static int Rank(FrameSettlementState state)
+        {
+            switch (state)
+            {
+                case FrameSettlementState.Ng: return 3;
+                case FrameSettlementState.Review: return 2;
+                case FrameSettlementState.Ok: return 1;
+                default: return 0;
+            }
+        }
+
+        public static bool IsTerminal(FrameSettlementState state)
+        {
+            return state != FrameSettlementState.Open;
+        }
+
+        /// <summary>两项结论合成：取优先级更高者；Open 表示未结算，不参与合成。</summary>
+        public static FrameSettlementState Combine(FrameSettlementState left, FrameSettlementState right)
+        {
+            if (!IsTerminal(left)) return right;
+            if (!IsTerminal(right)) return left;
+            return Rank(left) >= Rank(right) ? left : right;
+        }
+
+        /// <summary>按布尔标志生成终态：NG 优先，其次待检，最后 OK。</summary>
+        public static FrameSettlementState FromFlags(bool isNg, bool isReview)
+        {
+            if (isNg) return FrameSettlementState.Ng;
+            if (isReview) return FrameSettlementState.Review;
+            return FrameSettlementState.Ok;
+        }
     }
 
     /// <summary>谁给出的结论。只用于日志与排查，不改变判定结果。</summary>
@@ -146,7 +187,21 @@ namespace Frame_Core.业务参数类
         public static bool TryClaim(int frameId, 五金模切帧序号.FrameStation station, bool isNg,
                                     SettlementSource source, string reason)
         {
+            return TryClaim(frameId, station,
+                isNg ? FrameSettlementState.Ng : FrameSettlementState.Ok,
+                source, reason);
+        }
+
+        /// <summary>
+        /// 三态认领。verdict 必须是 Ok/Ng/Review；Open 表示没有结论，直接拒绝。
+        /// 与 bool 重载共用同一把锁与同一套代际规则，一帧仍然只能有一个终态。
+        /// </summary>
+        public static bool TryClaim(int frameId, 五金模切帧序号.FrameStation station,
+                                    FrameSettlementState verdict,
+                                    SettlementSource source, string reason)
+        {
             if (frameId <= 0) return false;
+            if (!FrameSettlementRules.IsTerminal(verdict)) return false;
 
             lock (_sync)
             {
@@ -155,7 +210,7 @@ namespace Frame_Core.业务参数类
                 if (entry.Generation != _generation) return false;
                 if (entry.State != FrameSettlementState.Open) return false;
 
-                entry.State = isNg ? FrameSettlementState.Ng : FrameSettlementState.Ok;
+                entry.State = verdict;
                 entry.Source = source;
                 entry.Reason = reason;
                 return true;

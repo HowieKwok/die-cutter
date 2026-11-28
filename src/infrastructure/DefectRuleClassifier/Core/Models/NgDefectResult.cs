@@ -139,6 +139,10 @@ namespace DefectRuleClassifier.Core.Models
         [XmlIgnore]
         public bool T_IsNG { get; set; } = true;
 
+        /// <summary>是否待检：亮缺陷/暗缺陷兜底类，需要人工复检。</summary>
+        [XmlIgnore]
+        public bool T_IsReview { get; set; } = false;
+
         /// <summary>保存</summary>
         [XmlIgnore]
         public bool T_IsSave { get; set; } = false;

@@ -154,6 +154,8 @@ namespace Mef_VisionFrame
         public const string StatTotal = "总数";
         public const string StatOk = "OK数";
         public const string StatNg = "NG数";
+        /// <summary>待检数：亮缺陷/暗缺陷兜底，需要人工复检，不计入良率分母。</summary>
+        public const string StatReview = "待检数";
 
         /// <summary>
         /// 把累计计数刷进两张统计表。必须在界面线程调用（由 UC 的刷新定时器驱动），
@@ -170,6 +172,7 @@ namespace Mef_VisionFrame
             double total = data?.SumupCount ?? 0;
             double okCount = data?.OKCount ?? 0;
             double ngCount = data?.NGCount ?? 0;
+            double reviewCount = data?.ReviewCount ?? 0;
 
             // 配方里没有、流程却报出来的缺陷名追加到表尾。
             // 不追加的话它在表里"查无此项"，良率掉了却找不到是哪一类。
@@ -187,6 +190,7 @@ namespace Mef_VisionFrame
                 if (row.Name == StatTotal) count = total;
                 else if (row.Name == StatOk) count = okCount;
                 else if (row.Name == StatNg) count = ngCount;
+                else if (row.Name == StatReview) count = reviewCount;
                 else
                 {
                     int value;
@@ -211,6 +215,7 @@ namespace Mef_VisionFrame
             double total = data?.SumupCount ?? 0;
             double okCount = data?.OKCount ?? 0;
             double ngCount = data?.NGCount ?? 0;
+            double reviewCount = data?.ReviewCount ?? 0;
 
             rows.Add(new QualityData { Name = StatTotal, Count = (int)total, Ratio = "100%" });
             rows.Add(new QualityData
@@ -224,6 +229,12 @@ namespace Mef_VisionFrame
                 Name = StatNg,
                 Count = (int)ngCount,
                 Ratio = total > 0 ? (ngCount / total * 100).ToString("0.00") + "%" : "",
+            });
+            rows.Add(new QualityData
+            {
+                Name = StatReview,
+                Count = (int)reviewCount,
+                Ratio = total > 0 ? (reviewCount / total * 100).ToString("0.00") + "%" : "",
             });
 
             foreach (KeyValuePair<string, int> item in counts)
@@ -400,11 +411,12 @@ namespace Mef_VisionFrame
             rows.Add(new QualityData { Name = StatTotal, Count = 0, Ratio = "" });
             rows.Add(new QualityData { Name = StatOk, Count = 0, Ratio = "" });
             rows.Add(new QualityData { Name = StatNg, Count = 0, Ratio = "" });
+            rows.Add(new QualityData { Name = StatReview, Count = 0, Ratio = "" });
 
             foreach (string name in names)
             {
                 if (string.IsNullOrEmpty(name)) continue;
-                if (name == StatTotal || name == StatOk || name == StatNg) continue;
+                if (name == StatTotal || name == StatOk || name == StatNg || name == StatReview) continue;
                 rows.Add(new QualityData { Name = name, Count = 0, Ratio = "" });
             }
         }

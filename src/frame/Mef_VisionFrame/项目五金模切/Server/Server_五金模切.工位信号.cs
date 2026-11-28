@@ -88,22 +88,30 @@ namespace Mef_VisionFrame
         /// 待检（Pending）不在这里投递：它在帧号分配时随 FrameAssigned 事件入队，
         /// 这样被去抖或帧号校验丢弃的帧不会留下多余的 Pending。
         /// </summary>
-        public bool EnqueueAppearanceResult(bool isUp, int frameId, bool isNG)
+        public bool EnqueueAppearanceResult(bool isUp, int frameId,
+            Frame_Core.业务参数类.FrameSettlementState verdict)
         {
+            string reason =
+                verdict == Frame_Core.业务参数类.FrameSettlementState.Ng ? "外观判定 NG" :
+                verdict == Frame_Core.业务参数类.FrameSettlementState.Review ? "外观判定 待检" :
+                "外观判定 OK";
+
             return SettleAndEnqueue(frameId,
                 isUp ? Frame_Core.业务参数类.五金模切帧序号.FrameStation.上线扫
                      : Frame_Core.业务参数类.五金模切帧序号.FrameStation.下线扫,
-                isNG,
+                verdict,
                 Frame_Core.业务参数类.SettlementSource.Appearance,
-                isNG ? "外观判定 NG" : "外观判定 OK");
+                reason);
         }
 
         /// <summary>三路尺寸合成后的本片结论入队。与外观同理，只允许第一路（顺序结算线程）调用。</summary>
         public bool EnqueueSizeResult(int frameId, bool isNG)
         {
+            // 尺寸工位只出 OK/NG，不允许待检：光源与阈值稳定，不需要人工复检分流。
             return SettleAndEnqueue(frameId,
                 Frame_Core.业务参数类.五金模切帧序号.FrameStation.尺寸,
-                isNG,
+                isNG ? Frame_Core.业务参数类.FrameSettlementState.Ng
+                     : Frame_Core.业务参数类.FrameSettlementState.Ok,
                 Frame_Core.业务参数类.SettlementSource.Group,
                 isNG ? "尺寸工位 NG" : "尺寸工位 OK");
         }

@@ -6,6 +6,10 @@ namespace Frame_MetalRun
         Stopped = 0,
         Ok = 1,
         Ng = 2,
-        Pending = 3,
+        /// <summary>
+        /// 人工复检：既不是 OK 也不是 NG，需要人工确认。
+        /// 只在结算出结果时写入，帧号分配阶段不得写本值。
+        /// </summary>
+        Review = 3,
     }
 }

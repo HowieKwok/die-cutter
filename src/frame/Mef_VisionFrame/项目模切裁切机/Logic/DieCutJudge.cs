@@ -286,15 +286,33 @@ namespace Mef_VisionFrame
 
         public static void DataStatistical(StatisticalData statisticalData, long sumupCount, bool isNG)
         {
-            statisticalData.SumupCount = sumupCount;
-            if (isNG) statisticalData.NGCount++;
-            statisticalData.OKCount = sumupCount - statisticalData.NGCount; ;
+            DataStatistical(statisticalData, sumupCount,
+                isNG ? Frame_Core.业务参数类.FrameSettlementState.Ng
+                     : Frame_Core.业务参数类.FrameSettlementState.Ok);
+        }
 
-            if (statisticalData.SumupCount != 0)
-            {
-                statisticalData.Yield = statisticalData.OKCount / statisticalData.SumupCount * 100;
-                statisticalData.Yield = Math.Round(statisticalData.Yield, 2);
-            }
+        /// <summary>
+        /// 三态统计：总数包含待检，OK = 总数 - NG - 待检。
+        /// 良率分母排除待检，只反映已经判定的部分：OK / (OK + NG)。
+        /// </summary>
+        public static void DataStatistical(StatisticalData statisticalData, long sumupCount,
+                                            Frame_Core.业务参数类.FrameSettlementState verdict)
+        {
+            if (statisticalData == null) return;
+
+            statisticalData.SumupCount = sumupCount;
+            if (verdict == Frame_Core.业务参数类.FrameSettlementState.Ng)
+                statisticalData.NGCount++;
+            else if (verdict == Frame_Core.业务参数类.FrameSettlementState.Review)
+                statisticalData.ReviewCount++;
+
+            statisticalData.OKCount = sumupCount - statisticalData.NGCount - statisticalData.ReviewCount;
+            if (statisticalData.OKCount < 0) statisticalData.OKCount = 0;
+
+            double judged = statisticalData.OKCount + statisticalData.NGCount;
+            statisticalData.Yield = judged > 0
+                ? Math.Round(statisticalData.OKCount / judged * 100, 2)
+                : 0;
         }
 
         public static PointInfo GetPointInfo(List<PointInfo> pointInfos, string modelName)

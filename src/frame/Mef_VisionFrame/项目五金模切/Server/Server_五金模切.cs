@@ -361,16 +361,22 @@ namespace Mef_VisionFrame
                 DefectFrameResult result = JudgeAppearanceDefects(camIndex, product, window);
 
                 // 流程层的检测模块故障会置 ForceNg：这一片检不完整，必须算 NG，
-                // 不能因为 ngDefectResults 为空就回传 OK
+                // 不能因为 ngDefectResults 为空就回传 OK。
+                // 待检只在没有 NG 时成立：NG > 待检 > OK。
                 bool isNG = result.IsNG || product.ForceNg;
+                bool isReview = !isNG && result.IsReview;
+                Frame_Core.业务参数类.FrameSettlementState verdict =
+                    Frame_Core.业务参数类.FrameSettlementRules.FromFlags(isNG, isReview);
+
                 window.m_bIsNG = isNG;
+                window.m_bIsReview = isReview;
 
                 // 本片外观结论直接回传 PLC：上线/下线各写各的，不需要等合片、也不需要 PLC 请求。
                 // 宁可先给结论再落盘，机构在等这个值。
                 // 认领失败说明这帧已由别的路径结案，发送日志也不能再记一行
-                if (EnqueueAppearanceResult(isUp, frameId, isNG))
+                if (EnqueueAppearanceResult(isUp, frameId, verdict))
                 {
-                    WriteAppearanceSendLog(isUp, isNG, frameId);
+                    WriteAppearanceSendLog(isUp, verdict, frameId);
                 }
 
                 // 明细落盘：这一帧检出的每个缺陷一行（没有缺陷时为空表，与激光一致）
@@ -388,6 +394,7 @@ namespace Mef_VisionFrame
                 product.productDataResult.m_nImageFrameID = frameId;
                 product.productDataResult.m_nProductID = window.m_nProductID;
                 product.productDataResult.IsNG = isNG;
+                product.productDataResult.IsReview = isReview;
                 product.productDataResult.IsSevereDefect = result.IsSevere;
                 // 片级统计只取这一项，见 计缺陷片分布
                 product.productDataResult.highestPriorityNgDefect = result.HighestPriority;
@@ -510,17 +517,29 @@ namespace Mef_VisionFrame
             window.m_messageShowInfos.Add(new MessageShowInfo() { m_strMessage = $"帧号：{window.m_nImageFrameID}" });
 
             string fileName = window.m_nImageFrameID.ToString().PadLeft(5, '0') + "_" + window.m_nProductID + "_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff");
-            window.m_imageSavePathInfo.Path = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir);
+
+            // 待检图单独目录，且始终保存：复检需要原图，不能受“只存 NG/只存 OK”的模式限制。
+            // NG 与待检同时为真时按 NG 处理，避免同一片落两个目录。
+            bool isReview = window.m_bIsReview && !window.m_bIsNG;
+            string imageDir = isReview
+                ? Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir, "待检")
+                : Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir);
+            string screenshotDir = isReview
+                ? Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir + "截图", "待检")
+                : Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir + "截图");
+
+            window.m_imageSavePathInfo.Path = imageDir;
             window.m_imageSavePathInfo.FileName = fileName;
             window.m_imageSavePathInfo.FileFormat = imageFormat;
             window.m_imageSavePathInfo.IsShow = isShow;
-            window.m_imageSavePathInfo.IsSave = SaveImageTool.GetIsSave(saveMode, window.m_bIsNG);
+            window.m_imageSavePathInfo.IsSave = isReview || SaveImageTool.GetIsSave(saveMode, window.m_bIsNG);
 
-            window.m_imageSavePathInfo.ScreenshotPath = Path.Combine(Project.Instance.paramPathSet.ProductMojuanPath, camName, subDir + "截图");
+            window.m_imageSavePathInfo.ScreenshotPath = screenshotDir;
             window.m_imageSavePathInfo.ScreenshotFileName = fileName;
             window.m_imageSavePathInfo.ScreenshotFileFormat = saveParam.ScreenshotSaveParamer.ImageFormat;
             window.m_imageSavePathInfo.IsHighDefinitionCapture = saveParam.ScreenshotSaveParamer.IsHighDefinitionCapture;
-            window.m_imageSavePathInfo.IsScreenshot = SaveImageTool.GetIsSave(saveParam.ScreenshotSaveParamer.SaveMode, window.m_bIsNG);
+            window.m_imageSavePathInfo.IsScreenshot = isReview
+                || SaveImageTool.GetIsSave(saveParam.ScreenshotSaveParamer.SaveMode, window.m_bIsNG);
 
             showQueue.DataQueue.Enqueue(window);
         }
@@ -594,15 +613,17 @@ namespace Mef_VisionFrame
             // 片数 = 相机间距 / 皮带速度，是不定值。按帧号相等配对会把不同片配成一对，且无法察觉。
             ProductDataResult aLine = Data.ALine_DieCutEAProduct.Dequeue();
             ProductDataResult bLine = Data.BLine_DieCutEAProduct.Dequeue();
-            bool isNG = aLine.IsNG || bLine.IsNG;
+            // 合片三态：任一面 NG 即 NG；否则任一面待检即待检；两面都 OK 才是 OK
+            Frame_Core.业务参数类.FrameSettlementState verdict =
+                Frame_Core.业务参数类.FrameSettlementRules.Combine(aLine.Verdict, bLine.Verdict);
 
             // 统计键沿用上线帧号，与上线结果点位口径一致
             long frameId = aLine.m_nImageFrameID;
             MessageNotify.AddCommLog(
                 $"缺陷工位——合片完成，上线帧号{frameId}，下线帧号{bLine.m_nImageFrameID}");
 
-            // 统计按“一片”计：A/B 任一面 NG 即这一片 NG
-            DieCutJudge.DataStatistical(Data.Station1_StatisticalData, frameId, isNG);
+            // 统计按“一片”计：总数含待检，良率分母排除待检
+            DieCutJudge.DataStatistical(Data.Station1_StatisticalData, frameId, verdict);
 
             // 分布同样按“一片”计：取 A/B 两面中优先级最高的那一个 NG 项，
             // 不逐缺陷累加——否则一片上有 3 个缺陷就记 3 次，占比会超过 100%。

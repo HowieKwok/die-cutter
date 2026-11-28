@@ -21,6 +21,8 @@ namespace Frame_Core
         public long m_nImageFrameID = 0;
         public bool bIs3D = false;
         public bool m_bIsNG = false;//NG为true
+        /// <summary>待检标志：亮缺陷/暗缺陷兜底类，需要人工复检。与 m_bIsNG 互斥，NG 优先。</summary>
+        public bool m_bIsReview = false;
         public bool m_bIsDispose = false;
 
 
@@ -52,6 +54,7 @@ namespace Frame_Core
             info.m_nMode = m_nMode;
             info.bIs3D = this.bIs3D;
             info.m_bIsNG = this.m_bIsNG;
+            info.m_bIsReview = this.m_bIsReview;
             info.m_bIsDispose = m_bIsDispose;
             info.Image3DClass = Image3DClass?.Copy();
             info.m_messageShowInfos = new List<MessageShowInfo>(m_messageShowInfos);

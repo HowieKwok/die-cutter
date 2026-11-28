@@ -354,14 +354,14 @@ namespace MetalRunHarness
                     return true;
                 });
 
-            channel.Enqueue(7, PlcResult.Pending);
+            channel.Enqueue(7, PlcResult.Review);
             channel.Enqueue(7, PlcResult.Ok);
             publisher.Start();
             Thread.Sleep(300);
             publisher.Dispose();
 
             Check(channel.Count == 0, "PLC 发布器排空队列");
-            Check(writes.Count == 2 && writes[0] == 3 && writes[1] == 1, "Pending→Result 顺序");
+            Check(writes.Count == 2 && writes[0] == 3 && writes[1] == 1, "Review→Result 顺序");
         }
 
         private static void TestFrameGate()
@@ -454,6 +454,22 @@ namespace MetalRunHarness
             Check(FrameSettlement.TryClaim(9, LineScan, false, SettlementSource.Appearance, "重新认领"),
                 "回滚后可以再次结算");
 
+            // 待检也是终态：写入后不可再被 OK/NG 覆盖
+            FrameSettlement.Begin(5, LineScan);
+            Check(FrameSettlement.TryClaim(5, LineScan, FrameSettlementState.Review,
+                    SettlementSource.Appearance, "待检"),
+                "待检认领成功");
+            Check(!FrameSettlement.TryClaim(5, LineScan, true, SettlementSource.ServerJudge, "覆盖"),
+                "待检终态不可被 NG 覆盖");
+            Check(FrameSettlement.Query(5, LineScan) == FrameSettlementState.Review,
+                "终态保持待检");
+
+            Check(FrameSettlementRules.FromFlags(false, true) == FrameSettlementState.Review,
+                "待检标志合成");
+            Check(FrameSettlementRules.Combine(FrameSettlementState.Review, FrameSettlementState.Ng)
+                    == FrameSettlementState.Ng,
+                "NG 优先于待检");
+
             // 换卷/停机换代后旧帧作废
             FrameSettlement.Begin(11, LineScan);
             FrameSettlement.NewGeneration();
@@ -476,10 +492,11 @@ namespace MetalRunHarness
             const 五金模切帧序号.FrameStation Size = 五金模切帧序号.FrameStation.尺寸;
 
             PlcResultChannel channel = new PlcResultChannel("pipeline", 16);
-            object sync = new object();
 
+            // 帧分配阶段不再写结果点位：这里只记一次分配，不向队列投递任何值。
+            int assignedCount = 0;
             Action<int, 五金模切帧序号.FrameStation> onAssigned =
-                (id, st) => { lock (sync) { channel.Enqueue(id, PlcResult.Pending); } };
+                (id, st) => { Interlocked.Increment(ref assignedCount); };
             Action<int, 五金模切帧序号.FrameStation, string> onAbandoned =
                 (id, st, reason) => { SettleForTest(channel, id, st, true); };
 
@@ -492,23 +509,24 @@ namespace MetalRunHarness
                 五金模切帧序号.Register(1, LineScan);
                 Check(SettleForTest(channel, 1, LineScan, false), "场景A 正常结论认领成功");
                 五金模切帧序号.Abandon(1, LineScan, "迟到异常");
-                Check(Sequence(channel).SequenceEqual(new[] { 3, 1 }), "场景A 迟到异常不补第二条");
+                Check(assignedCount == 1, "场景A 帧分配只记账不投递");
+                Check(Sequence(channel).SequenceEqual(new[] { 1 }), "场景A 只发结论，迟到异常不补第二条");
 
                 // 场景 B：放弃先到，正常结论后到被拒
                 channel.Clear();
                 五金模切帧序号.Register(2, LineScan);
                 五金模切帧序号.Abandon(2, LineScan, "流程异常");
                 Check(!SettleForTest(channel, 2, LineScan, false), "场景B 迟到 OK 被拒");
-                Check(Sequence(channel).SequenceEqual(new[] { 3, 2 }), "场景B 放弃补一条 NG");
+                Check(Sequence(channel).SequenceEqual(new[] { 2 }), "场景B 放弃补一条 NG");
 
-                // 场景 C：尺寸三路同号，三条待检、只一条结论
+                // 场景 C：尺寸三路同号，只一条结论
                 channel.Clear();
                 五金模切帧序号.Register(7, Size);
                 五金模切帧序号.Register(7, Size);
                 五金模切帧序号.Register(7, Size);
                 Check(SettleForTest(channel, 7, Size, false), "场景C 尺寸工位结论认领成功");
                 Check(!SettleForTest(channel, 7, Size, true), "场景C 尺寸三路不会补第二条");
-                Check(Sequence(channel).SequenceEqual(new[] { 3, 3, 3, 1 }), "场景C 三待检一结论");
+                Check(Sequence(channel).SequenceEqual(new[] { 1 }), "场景C 三路同号只发一条结论");
 
                 // 场景 D：发布器按入队顺序写出
                 List<int> writes = new List<int>();
@@ -522,13 +540,19 @@ namespace MetalRunHarness
                 publisher.Start();
                 Thread.Sleep(300);
                 publisher.Dispose();
-                Check(writes.SequenceEqual(new[] { 3, 3, 3, 1 }), "场景D 发布顺序 3→3→3→结论");
+                Check(writes.SequenceEqual(new[] { 1 }), "场景D 发布顺序只含结论");
+
+                // 场景 F：待检结论发布为 3，且不依赖帧分配阶段
+                channel.Clear();
+                五金模切帧序号.Register(3, LineScan);
+                Check(SettleForTest(channel, 3, LineScan, FrameSettlementState.Review), "场景F 待检认领成功");
+                Check(Sequence(channel).SequenceEqual(new[] { 3 }), "场景F 待检写入 3，且只写一次");
 
                 // 场景 E：队列满时回滚认领，排空后可以重新结算
                 PlcResultChannel small = new PlcResultChannel("small", 1);
                 FrameSettlement.NewGeneration();
                 五金模切帧序号.Register(9, LineScan);
-                small.Enqueue(9, PlcResult.Pending);   // 占满
+                small.Enqueue(9, PlcResult.Review);   // 占满
                 Check(!SettleForTest(small, 9, LineScan, true), "场景E 队列满时结算失败");
                 Check(FrameSettlement.Query(9, LineScan) == FrameSettlementState.Open, "场景E 认领已回滚");
                 small.Clear();
@@ -546,10 +570,23 @@ namespace MetalRunHarness
         private static bool SettleForTest(PlcResultChannel channel, int frameId,
             五金模切帧序号.FrameStation station, bool isNg)
         {
-            if (!FrameSettlement.TryClaim(frameId, station, isNg, SettlementSource.ServerJudge, "harness"))
+            return SettleForTest(channel, frameId, station,
+                isNg ? FrameSettlementState.Ng : FrameSettlementState.Ok);
+        }
+
+        /// <summary>三态同构实现：值为 3 只代表待检结论。</summary>
+        private static bool SettleForTest(PlcResultChannel channel, int frameId,
+            五金模切帧序号.FrameStation station, FrameSettlementState verdict)
+        {
+            if (!FrameSettlement.TryClaim(frameId, station, verdict, SettlementSource.ServerJudge, "harness"))
                 return false;
 
-            if (!channel.Enqueue(frameId, isNg ? PlcResult.Ng : PlcResult.Ok))
+            PlcResult value =
+                verdict == FrameSettlementState.Ng ? PlcResult.Ng :
+                verdict == FrameSettlementState.Review ? PlcResult.Review :
+                PlcResult.Ok;
+
+            if (!channel.Enqueue(frameId, value))
             {
                 FrameSettlement.Reopen(frameId, station);
                 return false;

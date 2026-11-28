@@ -67,13 +67,29 @@ namespace Mef_VisionFrame
             Frame_Core.业务参数类.SettlementSource source,
             string reason)
         {
+            return SettleAndEnqueue(frameId, station,
+                isNG ? Frame_Core.业务参数类.FrameSettlementState.Ng
+                     : Frame_Core.业务参数类.FrameSettlementState.Ok,
+                source, reason);
+        }
+
+        /// <summary>
+        /// 三态结算入口。这是唯一允许把 PlcResult.Review 写入结果队列的地方：
+        /// 帧号分配阶段不再写 3，结果点位只在判定完成后写一次。
+        /// </summary>
+        public bool SettleAndEnqueue(int frameId,
+            Frame_Core.业务参数类.五金模切帧序号.FrameStation station,
+            Frame_Core.业务参数类.FrameSettlementState verdict,
+            Frame_Core.业务参数类.SettlementSource source,
+            string reason)
+        {
             if (frameId <= 0) return false;
 
-            // 停机后不再入队：停机已把点位写回 0，再发一条会把 0 覆盖成 OK/NG
+            // 停机后不再入队：停机已把点位写回 0，再发一条会把 0 覆盖成结果
             if (!Project.Instance.Is_Run) return false;
             if (!Frame_Core.业务参数类.五金模切帧序号.IsLive(frameId)) return false;
 
-            if (!Frame_Core.业务参数类.FrameSettlement.TryClaim(frameId, station, isNG, source, reason))
+            if (!Frame_Core.业务参数类.FrameSettlement.TryClaim(frameId, station, verdict, source, reason))
             {
                 AppLog.Warn(
                     $"[五金帧结算] 帧 {frameId} {station} 已有结论，忽略本次 {source}：{reason}");
@@ -85,14 +101,28 @@ namespace Mef_VisionFrame
                 station == Frame_Core.业务参数类.五金模切帧序号.FrameStation.下线扫 ? DownResultChannel :
                 SizeResultChannel;
 
-            if (!EnqueueResult(channel, frameId, isNG ? PlcResult.Ng : PlcResult.Ok))
+            if (!EnqueueResult(channel, frameId, ToPlcResult(verdict)))
             {
-                // 队列满时回滚认领，否则守卫认为已结算、PLC 永远停在待检
+                // 队列满时回滚认领，否则守卫认为已结算、PLC 永远停在等待
                 Frame_Core.业务参数类.FrameSettlement.Reopen(frameId, station);
                 return false;
             }
 
             return true;
+        }
+
+        /// <summary>结算三态映射到 PLC 结果值。Open 不是结论，不允许发布。</summary>
+        private static PlcResult ToPlcResult(Frame_Core.业务参数类.FrameSettlementState verdict)
+        {
+            switch (verdict)
+            {
+                case Frame_Core.业务参数类.FrameSettlementState.Ng: return PlcResult.Ng;
+                case Frame_Core.业务参数类.FrameSettlementState.Review: return PlcResult.Review;
+                case Frame_Core.业务参数类.FrameSettlementState.Ok: return PlcResult.Ok;
+                default:
+                    AppLog.Error($"[五金帧结算] 非法结论 {verdict}，按 NG 回传，避免 PLC 停在等待。");
+                    return PlcResult.Ng;
+            }
         }
 
         /// <summary>结论入队后唤醒发布器。入队失败说明队列满了，必须告警而不是静默丢弃。</summary>

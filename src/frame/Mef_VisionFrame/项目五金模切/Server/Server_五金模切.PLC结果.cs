@@ -25,10 +25,8 @@ namespace Mef_VisionFrame
         /// </summary>
         private void InitPlcResultCallbacks()
         {
-            // 待检随帧号分配入队：只有真正被接受、拿到帧号的帧才产生 Pending，
-            // 被去抖或帧号校验丢弃的帧不会留下多余的一条
-            Frame_Core.业务参数类.五金模切帧序号.FrameAssigned -= OnFrameAssigned;
-            Frame_Core.业务参数类.五金模切帧序号.FrameAssigned += OnFrameAssigned;
+            // 帧号分配不再写结果点位：3 只表示“人工复检”，与 OK/NG 同一时机发布。
+            // 帧分配只负责登记结算守卫，不再向结果队列投递任何值。
 
             // 告警的界面出口。核心层只发事件，这里决定显示成非模态窗；
             // 不订阅时告警只落日志，不会丢信息。
@@ -129,22 +127,6 @@ namespace Mef_VisionFrame
         }
 
         /// <summary>
-        /// 某一帧拿到帧号：立刻把"待检"投递给它所在工位的结果队列。
-        /// 这是 Pending 与结论成对入队的唯一入口，顺序天然是 Pending 在前。
-        /// </summary>
-        private void OnFrameAssigned(int frameId, Frame_Core.业务参数类.五金模切帧序号.FrameStation station)
-        {
-            if (!Project.Instance.Is_Run) return;
-
-            PlcResultChannel channel =
-                station == Frame_Core.业务参数类.五金模切帧序号.FrameStation.上线扫 ? UpResultChannel :
-                station == Frame_Core.业务参数类.五金模切帧序号.FrameStation.下线扫 ? DownResultChannel :
-                SizeResultChannel;
-
-            EnqueueResult(channel, frameId, PlcResult.Pending);
-        }
-
-        /// <summary>
         /// 某帧被流程放弃：补一条 NG，保证 PLC 每片必有一拍。
         ///
         /// 必须判重：异常可能发生在结论已入队之后（落盘、界面投递等环节），
@@ -213,14 +195,20 @@ namespace Mef_VisionFrame
         #region 回传日志
 
         /// <summary>外观每一次回传写一行：哪条线、哪一帧、给了什么值。发和写的时机相同，便于对账。</summary>
-        private void WriteAppearanceSendLog(bool isUp, bool isNG, long frameId)
+        private void WriteAppearanceSendLog(bool isUp,
+            Frame_Core.业务参数类.FrameSettlementState verdict, long frameId)
         {
+            string text =
+                verdict == Frame_Core.业务参数类.FrameSettlementState.Ng ? "NG" :
+                verdict == Frame_Core.业务参数类.FrameSettlementState.Review ? "待检" :
+                "OK";
+
             List<RowData> row = new List<RowData>
             {
                 new RowData { dataStr = DateTime.Now.ToString("yyyy-MM-dd_HH_mm_ss_fff") },
                 new RowData { dataStr = isUp ? "上线" : "下线" },
                 new RowData { dataStr = frameId.ToString() },
-                new RowData { dataStr = isNG ? "NG" : "OK" },
+                new RowData { dataStr = text },
             };
             FileOperationCSV.WriteData_CSV(Data.Station1_DefectCamSendPath, Data.Station1_CamSendTitle.ToArray(), row.ToArray(), "缺陷工位");
             Data.Station1_SendShowQueue.Enqueue(row, 200);

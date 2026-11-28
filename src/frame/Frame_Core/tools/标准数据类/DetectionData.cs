@@ -194,6 +194,11 @@ namespace Frame_Core
         public double NGCount = 0;
 
         /// <summary>
+        /// 待检数量：既不是 OK 也不是 NG，需要人工复检。
+        /// </summary>
+        public double ReviewCount = 0;
+
+        /// <summary>
         /// 良率
         /// </summary>
         public double Yield = 0;
@@ -233,6 +238,7 @@ namespace Frame_Core
             SumupCount = 0;
             OKCount = 0;
             NGCount = 0;
+            ReviewCount = 0;
             Yield = 0;
             DBSendCount = 0;
             DBReceiveCount = 0;
